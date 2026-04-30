@@ -1,0 +1,185 @@
+'use client';
+import { useState } from 'react';
+
+import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import NumberGrid from '@/components/NumberGrid';
+import { useMySubmissions } from '@/hooks/useLottery';
+import { useLang } from '@/hooks/useLang';
+import { tm } from '@/lib/i18n/toastMessages';
+import { clearClientSession } from '@/lib/auth/client';
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const { data: subs = [] } = useMySubmissions();
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const { t, lang, setLang } = useLang();
+
+  const user =
+    typeof window !== 'undefined'
+      ? JSON.parse(localStorage.getItem('user') || '{}')
+      : {};
+
+  const displayName = user?.name || 'User';
+
+  function logout() {
+    clearClientSession();
+    toast.success(tm(lang, 'logoutSuccess'));
+
+    setTimeout(() => {
+      router.push('/login');
+      router.refresh();
+    }, 400);
+  }
+
+  return (
+    <div className="min-h-screen p-4 pb-20 sm:p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+          <h1 className="text-2xl font-bold">{t.dashboard}</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {lang === 'am'
+              ? `ሰላም፣ ${displayName} 👋`
+              : `Welcome, ${displayName} 👋`}
+          </p>
+        </div>
+
+          <div className="flex items-center gap-2">
+
+            <button
+              onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
+              className="px-3 py-2 bg-white shadow rounded-xl"
+            >
+              {lang === 'en' ? 'አማርኛ' : 'English'}
+            </button>
+
+            <button
+              onClick={() => setShowLogoutModal(true)}
+              className="px-3 py-2 text-white bg-red-600 rounded-xl"
+            >
+              {t.logout}
+            </button>
+          </div>
+        </div>
+
+        <section className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 shadow rounded-2xl">
+          <h2 className="mb-3 font-bold text-purple-800">
+            {lang === 'am' ? 'የጨዋታ ህጎች' : 'Game Rules'}
+          </h2>
+
+          <ul className="space-y-2 text-sm text-purple-700">
+            {lang === 'am' ? (
+              <>
+                <li>• አንድ ቁጥር ይምረጡ</li>
+                <li>• የክፍያ ደረሰኝ ይጫኑ</li>
+                <li>• አድሚን እስኪያጽድቅ ይጠብቁ</li>
+                <li>• አሸናፊው በዘፈቀደ ይመረጣል</li>
+                <li>• ያልተጸደቀ ግቤት አይቆጠርም</li>
+              </>
+            ) : (
+              <>
+                <li>• Choose one number</li>
+                <li>• Upload payment receipt</li>
+                <li>• Wait for admin approval</li>
+                <li>• Winner is selected randomly</li>
+                <li>• Unapproved entries are not counted</li>
+              </>
+            )}
+          </ul>
+        </section>
+
+        <section className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 shadow rounded-2xl">
+          <h2 className="mb-3 font-bold text-purple-800">{t.pickNumber}</h2>
+          <NumberGrid />
+        </section>
+
+        <section className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 shadow rounded-2xl">
+          <h2 className="mb-3 font-bold text-purple-800">{t.myPurchases}</h2>
+
+          <div className="grid gap-3">
+            {subs.map((s: any) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between p-3 border rounded-xl"
+              >
+                <div>
+                  <b>#{s.number}</b>
+                  <p className="text-sm text-slate-500">
+                    {new Date(s.submitted_at).toLocaleString()}
+                  </p>
+                </div>
+
+                <span
+                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                    s.status === 'approved'
+                      ? 'bg-green-100 text-green-700'
+                      : s.status === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {lang === 'am'
+                    ? s.status === 'approved'
+                      ? 'ጸድቋል'
+                      : s.status === 'pending'
+                      ? 'በመጠባበቅ ላይ'
+                      : 'ውድቅ ተደርጓል'
+                    : s.status}
+                </span>
+
+                {s.receipt_url && (
+                  <img
+                    src={s.receipt_url}
+                    alt="Receipt"
+                    className="object-cover w-12 h-12 rounded"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      {showLogoutModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+          onClick={() => setShowLogoutModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold text-gray-900">
+              {lang === 'am' ? 'መውጣት ይፈልጋሉ?' : 'Are you sure you want to logout?'}
+            </h2>
+
+            <p className="mt-2 text-sm text-gray-600">
+              {lang === 'am'
+                ? 'ከአካውንትዎ ይወጣሉ።'
+                : 'You will be signed out of your account.'}
+            </p>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700"
+              >
+                {lang === 'am' ? 'ይቅር' : 'Cancel'}
+              </button>
+
+              <button
+                type="button"
+                onClick={logout}
+                className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white"
+              >
+                {lang === 'am' ? 'ውጣ' : 'Logout'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
