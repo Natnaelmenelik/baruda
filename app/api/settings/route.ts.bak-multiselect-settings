@@ -1,0 +1,33 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+import { NextResponse } from 'next/server';
+import { sql } from '@/lib/db/sql';
+
+async function getSettingNumber(key: string, fallback: number) {
+  const rows = await sql`
+    SELECT value FROM settings
+    WHERE key = ${key}
+    LIMIT 1
+  `;
+
+  const value = Number(rows?.[0]?.value);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+export async function GET() {
+  const ticketPrice = await getSettingNumber('ticket_price', 300);
+  const gridSize = await getSettingNumber('grid_size', 2000);
+
+  return NextResponse.json(
+    {
+      ticketPrice,
+      gridSize,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate',
+      },
+    }
+  );
+}

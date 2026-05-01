@@ -1,0 +1,137 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+
+export default function AdminSettingsPanel() {
+  const [ticketPrice, setTicketPrice] = useState('');
+  const [gridSize, setGridSize] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  async function loadSettings() {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        cache: 'no-store',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to load settings');
+      }
+
+      setTicketPrice(String(data.ticketPrice ?? 300));
+      setGridSize(String(data.gridSize ?? 2000));
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveSettings(e: React.FormEvent) {
+    e.preventDefault();
+
+    const price = Number(ticketPrice);
+    const size = Number(gridSize);
+
+    if (!Number.isInteger(price) || price <= 0) {
+      toast.error('Ticket price must be a positive number');
+      return;
+    }
+
+    if (!Number.isInteger(size) || size < 1 || size > 20000) {
+      toast.error('Grid size must be between 1 and 20000');
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ticketPrice: price,
+          gridSize: size,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to save settings');
+      }
+
+      toast.success('Lottery settings updated successfully');
+      await loadSettings();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save settings');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  return (
+    <div className="mb-6 rounded-xl bg-white p-5 shadow">
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-gray-900">{lang === "am" ? "የሎተሪ ቅንብሮች" : "Lottery Settings"}</h2>
+        <p className="text-sm text-gray-500">
+          Set ticket price and numbers grid size from the admin panel.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="text-sm text-gray-500">{lang === "am" ? "ቅንብሮች በመጫን ላይ..." : "Loading settings..."}</div>
+      ) : (
+        <form onSubmit={saveSettings} className="grid gap-4 md:grid-cols-3">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              Ticket Price
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={ticketPrice}
+              onChange={(e) => setTicketPrice(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              placeholder="300"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              Numbers Grid Size
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="20000"
+              value={gridSize}
+              onChange={(e) => setGridSize(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              placeholder="2000"
+            />
+          </div>
+
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+            >
+              {saving ? 'Saving...' : 'Save Settings'}
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}

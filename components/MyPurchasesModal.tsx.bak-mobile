@@ -1,0 +1,116 @@
+'use client';
+
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  subs: any[];
+  lang: 'en' | 'am';
+  title: string;
+};
+
+export default function MyPurchasesModal({
+  open,
+  onClose,
+  subs,
+  lang,
+  title,
+}: Props) {
+  if (!open) return null;
+
+  const getSubmissionNumbers = (sub: any) => {
+    if (Array.isArray(sub.numbers) && sub.numbers.length > 0) return sub.numbers;
+    if (sub.number) return [sub.number];
+    return [];
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-3xl rounded-2xl bg-white p-6 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between border-b pb-3">
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-semibold"
+          >
+            ×
+          </button>
+        </div>
+
+        {subs.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            {lang === 'am' ? 'ምንም ግዢ የለም።' : 'No purchases found.'}
+          </div>
+        ) : (
+          <div className="max-h-[65vh] overflow-y-auto">
+            <div className="grid gap-3">
+              {subs.map((s: any) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border p-3"
+                >
+                  <div>
+                    <div className="flex flex-wrap gap-2">
+                      {getSubmissionNumbers(s).map((num: any) => (
+                        <span
+                          key={num}
+                          className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800"
+                        >
+                          {num}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className="mt-1 text-sm text-slate-500">
+                      {s.submitted_at
+                        ? new Date(s.submitted_at).toLocaleString()
+                        : '-'}
+                    </p>
+
+                    {s.total_amount && (
+                      <p className="mt-1 text-sm font-semibold text-slate-700">
+                        {Number(s.total_amount).toLocaleString()} Birr
+                      </p>
+                    )}
+                  </div>
+
+                  <span
+                    className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${
+                      s.status === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : s.status === 'pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-red-100 text-red-700'
+                    }`}
+                  >
+                    {lang === 'am'
+                      ? s.status === 'approved'
+                        ? 'ጸድቋል'
+                        : s.status === 'pending'
+                          ? 'በመጠባበቅ ላይ'
+                          : 'ውድቅ ተደርጓል'
+                      : s.status}
+                  </span>
+
+                  {s.receipt_url && (
+                    <img
+                      src={s.receipt_url}
+                      alt={lang === 'am' ? 'ደረሰኝ' : 'Receipt'}
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,77 +1,59 @@
-'use client';
-
-export function getClientToken(): string | null {
+export function getToken() {
   if (typeof window === 'undefined') return null;
 
-  const token = localStorage.getItem('token');
-
-  if (!token || token === 'null' || token === 'undefined') return null;
-
-  return token;
-}
-
-export function getClientUser(): any | null {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const raw = localStorage.getItem('user');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-export function isClientAdmin(): boolean {
-  const user = getClientUser();
-
-  return Boolean(
-    user?.isAdmin === true ||
-      user?.is_admin === true ||
-      user?.role === 'admin' ||
-      user?.role === 'ADMIN'
+  return (
+    localStorage.getItem('token') ||
+    localStorage.getItem('auth_token') ||
+    localStorage.getItem('lottery_token')
   );
 }
 
-export function setClientSession(token: string, user: any): void {
-  localStorage.setItem('token', token);
-  localStorage.setItem('user', JSON.stringify(user));
+export function getClientUser() {
+  if (typeof window === 'undefined') return null;
 
-  document.cookie = `token=${token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
 }
 
-export function clearClientSession(): void {
+export function setClientSession(token: string, user: any) {
+  if (typeof window === 'undefined') return;
+
+  localStorage.setItem('token', token);
+  localStorage.setItem('auth_token', token);
+  localStorage.setItem('lottery_token', token);
+  localStorage.setItem('user', JSON.stringify(user || {}));
+
+  document.cookie = `token=${token}; Path=/; SameSite=Lax`;
+}
+
+export function saveClientSession(token: string, user: any) {
+  setClientSession(token, user);
+}
+
+export function clearClientSession() {
+  if (typeof window === 'undefined') return;
+
   localStorage.removeItem('token');
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('lottery_token');
   localStorage.removeItem('user');
 
-  document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
-  document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie =
+    'token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
 }
 
-export function authHeaders(): Record<string, string> {
-  const token = getClientToken();
-
-  if (!token) return {};
-
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
-
-export async function apiFetch(
-  input: string | URL | Request,
-  init: RequestInit = {}
-): Promise<Response> {
-  const headers = new Headers(init.headers || {});
-
-  const token = getClientToken();
-
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
+export async function apiFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const token = getToken();
 
   return fetch(input, {
     ...init,
-    headers,
-    cache: 'no-store',
+    credentials: 'include',
+    headers: {
+      ...(init?.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
 }

@@ -1,37 +1,33 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db/sql';
 import { requireAdmin } from '@/lib/auth/server';
 
-export async function GET(
-  req: Request,
-  context: { params: Promise<{ id: string }> }
-) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(req);
-    const { id } = await context.params;
 
-    const result = await sql`
-      SELECT receipt_url
+    const rows = await sql`
+      SELECT receipt_url, receipt_key
       FROM submissions
-      WHERE id = ${id}
+      WHERE id = ${params.id}
       LIMIT 1
     `;
 
-    if (!result.length || !result[0].receipt_url) {
-      return NextResponse.json({ error: 'Receipt not found' }, { status: 404 });
+    if (!rows.length) {
+      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
     }
 
     return NextResponse.json({
-      receiptUrl: result[0].receipt_url,
+      receiptUrl: rows[0].receipt_url,
+      receiptKey: rows[0].receipt_key,
     });
   } catch (error: any) {
     return NextResponse.json(
       { error: error.message || 'Failed to load receipt' },
-      { status: 500 }
+      { status: error.message === 'Forbidden' ? 403 : error.message === 'Unauthorized' ? 401 : 500 }
     );
   }
 }

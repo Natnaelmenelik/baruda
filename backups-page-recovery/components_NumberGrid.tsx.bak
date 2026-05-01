@@ -1,0 +1,468 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import SubmitNumberModal from '@/components/SubmitNumberModal';
+import SelectedNumbersPanel from '@/components/SelectedNumbersPanel';
+import ConfirmSelectionModal from '@/components/ConfirmSelectionModal';
+import { useLang } from '@/hooks/useLang';
+import { apiFetch } from '@/lib/auth/client';
+
+type NumberStatus = 'available' | 'pending' | 'taken' | 'locked' | 'locked_by_me';
+
+type NumberItem = {
+  num?: number;
+  number?: number;
+  status: NumberStatus;
+};
+
+type NumbersApiResponse = {
+  numbers: NumberItem[];
+  gridSize: number;
+};
+
+type SettingsApiResponse = {
+  ticketPrice: number;
+  gridSize: number;
+};
+
+async function readJson(res: Response) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
+  return data;
+}
+
+function normalizeNumbersResponse(data: any): NumbersApiResponse {
+  if (Array.isArray(data)) {
+    return {
+      numbers: data,
+      gridSize: data.length || 2000,
+    };
+  }
+
+  return {
+    numbers: Array.isArray(data?.numbers) ? data.numbers : [],
+    gridSize: Number(data?.gridSize || 2000),
+  };
+}
+
+async function fetchNumbers(): Promise<NumbersApiResponse> {
+  const res = await apiFetch('/api/numbers?t=' + Date.now());
+  const data = await readJson(res);
+  return normalizeNumbersResponse(data);
+}
+
+async function fetchSettings(): Promise<SettingsApiResponse> {
+  const res = await fetch('/api/settings?t=' + Date.now(), {
+    cache: 'no-store',
+  });
+
+  const data = await readJson(res);
+
+  return {
+    ticketPrice: Number(data?.ticketPrice || 300),
+    gridSize: Number(data?.gridSize || 2000),
+  };
+}
+
+export default function NumberGrid() {
+  const queryClient = useQueryClient();
+  const { lang } = useLang();
+
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [searchNumber, setSearchNumber] = useState('');
+  const numberRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [lockingNumber, setLockingNumber] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  const {
+    data: numbersData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['numbers'],
+    queryFn: fetchNumbers,
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['lottery-settings'],
+    queryFn: fetchSettings,
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+  });
+
+  const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
+    ? numbersData.numbers
+    : [];
+
+  const gridSize = Number(settingsData?.gridSize || numbersData?.gridSize || 2000);
+  const ticketPrice = Number(settingsData?.ticketPrice || 300);
+
+  const lockNumbers = async (nums: number[]) => {
+    const res = await apiFetch('/api/numbers/lock-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+
+    return readJson(res);
+  };
+
+  const unlockNumbers = async (nums: number[]) => {
+    if (!nums.length) return;
+
+    await apiFetch('/api/numbers/unlock-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+
+    await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+    await queryClient.refetchQueries({ queryKey: ['numbers'] });
+  };
+
+  const validateNumbers = async (nums: number[]) => {
+    const res = await apiFetch('/api/numbers/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+
+    return readJson(res);
+  };
+
+  const removeNumber = async (num: number) => {
+    setSelectedNumbers((prev) => prev.filter((n) => n !== num));
+    await unlockNumbers([num]);
+  };
+
+  const handleClick = async (item: NumberItem) => {
+    const num = Number(item.num || item.number);
+    if (!num) return;
+
+    if (selectedNumbers.includes(num) || item.status === 'locked_by_me') {
+      await removeNumber(num);
+      return;
+    }
+
+    if (item.status === 'locked') {
+      toast.error(
+        lang === 'am'
+          ? `ቁጥር ${num} በሌላ ተጠቃሚ ተይዟል።`
+          : `Number ${num} is currently locked by another user.`
+      );
+      return;
+    }
+
+    if (item.status === 'pending' || item.status === 'taken') {
+      toast.error(
+        lang === 'am'
+          ? `ቁጥር ${num} አስቀድሞ ተይዟል።`
+          : `Number ${num} is already taken or pending approval.`
+      );
+      return;
+    }
+
+    try {
+      setLockingNumber(num);
+
+      await lockNumbers([num]);
+
+      setSelectedNumbers((prev) =>
+        Array.from(new Set([...prev, num])).sort((a, b) => a - b)
+      );
+
+      await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+      await queryClient.refetchQueries({ queryKey: ['numbers'] });
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to lock number');
+      await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+    } finally {
+      setLockingNumber(null);
+    }
+  };
+
+  const handleProceed = async () => {
+    if (!selectedNumbers.length) {
+      toast.error(
+        lang === 'am'
+          ? 'ቁጥር ይምረጡ።'
+          : 'Please select at least one number.'
+      );
+      return;
+    }
+
+    try {
+      const result = await validateNumbers(selectedNumbers);
+
+      if (result.valid === false) {
+        const invalid = [
+          ...(result.locked || []),
+          ...(result.taken || []),
+          ...(result.notLockedByYou || []),
+        ];
+
+        setSelectedNumbers((prev) => prev.filter((n) => !invalid.includes(n)));
+
+        toast.error(
+          lang === 'am'
+            ? `አንዳንድ ቁጥሮች አይገኙም: ${invalid.join(', ')}`
+            : `Some numbers are not available: ${invalid.join(', ')}`
+        );
+
+        await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+        await queryClient.refetchQueries({ queryKey: ['numbers'] });
+        return;
+      }
+
+      setShowConfirmModal(true);
+    } catch (err: any) {
+      toast.error(err.message || 'Validation failed');
+    }
+  };
+
+  const clearSelection = async () => {
+    const nums = [...selectedNumbers];
+    setSelectedNumbers([]);
+    await unlockNumbers(nums);
+  };
+
+  const handleSubmitted = async () => {
+    setSelectedNumbers([]);
+    setShowReceiptModal(false);
+    setShowConfirmModal(false);
+
+    await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+    await queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
+    await queryClient.invalidateQueries({ queryKey: ['user-submissions'] });
+    await queryClient.refetchQueries({ queryKey: ['numbers'] });
+  };
+const handleSearchNumber = () => {
+    const num = Number(searchNumber);
+
+    if (!Number.isInteger(num) || num < 1 || num > gridSize) {
+      toast.error(
+        lang === 'am'
+          ? `ትክክለኛ ቁጥር ያስገቡ። ከ1 እስከ ${gridSize}`
+          : `Enter a valid number between 1 and ${gridSize}`
+      );
+      return;
+    }
+
+    const target = numberRefs.current[num];
+
+    if (!target) {
+      toast.error(lang === 'am' ? 'ቁጥሩ አልተገኘም' : 'Number not found');
+      return;
+    }
+
+    target.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+      inline: 'center',
+    });
+
+    target.classList.add('ring-4', 'ring-blue-500', 'ring-offset-2');
+
+    window.setTimeout(() => {
+      target.classList.remove('ring-4', 'ring-blue-500', 'ring-offset-2');
+    }, 1600);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 text-center text-gray-500">
+        {lang === 'am' ? 'ቁጥሮች በመጫን ላይ...' : 'Loading numbers...'}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-center text-red-600">
+        {lang === 'am'
+          ? 'ቁጥሮችን መጫን አልተቻለም።'
+          : 'Failed to load numbers.'}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="space-y-4">
+        <div className="hidden rounded-xl border bg-white p-4 shadow-sm lg:block">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">
+                {lang === 'am' ? 'ቁጥር ፈልግ' : 'Search number'}
+              </label>
+
+              <input
+                type="number"
+                min="1"
+                max={gridSize}
+                value={searchNumber}
+                onChange={(e) => setSearchNumber(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSearchNumber();
+                }}
+                placeholder={lang === 'am' ? `1 - ${gridSize}` : `Enter 1 - ${gridSize}`}
+                className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleSearchNumber}
+                className="w-full rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 md:w-auto"
+              >
+                {lang === 'am' ? 'ፈልግ' : 'Search'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3 text-base text-gray-700">
+
+            <span>
+              {lang === 'am' ? 'የቲኬት ዋጋ:' : 'Ticket price:'}{' '}
+              <strong className="text-xl font-extrabold text-blue-700">{ticketPrice} Birr</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 text-sm">
+          <Legend color="bg-gray-200" label={lang === 'am' ? 'ክፍት' : 'Available'} />
+          <Legend color="bg-blue-500" label={lang === 'am' ? 'የመረጡት' : 'Selected by you'} />
+          <Legend color="bg-orange-400" label={lang === 'am' ? 'በሌላ ሰው ተይዟል' : 'Being selected'} />
+          <Legend color="bg-yellow-400" label={lang === 'am' ? 'በመጠባበቅ' : 'Pending'} />
+          <Legend color="bg-green-600" label={lang === 'am' ? 'ተይዟል' : 'Taken'} />
+        </div>
+
+        <div className="order-last grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10 lg:order-first">
+          {(Array.isArray(numbers) ? numbers : []).map((item) => {
+            const num = Number(item.num || item.number);
+            const selected = selectedNumbers.includes(num);
+            const status = item.status;
+
+            const colorClass = selected
+              ? 'bg-blue-500 text-white cursor-pointer border-blue-600'
+              : status === 'available'
+                ? 'bg-gray-200 text-gray-900 hover:bg-gray-300 cursor-pointer border-gray-300'
+                : status === 'locked_by_me'
+                  ? 'bg-blue-500 text-white cursor-pointer border-blue-600'
+                  : status === 'locked'
+                    ? 'bg-orange-400 text-orange-950 cursor-not-allowed border-orange-500'
+                    : status === 'pending'
+                      ? 'bg-yellow-400 text-yellow-950 cursor-not-allowed border-yellow-500'
+                      : 'bg-green-600 text-white cursor-not-allowed border-green-700';
+
+            return (
+              <button
+                key={num}
+                ref={(el) => {
+                  numberRefs.current[num] = el;
+                }}
+                type="button"
+                onClick={() => handleClick(item)}
+                disabled={
+                  lockingNumber === num ||
+                  (!selected && status !== 'available' && status !== 'locked_by_me')
+                }
+                className={`min-h-[48px] rounded-xl border text-sm font-bold transition active:scale-95 touch-manipulation disabled:opacity-80 ${colorClass}`}
+                title={status}
+              >
+                {lockingNumber === num ? '...' : num}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="order-first space-y-4 lg:order-last">
+        <div className="rounded-xl border bg-white p-4 shadow-sm lg:hidden">
+          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div>
+              <label className="mb-1 block text-sm font-semibold text-gray-700">
+                {lang === 'am' ? 'ቁጥር ፈልግ' : 'Search number'}
+              </label>
+
+              <input
+                type="number"
+                min="1"
+                max={gridSize}
+                value={searchNumber}
+                onChange={(e) => setSearchNumber(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSearchNumber();
+                }}
+                placeholder={lang === 'am' ? `1 - ${gridSize}` : `Enter 1 - ${gridSize}`}
+                className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleSearchNumber}
+                className="w-full rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 md:w-auto"
+              >
+                {lang === 'am' ? 'ፈልግ' : 'Search'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-3 text-base text-gray-700">
+
+            <span>
+              {lang === 'am' ? 'የቲኬት ዋጋ:' : 'Ticket price:'}{' '}
+              <strong className="text-xl font-extrabold text-blue-700">{ticketPrice} Birr</strong>
+            </span>
+          </div>
+        </div>
+
+        <SelectedNumbersPanel
+          selectedNumbers={selectedNumbers}
+          ticketPrice={ticketPrice}
+          onProceed={handleProceed}
+          onClear={clearSelection}
+          onRemove={removeNumber}
+          lang={lang}
+        />
+      </div>
+
+      <ConfirmSelectionModal
+        open={showConfirmModal}
+        selectedNumbers={selectedNumbers}
+        ticketPrice={ticketPrice}
+        onCancel={() => setShowConfirmModal(false)}
+        onConfirm={() => {
+          setShowConfirmModal(false);
+          setShowReceiptModal(true);
+        }}
+        lang={lang}
+      />
+
+      <SubmitNumberModal
+        selectedNumbers={selectedNumbers}
+        ticketPrice={ticketPrice}
+        open={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        onSubmitted={handleSubmitted}
+      />
+    </div>
+  );
+}
+
+function Legend({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`h-4 w-4 rounded ${color}`} />
+      <span className="text-gray-600">{label}</span>
+    </div>
+  );
+}

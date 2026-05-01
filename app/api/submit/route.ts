@@ -3,27 +3,49 @@ export const revalidate = 0;
 
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db/sql';
-import { createAutomaticBackup } from '@/lib/backup/autoBackup';
 import { requireUser } from '@/lib/auth/server';
+import { getTicketPrice, getGridSize } from '@/lib/settings/lotterySettings';
+
+function cleanNumbers(raw: any): number[] {
+  return Array.from(
+    new Set(
+      (Array.isArray(raw) ? raw : [])
+        .map((n: any) => Number(n))
+        .filter((n: number) => Number.isInteger(n) && n > 0)
+    )
+  ).sort((a, b) => a - b) as number[];
+}
 
 export async function POST(req: Request) {
   try {
     const user = requireUser(req);
-    const { number, receiptUrl, receiptKey } = await req.json();
+    const body = await req.json();
 
-    const selectedNumber = Number(number);
+    const rawNumbers = Array.isArray(body.numbers)
+      ? body.numbers
+      : body.number
+        ? [body.number]
+        : [];
 
-    if (!selectedNumber || selectedNumber < 1 || selectedNumber > 300) {
-      await createAutomaticBackup('submit');
+    const numbers = cleanNumbers(rawNumbers);
+    const gridSize = await getGridSize();
 
-    return NextResponse.json({ error: 'Invalid number' }, { status: 400 });
+    if (!numbers.length) {
+      return NextResponse.json({ error: 'No numbers selected' }, { status: 400 });
     }
 
-    if (!receiptUrl || typeof receiptUrl !== 'string') {
+    if (numbers.some((n) => n < 1 || n > gridSize)) {
       return NextResponse.json(
-        { error: 'Receipt upload is required' },
+        { error: `Invalid number selected. Numbers must be between 1 and ${gridSize}.` },
         { status: 400 }
       );
+    }
+
+    const receiptUrl = body.receiptUrl;
+    const receiptKey = body.receiptKey || null;
+
+    if (!receiptUrl || typeof receiptUrl !== 'string') {
+      return NextResponse.json({ error: 'Receipt upload is required' }, { status: 400 });
     }
 
     if (receiptUrl.startsWith('data:image')) {
@@ -33,46 +55,103 @@ export async function POST(req: Request) {
       );
     }
 
-    const inserted = await sql`
-      INSERT INTO submissions (
-        user_id,
-        number,
-        receipt_url,
-        receipt_key,
-        contact_phone,
-        status,
-        submitted_at
-      )
-      VALUES (
-        ${user.userId},
-        ${selectedNumber},
-        ${receiptUrl},
-        ${receiptKey || null},
-        ${user.phone},
-        'pending',
-        NOW()
-      )
-      ON CONFLICT DO NOTHING
-      RETURNING id, number, receipt_url, receipt_key, status, submitted_at
+    await sql`
+      DELETE FROM number_locks
+      WHERE expires_at < NOW()
     `;
 
-    if (!inserted.length) {
+    const lockedByMe = await sql`
+      SELECT number
+      FROM number_locks
+      WHERE user_id::text = ${String(user.userId)}
+      AND number = ANY(${numbers})
+    `;
+
+    const lockedSet = new Set(lockedByMe.map((r: any) => Number(r.number)));
+    const missingLocks = numbers.filter((n) => !lockedSet.has(n));
+
+    if (missingLocks.length) {
       return NextResponse.json(
-        { error: 'This number has already been selected by another user.' },
+        {
+          error: 'Some numbers are not locked by you. Please select again.',
+          missingLocks,
+        },
         { status: 409 }
       );
     }
 
+    const unavailable = await sql`
+      SELECT number
+      FROM submissions
+      WHERE number = ANY(${numbers})
+      AND status IN ('pending', 'approved')
+    `;
+
+    if (unavailable.length) {
+      return NextResponse.json(
+        {
+          error: 'Some numbers are already pending or taken.',
+          unavailableNumbers: unavailable.map((r: any) => Number(r.number)),
+        },
+        { status: 409 }
+      );
+    }
+
+    const ticketPrice = await getTicketPrice();
+    const totalAmount = ticketPrice * numbers.length;
+    const submissionType = numbers.length > 1 ? 'group' : 'single';
+    const submissionGroupId = numbers.length > 1 ? crypto.randomUUID() : null;
+
+    const inserted: any[] = [];
+
+    for (const num of numbers) {
+      const rows = await sql`
+        INSERT INTO submissions (
+          user_id,
+          number,
+          receipt_url,
+          receipt_key,
+          contact_phone,
+          status,
+          submitted_at,
+          ticket_price,
+          total_amount,
+          submission_type,
+          submission_group_id
+        )
+        VALUES (
+          ${user.userId},
+          ${num},
+          ${receiptUrl},
+          ${receiptKey},
+          ${user.phone},
+          'pending',
+          NOW(),
+          ${ticketPrice},
+          ${totalAmount},
+          ${submissionType},
+          ${submissionGroupId}
+        )
+        RETURNING *
+      `;
+
+      inserted.push(rows[0]);
+    }
+
     await sql`
       DELETE FROM number_locks
-      WHERE number = ${selectedNumber}
-      AND user_id = ${user.userId}
+      WHERE user_id::text = ${String(user.userId)}
+      AND number = ANY(${numbers})
     `;
 
     return NextResponse.json({
       success: true,
-      message: 'Submission created successfully',
-      submission: inserted[0],
+      submission_type: submissionType,
+      submission_group_id: submissionGroupId,
+      numbers,
+      ticketPrice,
+      totalAmount,
+      submissions: inserted,
     });
   } catch (error: any) {
     console.error('Submit error:', error);

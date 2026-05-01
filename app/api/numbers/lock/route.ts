@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
     const selectedNumber = Number(number);
 
-    if (!selectedNumber || selectedNumber < 1 || selectedNumber > 300) {
+    if (!selectedNumber || selectedNumber < 1 || selectedNumber > 20000) {
       return NextResponse.json({ error: 'Invalid number' }, { status: 400 });
     }
 

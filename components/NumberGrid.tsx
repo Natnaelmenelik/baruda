@@ -1,18 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import SubmitNumberModal from '@/components/SubmitNumberModal';
+import SelectedNumbersPanel from '@/components/SelectedNumbersPanel';
+import ConfirmSelectionModal from '@/components/ConfirmSelectionModal';
 import { useLang } from '@/hooks/useLang';
 import { apiFetch } from '@/lib/auth/client';
 
-type NumberStatus =
-  | 'available'
-  | 'pending'
-  | 'taken'
-  | 'locked'
-  | 'locked_by_me';
+type NumberStatus = 'available' | 'pending' | 'taken' | 'locked' | 'locked_by_me';
 
 type NumberItem = {
   num: number;
@@ -22,119 +19,246 @@ type NumberItem = {
 
 async function readJson(res: Response) {
   const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) {
-    throw new Error(data.error || `Request failed: ${res.status}`);
-  }
-
+  if (!res.ok) throw new Error(data.error || `Request failed: ${res.status}`);
   return data;
 }
 
 async function fetchNumbers(): Promise<NumberItem[]> {
   const res = await apiFetch('/api/numbers?t=' + Date.now());
-  return readJson(res);
+  const data = await readJson(res);
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.numbers)) return data.numbers;
+
+  return [];
+}
+
+async function fetchTicketPrice(): Promise<number> {
+  const res = await fetch('/api/settings/ticket-price?t=' + Date.now(), {
+    cache: 'no-store',
+  });
+  const data = await readJson(res);
+  return Number(data.ticketPrice || 40);
 }
 
 export default function NumberGrid() {
   const queryClient = useQueryClient();
   const { lang } = useLang();
 
-  const [selectedNumber, setSelectedNumber] = useState<number | null>(null);
-  const [lockingNumber, setLockingNumber] = useState<number | null>(null);
+  const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
+  const [searchNumber, setSearchNumber] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 250;
 
-  const {
-    data: numbers = [],
-    isLoading,
-    error,
-  } = useQuery({
+  const numberRefs = useRef<Record<number, HTMLButtonElement | null>>({});
+  const [lockingNumber, setLockingNumber] = useState<number | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  const { data: numbers = [], isLoading, error } = useQuery({
     queryKey: ['numbers'],
     queryFn: fetchNumbers,
     refetchInterval: 3000,
     refetchOnWindowFocus: true,
   });
 
-  const lockNumber = async (num: number) => {
-    setLockingNumber(num);
+  const { data: ticketPrice = 40 } = useQuery({
+    queryKey: ['ticket-price'],
+    queryFn: fetchTicketPrice,
+  });
+
+  const safeNumbers = Array.isArray(numbers) ? numbers : [];
+  const totalPages = Math.max(Math.ceil(safeNumbers.length / PAGE_SIZE), 1);
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
+  const endIndex = startIndex + PAGE_SIZE;
+  const visibleNumbers = safeNumbers.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    const lockedByMe = safeNumbers
+      .filter((item) => item.status === 'locked_by_me')
+      .map((item) => Number(item.num || item.number))
+      .filter((num) => Number.isInteger(num) && num > 0)
+      .sort((a, b) => a - b);
+
+    setSelectedNumbers((prev) => {
+      const merged = Array.from(new Set([...prev, ...lockedByMe])).sort(
+        (a, b) => a - b
+      );
+
+      const same =
+        merged.length === prev.length &&
+        merged.every((num, index) => num === prev[index]);
+
+      return same ? prev : merged;
+    });
+  }, [numbers]);
+
+  const lockNumbers = async (nums: number[]) => {
+    const res = await apiFetch('/api/numbers/lock-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+    return readJson(res);
+  };
+
+  const unlockNumbers = async (nums: number[]) => {
+    if (!nums.length) return;
+
+    await apiFetch('/api/numbers/unlock-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+
+    await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+    await queryClient.refetchQueries({ queryKey: ['numbers'] });
+  };
+
+  const validateNumbers = async (nums: number[]) => {
+    const res = await apiFetch('/api/numbers/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ numbers: nums }),
+    });
+    return readJson(res);
+  };
+
+  const removeNumber = async (num: number) => {
+    setSelectedNumbers((prev) => prev.filter((n) => n !== num));
+    await unlockNumbers([num]);
+  };
+
+  const handleClick = async (item: NumberItem) => {
+    const num = Number(item.num || item.number);
+    if (!num) return;
+
+    if (selectedNumbers.includes(num) || item.status === 'locked_by_me') {
+      await removeNumber(num);
+      return;
+    }
+
+    if (item.status === 'locked') {
+      toast.error(
+        lang === 'am'
+          ? `ቁጥር ${num} በሌላ ተጠቃሚ ተይዟል።`
+          : `Number ${num} is currently locked by another user.`
+      );
+      return;
+    }
+
+    if (item.status === 'pending' || item.status === 'taken') {
+      toast.error(
+        lang === 'am'
+          ? `ቁጥር ${num} አስቀድሞ ተይዟል።`
+          : `Number ${num} is already taken or pending approval.`
+      );
+      return;
+    }
 
     try {
-      const res = await apiFetch('/api/numbers/lock', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ number: num }),
-      });
-
-      await readJson(res);
-
-      setSelectedNumber(num);
-
+      setLockingNumber(num);
+      await lockNumbers([num]);
+      setSelectedNumbers((prev) =>
+        Array.from(new Set([...prev, num])).sort((a, b) => a - b)
+      );
       await queryClient.invalidateQueries({ queryKey: ['numbers'] });
       await queryClient.refetchQueries({ queryKey: ['numbers'] });
     } catch (err: any) {
-      toast.error(
-        err.message ||
-          (lang === 'am'
-            ? 'ይህ ቁጥር በሌላ ተጠቃሚ ተይዟል።'
-            : 'This number is currently locked by another user.')
-      );
-
+      toast.error(err.message || 'Failed to lock number');
       await queryClient.invalidateQueries({ queryKey: ['numbers'] });
     } finally {
       setLockingNumber(null);
     }
   };
 
-  const unlockNumber = async (num: number | null) => {
-    if (!num) return;
+  const handleProceed = async () => {
+    if (!selectedNumbers.length) {
+      toast.error(
+        lang === 'am' ? 'ቁጥር ይምረጡ።' : 'Please select at least one number.'
+      );
+      return;
+    }
 
     try {
-      await apiFetch('/api/numbers/unlock', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ number: num }),
-      });
-    } finally {
-      await queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      await queryClient.refetchQueries({ queryKey: ['numbers'] });
+      const result = await validateNumbers(selectedNumbers);
+
+      if (!result.valid) {
+        const invalid = [
+          ...(result.locked || []),
+          ...(result.taken || []),
+          ...(result.notLockedByYou || []),
+        ];
+
+        setSelectedNumbers((prev) => prev.filter((n) => !invalid.includes(n)));
+
+        toast.error(
+          lang === 'am'
+            ? `አንዳንድ ቁጥሮች አይገኙም: ${invalid.join(', ')}`
+            : `Some numbers are not available: ${invalid.join(', ')}`
+        );
+
+        await queryClient.invalidateQueries({ queryKey: ['numbers'] });
+        return;
+      }
+
+      setShowConfirmModal(true);
+    } catch (err: any) {
+      toast.error(err.message || 'Validation failed');
     }
   };
 
-  const handleClick = (item: NumberItem) => {
-    const num = item.num || item.number;
-
-    if (!num) return;
-
-    if (item.status === 'available') {
-      lockNumber(num);
-      return;
-    }
-
-    if (item.status === 'locked_by_me') {
-      setSelectedNumber(num);
-      return;
-    }
-
-    toast.error(
-      lang === 'am'
-        ? 'ይህ ቁጥር አሁን አይገኝም።'
-        : 'This number is not available right now.'
-    );
-  };
-
-  const handleCloseModal = async () => {
-    const num = selectedNumber;
-    setSelectedNumber(null);
-    await unlockNumber(num);
+  const clearSelection = async () => {
+    const nums = [...selectedNumbers];
+    setSelectedNumbers([]);
+    await unlockNumbers(nums);
   };
 
   const handleSubmitted = async () => {
-    setSelectedNumber(null);
+    setSelectedNumbers([]);
+    setShowReceiptModal(false);
+    setShowConfirmModal(false);
     await queryClient.invalidateQueries({ queryKey: ['numbers'] });
     await queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
     await queryClient.refetchQueries({ queryKey: ['numbers'] });
+  };
+
+  const handleSearchNumber = () => {
+    const num = Number(searchNumber);
+
+    if (!Number.isInteger(num) || num < 1 || num > safeNumbers.length) {
+      toast.error(
+        lang === 'am'
+          ? `ትክክለኛ ቁጥር ያስገቡ። ከ1 እስከ ${safeNumbers.length}`
+          : `Enter a valid number between 1 and ${safeNumbers.length}`
+      );
+      return;
+    }
+
+    const targetPage = Math.ceil(num / PAGE_SIZE);
+    setCurrentPage(targetPage);
+
+    window.setTimeout(() => {
+      const target = numberRefs.current[num];
+
+      if (!target) {
+        toast.error(lang === 'am' ? 'ቁጥሩ አልተገኘም' : 'Number not found');
+        return;
+      }
+
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'center',
+      });
+
+      target.classList.add('ring-4', 'ring-blue-500', 'ring-offset-2');
+
+      window.setTimeout(() => {
+        target.classList.remove('ring-4', 'ring-blue-500', 'ring-offset-2');
+      }, 1600);
+    }, 150);
   };
 
   if (isLoading) {
@@ -148,61 +272,176 @@ export default function NumberGrid() {
   if (error) {
     return (
       <div className="p-6 text-center text-red-600">
-        {lang === 'am'
-          ? 'ቁጥሮችን መጫን አልተቻለም።'
-          : 'Failed to load numbers.'}
+        {lang === 'am' ? 'ቁጥሮችን መጫን አልተቻለም።' : 'Failed to load numbers.'}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 text-sm">
-        <Legend color="bg-gray-200" label={lang === 'am' ? 'ክፍት' : 'Available'} />
-        <Legend color="bg-orange-400" label={lang === 'am' ? 'በሌላ ሰው ተይዟል' : 'Being selected'} />
-        <Legend color="bg-yellow-400" label={lang === 'am' ? 'በመጠባበቅ' : 'Pending'} />
-        <Legend color="bg-green-600" label={lang === 'am' ? 'ተይዟል' : 'Taken'} />
-      </div>
+    <div className="space-y-5">
+      <div className="rounded-xl border bg-white/95 p-4 shadow-sm backdrop-blur dark:bg-slate-950/95 lg:sticky lg:top-4 lg:z-40">
+        <h2 className="mb-4 text-2xl font-extrabold text-blue-800 dark:text-blue-100">
+          {lang === 'am' ? 'ቁጥር ይምረጡ' : 'Pick a Number'}
+        </h2>
 
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 lg:grid-cols-10">
-        {numbers.map((item) => {
-          const num = item.num || item.number;
-          const status = item.status;
+        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-gray-700">
+              {lang === 'am' ? 'ቁጥር ፈልግ' : 'Search number'}
+            </label>
 
-          const colorClass =
-            status === 'available'
-              ? 'bg-gray-200 text-gray-900 hover:bg-gray-300 cursor-pointer border-gray-300'
-              : status === 'locked_by_me'
-              ? 'bg-blue-500 text-white cursor-pointer border-blue-600'
-              : status === 'locked'
-              ? 'bg-orange-400 text-orange-950 cursor-not-allowed border-orange-500'
-              : status === 'pending'
-              ? 'bg-yellow-400 text-yellow-950 cursor-not-allowed border-yellow-500'
-              : 'bg-green-600 text-white cursor-not-allowed border-green-700';
+            <input
+              type="number"
+              min="1"
+              max={safeNumbers.length}
+              value={searchNumber}
+              onChange={(e) => setSearchNumber(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSearchNumber();
+              }}
+              placeholder={
+                lang === 'am'
+                  ? `1 - ${safeNumbers.length}`
+                  : `Enter 1 - ${safeNumbers.length}`
+              }
+              className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+            />
+          </div>
 
-          return (
+          <div className="flex items-end">
             <button
-              key={num}
               type="button"
-              onClick={() => handleClick(item)}
-              disabled={lockingNumber === num || status === 'pending' || status === 'taken' || status === 'locked'}
-              className={`min-h-[48px] rounded-xl border text-sm font-bold transition active:scale-95 touch-manipulation disabled:opacity-80 ${colorClass}`}
-              title={status}
+              onClick={handleSearchNumber}
+              className="w-full rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white hover:bg-blue-700 md:w-auto"
             >
-              {lockingNumber === num ? '...' : num}
+              {lang === 'am' ? 'ፈልግ' : 'Search'}
             </button>
-          );
-        })}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-3 text-base text-gray-700">
+          <span>
+            {lang === 'am' ? 'የቲኬት ዋጋ:' : 'Ticket price:'}{' '}
+            <strong className="text-xl font-extrabold text-blue-700">
+              {ticketPrice} Birr
+            </strong>
+          </span>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3 text-sm">
+          <Legend color="bg-gray-200" label={lang === 'am' ? 'ክፍት' : 'Available'} />
+          <Legend color="bg-blue-500" label={lang === 'am' ? 'የመረጡት' : 'Selected by you'} />
+          <Legend color="bg-green-500" label={lang === 'am' ? 'በሌላ ሰው ተመርጧል' : 'Being selected'} />
+          <Legend color="bg-yellow-400" label={lang === 'am' ? 'በመጠባበቅ' : 'Pending'} />
+          <Legend color="bg-orange-500" label={lang === 'am' ? 'ተይዟል' : 'Taken'} />
+        </div>
       </div>
 
-      {selectedNumber !== null && (
-        <SubmitNumberModal
-          number={selectedNumber}
-          open={selectedNumber !== null}
-          onClose={handleCloseModal}
-          onSubmitted={handleSubmitted}
-        />
-      )}
+      <div className="rounded-2xl border bg-white/95 p-4 shadow-sm dark:bg-slate-950/95 lg:sticky lg:top-[250px] lg:max-h-[calc(100vh-270px)] lg:overflow-hidden">
+        <div className="grid gap-5 lg:h-full lg:grid-cols-[1fr_320px]">
+          <div className="space-y-4 lg:max-h-[calc(100vh-300px)] lg:overflow-y-auto lg:pr-2">
+            <div className="grid grid-cols-4 gap-2 xs:grid-cols-5 sm:grid-cols-8 lg:grid-cols-10">
+              {visibleNumbers.map((item) => {
+                const num = Number(item.num || item.number);
+                const selected = selectedNumbers.includes(num);
+                const status = item.status;
+
+                const colorClass = selected
+                  ? 'bg-blue-500 text-white cursor-pointer border-blue-600'
+                  : status === 'available'
+                    ? 'bg-gray-200 text-gray-900 hover:bg-gray-300 cursor-pointer border-gray-300'
+                    : status === 'locked_by_me'
+                      ? 'bg-blue-500 text-white cursor-pointer border-blue-600'
+                      : status === 'locked'
+                        ? 'bg-green-500 text-white cursor-not-allowed border-green-600'
+                        : status === 'pending'
+                          ? 'bg-yellow-400 text-yellow-950 cursor-not-allowed border-yellow-500'
+                          : 'bg-orange-500 text-white cursor-not-allowed border-orange-600';
+
+                return (
+                  <button
+                    key={num}
+                    ref={(el) => {
+                      numberRefs.current[num] = el;
+                    }}
+                    type="button"
+                    onClick={() => handleClick(item)}
+                    disabled={
+                      lockingNumber === num ||
+                      (!selected &&
+                        status !== 'available' &&
+                        status !== 'locked_by_me')
+                    }
+                    className={`min-h-[46px] rounded-xl border text-sm font-bold transition active:scale-95 touch-manipulation disabled:opacity-80 sm:min-h-[48px] ${colorClass}`}
+                    title={status}
+                  >
+                    {lockingNumber === num ? '...' : num}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-3 rounded-xl border bg-white p-3 shadow-sm dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+              <div className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+                {lang === 'am'
+                  ? `ገጽ ${safeCurrentPage} / ${totalPages} — ${startIndex + 1} - ${Math.min(endIndex, safeNumbers.length)}`
+                  : `Page ${safeCurrentPage} / ${totalPages} — ${startIndex + 1} - ${Math.min(endIndex, safeNumbers.length)}`}
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={safeCurrentPage <= 1}
+                  className="flex-1 rounded-lg border px-4 py-2 font-semibold disabled:opacity-40 sm:flex-none"
+                >
+                  {lang === 'am' ? 'ቀዳሚ' : 'Previous'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={safeCurrentPage >= totalPages}
+                  className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-40 sm:flex-none"
+                >
+                  {lang === 'am' ? 'ቀጣይ' : 'Next'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="order-first lg:order-last lg:self-start">
+            <SelectedNumbersPanel
+              selectedNumbers={selectedNumbers}
+              ticketPrice={ticketPrice}
+              onProceed={handleProceed}
+              onClear={clearSelection}
+              onRemove={removeNumber}
+              lang={lang}
+            />
+          </div>
+        </div>
+      </div>
+
+      <ConfirmSelectionModal
+        open={showConfirmModal}
+        selectedNumbers={selectedNumbers}
+        ticketPrice={ticketPrice}
+        onCancel={() => setShowConfirmModal(false)}
+        onConfirm={() => {
+          setShowConfirmModal(false);
+          setShowReceiptModal(true);
+        }}
+        lang={lang}
+      />
+
+      <SubmitNumberModal
+        selectedNumbers={selectedNumbers}
+        ticketPrice={ticketPrice}
+        open={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        onSubmitted={handleSubmitted}
+      />
     </div>
   );
 }

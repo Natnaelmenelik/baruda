@@ -1,5 +1,7 @@
 'use client';
 
+import ThemeToggle from '@/components/ThemeToggle';
+
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -126,12 +128,16 @@ function LoginPageContent() {
           >
             {lang === 'en' ? 'አማርኛ' : 'English'}
           </button>
+
+            <ThemeToggle />
         </div>
 
         <div className="text-center mb-8">
-          <svg className="w-16 h-16 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-          </svg>
+          <img
+            src="/images/Jetour_background.png"
+            alt="Jetour"
+            className="mx-auto h-52 w-80 object-contain"
+          />
 
           <h1 className="text-2xl font-bold text-gray-800 mt-2">
             {lang === 'am' ? 'እንኳን ደህና መጡ' : 'Welcome Back'}

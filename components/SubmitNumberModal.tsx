@@ -7,14 +7,16 @@ import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
 
 type Props = {
-  number: number;
+  selectedNumbers: number[];
+  ticketPrice: number;
   open: boolean;
   onClose: () => void;
   onSubmitted?: () => void;
 };
 
 export default function SubmitNumberModal({
-  number,
+  selectedNumbers,
+  ticketPrice,
   open,
   onClose,
   onSubmitted,
@@ -27,8 +29,18 @@ export default function SubmitNumberModal({
 
   if (!open) return null;
 
+  const quantity = selectedNumbers.length;
+  const totalAmount = ticketPrice * quantity;
+
   const handleSubmit = async () => {
     setError('');
+
+    if (!selectedNumbers.length) {
+      const msg = lang === 'am' ? 'ቢያንስ አንድ ቁጥር ይምረጡ።' : 'Please select at least one number.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
 
     if (!receiptUrl) {
       const msg = tm(lang, 'receiptRequired');
@@ -54,19 +66,20 @@ export default function SubmitNumberModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          number,
+          numbers: selectedNumbers,
           receiptUrl,
           receiptKey,
         }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data.error || tm(lang, 'submitFailed');
+        const details = [...(data.taken || []), ...(data.locked || [])];
+        const msg = details.length ? `${data.error}: ${details.join(', ')}` : data.error || tm(lang, 'submitFailed');
         setError(msg);
         toast.error(msg, { id: 'submit-number' });
         return;
@@ -88,19 +101,16 @@ export default function SubmitNumberModal({
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 p-0 md:items-center md:p-4">
-      <div className="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-2xl md:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between border-b pb-3">
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl md:rounded-2xl">
+        <div className="mb-4 flex items-start justify-between border-b pb-3">
           <div>
             <h2 className="text-xl font-bold">
-              {lang === 'am'
-                ? `ቁጥር #${number} ያስገቡ`
-                : `Submit Number #${number}`}
+              {lang === 'am' ? 'ደረሰኝ ይጫኑ' : 'Upload Receipt'}
             </h2>
-
             <p className="text-sm text-gray-600">
               {lang === 'am'
-                ? 'ከማስገባትዎ በፊት የክፍያ ደረሰኝ ይጫኑ።'
-                : 'Upload payment receipt before submitting.'}
+                ? `የተመረጡ ቁጥሮች: ${selectedNumbers.join(', ')}`
+                : `Selected numbers: ${selectedNumbers.join(', ')}`}
             </p>
           </div>
 
@@ -110,8 +120,50 @@ export default function SubmitNumberModal({
             disabled={submitting}
             className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-semibold disabled:opacity-50"
           >
-            ✕
+            ×
           </button>
+        </div>
+
+        <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <h3 className="mb-3 text-sm font-bold text-blue-900">
+            {lang === 'am' ? 'የክፍያ መረጃ' : 'Payment Details'}
+          </h3>
+
+          <div className="space-y-2 text-sm text-blue-900">
+            <div className="flex justify-between gap-3">
+              <span className="font-semibold">CBE</span>
+              <span className="text-right font-mono">1000251763646</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="font-semibold">Telebirr</span>
+              <span className="text-right font-mono">0936******56</span>
+            </div>
+            <div className="flex justify-between gap-3">
+              <span className="font-semibold">Awash</span>
+              <span className="text-right font-mono">010805525936</span>
+            </div>
+
+            <div className="mt-3 space-y-2 border-t border-blue-200 pt-3">
+              <div className="flex justify-between gap-3">
+                <span className="font-semibold">{lang === 'am' ? 'የቲኬት ዋጋ' : 'Ticket Price'}</span>
+                <span className="font-bold">{ticketPrice.toLocaleString()} Birr</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="font-semibold">{lang === 'am' ? 'ብዛት' : 'Quantity'}</span>
+                <span className="font-bold">{quantity}</span>
+              </div>
+              <div className="flex justify-between gap-3 text-base">
+                <span className="font-bold">{lang === 'am' ? 'ጠቅላላ መጠን' : 'Total Amount'}</span>
+                <span className="font-extrabold">{totalAmount.toLocaleString()} Birr</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="mt-3 text-xs text-blue-700">
+            {lang === 'am'
+              ? 'ክፍያውን ካደረጉ በኋላ የደረሰኝ ምስል ይጫኑ።'
+              : 'After payment, upload your receipt screenshot/image.'}
+          </p>
         </div>
 
         <ReceiptUploader
@@ -137,16 +189,10 @@ export default function SubmitNumberModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitting || !receiptUrl}
+            disabled={submitting || !receiptUrl || !selectedNumbers.length}
             className="flex-1 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
           >
-            {submitting
-              ? lang === 'am'
-                ? 'በመላክ ላይ...'
-                : 'Submitting...'
-              : lang === 'am'
-              ? 'አስገባ'
-              : 'Submit'}
+            {submitting ? (lang === 'am' ? 'በመላክ ላይ...' : 'Submitting...') : lang === 'am' ? 'አስገባ' : 'Submit'}
           </button>
         </div>
       </div>
