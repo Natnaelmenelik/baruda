@@ -1,86 +1,117 @@
 #!/usr/bin/env bash
 set -e
 
-TARGET="app/api/numbers/lock/route.ts"
-
-if [ ! -f "$TARGET" ]; then
-  echo "❌ Missing $TARGET"
-  exit 1
-fi
-
-cp "$TARGET" "$TARGET.bak-sql-fix"
+echo "======================================"
+echo "DEFAULT AMHARIC + DARK MODE PATCH"
+echo "======================================"
 
 python3 <<'PY'
 from pathlib import Path
 import re
 
-path = Path("app/api/numbers/lock/route.ts")
-code = path.read_text()
+# ---------------------------
+# 1. useLang hook
+# ---------------------------
+lang_files = [
+    "hooks/useLang.ts",
+    "lib/hooks/useLang.ts",
+]
 
-# Replace Prisma helper block with sql helper
-pattern = r"""async function getCurrentGridSize\(prisma: any\) \{[\s\S]*?return gridSize;\n\}"""
+for file in lang_files:
+    path = Path(file)
 
-replacement = """async function getCurrentGridSize() {
-  const rows = await sql`
-    SELECT value
-    FROM settings
-    WHERE key = 'grid_size'
-    LIMIT 1
-  `;
+    if not path.exists():
+        continue
 
-  return Number(rows[0]?.value || 200);
-}
+    code = path.read_text()
 
-async function validateGridNumbers(
-  numbers: number[]
-) {
-  const gridSize = await getCurrentGridSize();
+    code = code.replace(
+        "useState<'en' | 'am'>('en')",
+        "useState<'en' | 'am'>('am')"
+    )
 
-  for (const num of numbers) {
-    if (
-      !Number.isInteger(num) ||
-      num < 1 ||
-      num > gridSize
-    ) {
-      throw new Error(
-        `Number ${num} exceeds current grid size (${gridSize})`
-      );
-    }
-  }
+    code = code.replace(
+        "localStorage.getItem('lang') || 'en'",
+        "localStorage.getItem('lang') || 'am'"
+    )
 
-  return gridSize;
-}"""
+    path.write_text(code)
 
-code = re.sub(
-    pattern,
-    replacement,
-    code,
-    flags=re.S
-)
+    print(f"✅ {file} → default Amharic")
 
-# Replace prisma call
-code = code.replace(
-"""await validateGridNumbers(
-    prisma,
-    [Number(number)]
-  );""",
-"""await validateGridNumbers(
-    [Number(number)]
-  );"""
-)
 
-# Remove old hardcoded 20000 validation
-code = code.replace(
-"""if (!selectedNumber || selectedNumber < 1 || selectedNumber > 20000) {""",
-"""if (!Number.isInteger(selectedNumber)) {"""
-)
+# ---------------------------
+# 2. Theme provider
+# ---------------------------
+theme_files = [
+    "components/ThemeProvider.tsx",
+    "providers/ThemeProvider.tsx",
+    "app/providers.tsx",
+]
 
-path.write_text(code)
+for file in theme_files:
+    path = Path(file)
 
-print("✅ lock route now uses sql instead of prisma.")
-print("✅ grid size is dynamic from settings.")
+    if not path.exists():
+        continue
+
+    code = path.read_text()
+
+    code = code.replace(
+        'defaultTheme="light"',
+        'defaultTheme="dark"'
+    )
+
+    code = code.replace(
+        "defaultTheme='light'",
+        "defaultTheme='dark'"
+    )
+
+    code = code.replace(
+        'theme: "light"',
+        'theme: "dark"'
+    )
+
+    code = code.replace(
+        "theme: 'light'",
+        "theme: 'dark'"
+    )
+
+    path.write_text(code)
+
+    print(f"✅ {file} → default Dark")
+
+
+# ---------------------------
+# 3. Local theme hook fallback
+# ---------------------------
+hook_files = [
+    "hooks/useTheme.ts",
+]
+
+for file in hook_files:
+    path = Path(file)
+
+    if not path.exists():
+        continue
+
+    code = path.read_text()
+
+    code = code.replace(
+        "|| 'light'",
+        "|| 'dark'"
+    )
+
+    path.write_text(code)
+
+    print(f"✅ {file} → dark fallback")
+
+
+print("")
+print("DONE.")
 PY
 
 echo ""
 echo "Run:"
-echo "npm run build"
+echo "rm -rf .next"
+echo "npm run dev"
