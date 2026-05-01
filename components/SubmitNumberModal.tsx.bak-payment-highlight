@@ -112,12 +112,12 @@ export default function SubmitNumberModal({
           </h3>
           <div className="space-y-2 text-sm text-blue-900">
             <div className="flex justify-between gap-3">
-              <span className="font-semibold"><span className="text-lg font-extrabold" style={{ color: "#5A3A1A" }}>CBE</span></span>
-              <span className="text-right font-mono"><span className="text-lg font-extrabold" style={{ color: "#5A3A1A" }}>1000251763646</span></span>
+              <span className="font-semibold"><span className="text-xl font-extrabold" style={{ color: "#5A3A1A" }}>CBE</span></span>
+              <span className="text-right font-mono">1000251763646</span>
             </div>
             <div className="flex justify-between gap-3">
-              <span className="font-semibold"><span className="text-lg font-extrabold" style={{ color: "#00A651" }}>Telebirr</span></span>
-              <span className="text-right font-mono"><span className="text-lg font-extrabold" style={{ color: "#00A651" }}>0911121314</span></span>
+              <span className="font-semibold"><span className="text-xl font-extrabold" style={{ color: "#00A651" }}>Telebirr</span></span>
+              <span className="text-right font-mono">0936******56</span>
             </div>
             <div className="flex justify-between gap-3">
               <span className="text-right font-mono"></span>
