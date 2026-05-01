@@ -5,10 +5,50 @@ import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db/sql';
 import { requireUser } from '@/lib/auth/server';
 
+
+async function getCurrentGridSize(prisma: any) {
+  const settings = await prisma.settings.findFirst();
+
+  return Number(
+    settings?.grid_size ||
+    settings?.table_size ||
+    settings?.max_numbers ||
+    200
+  );
+}
+
+async function validateGridNumbers(
+  prisma: any,
+  numbers: number[]
+) {
+  const gridSize = await getCurrentGridSize(prisma);
+
+  for (const num of numbers) {
+    if (
+      !Number.isInteger(num) ||
+      num < 1 ||
+      num > gridSize
+    ) {
+      throw new Error(
+        `Number ${num} exceeds current grid size (${gridSize})`
+      );
+    }
+  }
+
+  return gridSize;
+}
+
+
+
 export async function POST(req: Request) {
   try {
     const user = requireUser(req);
     const { number } = await req.json();
+
+  await validateGridNumbers(
+    prisma,
+    [Number(number)]
+  );
 
     const selectedNumber = Number(number);
 

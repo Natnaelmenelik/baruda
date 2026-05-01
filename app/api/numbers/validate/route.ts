@@ -6,6 +6,41 @@ import { sql } from '@/lib/db/sql';
 import { requireUser } from '@/lib/auth/server';
 import { getGridSize } from '@/lib/settings/lotterySettings';
 
+
+async function getCurrentGridSize(prisma: any) {
+  const settings = await prisma.settings.findFirst();
+
+  return Number(
+    settings?.grid_size ||
+    settings?.table_size ||
+    settings?.max_numbers ||
+    200
+  );
+}
+
+async function validateGridNumbers(
+  prisma: any,
+  numbers: number[]
+) {
+  const gridSize = await getCurrentGridSize(prisma);
+
+  for (const num of numbers) {
+    if (
+      !Number.isInteger(num) ||
+      num < 1 ||
+      num > gridSize
+    ) {
+      throw new Error(
+        `Number ${num} exceeds current grid size (${gridSize})`
+      );
+    }
+  }
+
+  return gridSize;
+}
+
+
+
 function cleanNumbers(raw: any): number[] {
   return Array.from(
     new Set(
