@@ -6,21 +6,22 @@ import { sql } from '@/lib/db/sql';
 import { requireUser } from '@/lib/auth/server';
 
 
-async function getCurrentGridSize() {
-  const rows = await sql`
-    SELECT value
-    FROM settings
-    WHERE key = 'grid_size'
-    LIMIT 1
-  `;
+async function getCurrentGridSize(prisma: any) {
+  const settings = await prisma.settings.findFirst();
 
-  return Number(rows[0]?.value || 200);
+  return Number(
+    settings?.grid_size ||
+    settings?.table_size ||
+    settings?.max_numbers ||
+    200
+  );
 }
 
 async function validateGridNumbers(
+  prisma: any,
   numbers: number[]
 ) {
-  const gridSize = await getCurrentGridSize();
+  const gridSize = await getCurrentGridSize(prisma);
 
   for (const num of numbers) {
     if (
@@ -45,12 +46,13 @@ export async function POST(req: Request) {
     const { number } = await req.json();
 
   await validateGridNumbers(
+    prisma,
     [Number(number)]
   );
 
     const selectedNumber = Number(number);
 
-    if (!Number.isInteger(selectedNumber)) {
+    if (!selectedNumber || selectedNumber < 1 || selectedNumber > 20000) {
       return NextResponse.json({ error: 'Invalid number' }, { status: 400 });
     }
 
