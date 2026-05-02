@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import NumberGrid from '@/components/NumberGrid';
+import WinnerAnnouncement from '@/components/WinnerAnnouncement';
 import ThemeToggle from '@/components/ThemeToggle';
 import MyPurchasesModal from '@/components/MyPurchasesModal';
 import { useMySubmissions } from '@/hooks/useLottery';
@@ -90,6 +91,8 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        <WinnerAnnouncement />
 
         <section className="overflow-hidden bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 shadow rounded-2xl">
           <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
