@@ -12,14 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return <html lang="am"><head>
+  return <html lang="en"><head>
         <script
           id="theme-init-script"
           dangerouslySetInnerHTML={{
             __html: `
               try {
                 const theme = localStorage.getItem('theme');
-                if (theme !== 'light') {
+                if (theme === 'dark') {
                   document.documentElement.classList.add('dark');
                   document.documentElement.style.colorScheme = 'dark';
                 } else {

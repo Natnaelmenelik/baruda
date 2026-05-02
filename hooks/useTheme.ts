@@ -14,11 +14,11 @@ function applyTheme(theme: Theme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
     const saved = localStorage.getItem(THEME_KEY) as Theme | null;
-    const initial: Theme = saved === 'dark' ? 'dark' : 'light';
+    const initial: Theme = saved === 'light' ? 'light' : 'dark';
 
     setThemeState(initial);
     applyTheme(initial);
