@@ -71,7 +71,7 @@ export default function DashboardPage() {
               onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
               className="flex-1 rounded-xl bg-white px-3 py-2 shadow sm:flex-none"
             >
-              {lang === 'en' ? 'አማርኛ' : 'English'}
+              {lang === 'en' ? t.switchToAmharic : t.switchToEnglish}
             </button>
 
             <ThemeToggle />
@@ -99,34 +99,24 @@ export default function DashboardPage() {
             <div className="flex items-center justify-center md:justify-start">
               <img
                 src="/images/jetour_dashboard.png"
-                alt={lang === 'am' ? 'የሽልማት መኪና' : 'Prize car'}
+                alt={t.prizeCar}
                 className="mx-auto max-h-[420px] w-full max-w-xl object-contain drop-shadow-2xl"
               />
             </div>
 
             <div>
               <h2 className="mb-4 text-2xl font-extrabold text-blue-800">
-                {lang === 'am' ? 'የጨዋታ ህጎች' : 'Game Rules'}
+                {t.gameRules}
               </h2>
 
               <ul className="space-y-3 text-base font-medium text-blue-700 sm:text-lg">
-                {lang === 'am' ? (
-                  <>
-                    <li>• አንድ ወይም ብዙ ቁጥሮችን ይምረጡ</li>
-                    <li>• የክፍያ ደረሰኝ ይጫኑ</li>
-                    <li>• አድሚን እስኪያጽድቅ ይጠብቁ</li>
-                    <li>• አሸናፊው በዘፈቀደ ይመረጣል</li>
-                    <li>• ያልተጸደቀ ግቤት አይቆጠርም</li>
-                  </>
-                ) : (
-                  <>
-                    <li>• Choose one or multiple numbers</li>
-                    <li>• Upload payment receipt</li>
-                    <li>• Wait for admin approval</li>
-                    <li>• Winner is selected randomly</li>
-                    <li>• Unapproved entries are not counted</li>
-                  </>
-                )}
+                <>
+                  <li>• {t.chooseNumbersRule}</li>
+                  <li>• {t.uploadReceiptRule}</li>
+                  <li>• {t.waitApprovalRule}</li>
+                  <li>• {t.winnerRandomRule}</li>
+                  <li>• {t.unapprovedNotCountedRule}</li>
+                </>
               </ul>
             </div>
           </div>
@@ -155,13 +145,11 @@ export default function DashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-gray-900">
-              {lang === 'am' ? 'መውጣት ይፈልጋሉ?' : 'Are you sure you want to logout?'}
+              {t.logoutConfirmTitle}
             </h2>
 
             <p className="mt-2 text-sm text-gray-600">
-              {lang === 'am'
-                ? 'ከአካውንትዎ ይወጣሉ።'
-                : 'You will be signed out of your account.'}
+              {t.userLogoutConfirmMessage}
             </p>
 
             <div className="mt-6 flex gap-3">
@@ -170,7 +158,7 @@ export default function DashboardPage() {
                 onClick={() => setShowLogoutModal(false)}
                 className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700"
               >
-                {lang === 'am' ? 'ይቅር' : 'Cancel'}
+                {t.cancel}
               </button>
 
               <button
@@ -178,7 +166,7 @@ export default function DashboardPage() {
                 onClick={logout}
                 className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white"
               >
-                {lang === 'am' ? 'ውጣ' : 'Logout'}
+                {t.logout}
               </button>
             </div>
           </div>

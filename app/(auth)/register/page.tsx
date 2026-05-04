@@ -43,7 +43,7 @@ function EyeIcon({ show }: { show: boolean }) {
 }
 
 export default function RegisterPage() {
-  const { lang, setLang } = useLang();
+  const { t, lang, setLang } = useLang();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -128,7 +128,7 @@ export default function RegisterPage() {
             onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
             className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow border"
           >
-            {lang === 'en' ? 'አማርኛ' : 'English'}
+            {lang === 'en' ? t.switchToAmharic : t.switchToEnglish}
           </button>
 
             <ThemeToggle />
@@ -140,27 +140,25 @@ export default function RegisterPage() {
           </svg>
 
           <h1 className="text-2xl font-bold text-gray-800 mt-2">
-            {lang === 'am' ? 'አካውንት ይፍጠሩ' : 'Create Account'}
+            {t.createAccount}
           </h1>
 
           <p className="text-gray-500 text-sm mt-1">
-            {lang === 'am'
-              ? 'ለመጀመር መረጃዎን ያስገቡ'
-              : 'Enter your details to get started'}
+            {t.registerSubtitle}
           </p>
         </div>
 
         <form onSubmit={submit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'ሙሉ ስም' : 'Full Name'}
+              {t.fullName}
             </label>
 
             <input
               type="text"
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
-              placeholder={lang === 'am' ? 'ሙሉ ስምዎን ያስገቡ' : 'Enter your full name'}
+              placeholder={t.enterFullName}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
               required
             />
@@ -168,7 +166,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'ስልክ ቁጥር' : 'Phone Number'}
+              {t.phoneNumber}
             </label>
 
             <input
@@ -181,29 +179,27 @@ export default function RegisterPage() {
             />
 
             <p className="text-xs text-gray-400 mt-1">
-              {lang === 'am'
-                ? 'በ0 የሚጀምር ስልክ ቁጥርዎን ያስገቡ'
-                : 'Enter your phone number starting with 0'}
+              {t.enterPhoneStartingZero}
             </p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'ኢሜይል' : 'Email'}
+              {t.email}
             </label>
 
             <input
               type="email"
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
-              placeholder={lang === 'am' ? 'ኢሜይልዎን ያስገቡ' : 'Enter your email'}
+              placeholder={t.enterEmail}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'የይለፍ ቃል' : 'Password'}
+              {t.password}
             </label>
 
             <div className="relative">
@@ -211,7 +207,7 @@ export default function RegisterPage() {
                 type={showPassword ? 'text' : 'password'}
                 value={form.password}
                 onChange={(e) => update('password', e.target.value)}
-                placeholder={lang === 'am' ? 'የይለፍ ቃል ያስገቡ' : 'Enter your password'}
+                placeholder={t.enterPassword}
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                 required
               />
@@ -228,7 +224,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'የይለፍ ቃል ያረጋግጡ' : 'Confirm Password'}
+              {t.confirmPassword}
             </label>
 
             <div className="relative">
@@ -236,7 +232,7 @@ export default function RegisterPage() {
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={form.confirmPassword}
                 onChange={(e) => update('confirmPassword', e.target.value)}
-                placeholder={lang === 'am' ? 'የይለፍ ቃልዎን ያረጋግጡ' : 'Confirm your password'}
+                placeholder={t.confirmYourPassword}
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                 required
               />
@@ -272,9 +268,9 @@ export default function RegisterPage() {
           </button>
 
           <p className="text-center text-gray-600 text-sm">
-            {lang === 'am' ? 'አካውንት አለዎት?' : 'Already have an account?'}{' '}
+            {t.alreadyHaveAccount}{' '}
             <Link href="/login" className="text-blue-600 hover:text-blue-700 font-medium">
-              {lang === 'am' ? 'ይግቡ' : 'Login'}
+              {t.login}
             </Link>
           </p>
         </form>

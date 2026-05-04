@@ -1,5 +1,7 @@
 'use client';
 
+import ThemeToggle from '@/components/ThemeToggle';
+
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -126,6 +128,8 @@ function LoginPageContent() {
           >
             {lang === 'en' ? 'አማርኛ' : 'English'}
           </button>
+
+            <ThemeToggle />
         </div>
 
         <div className="text-center mb-8">

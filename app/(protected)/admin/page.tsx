@@ -23,7 +23,7 @@ import AdminSettingsPanel from '@/components/AdminSettingsPanel';
 
 export default function AdminPage() {
   const router = useRouter();
-  const { lang, setLang } = useLang();
+  const { t: txt, lang, setLang } = useLang();
 
   const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const displayName = user?.name || user?.fullName || user?.full_name || user?.username || user?.phone || 'Admin';
@@ -44,32 +44,6 @@ export default function AdminPage() {
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();
-
-  const txt = {
-    en: {
-      adminPanel: 'Admin Panel', welcome: 'Welcome', users: 'Users', sold: 'Sold', pending: 'Pending', revenue: 'Revenue', left: 'Left', 
-      submissions: 'Submissions', total: 'Total', user: 'User', phone: 'Phone', numbers: 'Numbers', amount: 'Amount', receipt: 'Receipt', status: 'Status', submitted: 'Submitted', action: 'Action',
-      pickWinner: 'Pick Winner', picking: 'Picking...', previousWinners: 'Previous Winners', clearAll: 'Clear All', logout: 'Logout', noSubmissions: 'No submissions found.',
-      viewReceipt: 'View Receipt', loading: 'Loading...', noReceipt: 'No receipt', approve: 'Approve', reject: 'Reject', approving: 'Approving...', rejecting: 'Rejecting...', processed: 'Processed',
-      unknown: 'Unknown',
-      paymentReceiptAlt: 'Payment receipt',
-      approved: 'Approved', rejected: 'Rejected', clearTitle: 'Clear All Submissions?', clearMsg: 'This will remove all current submissions and reset the round. This action cannot be undone.',
-      cancel: 'Cancel', yesClear: 'Yes, Clear All', clearing: 'Clearing...', logoutTitle: 'Are you sure you want to logout?', logoutMsg: 'You will be signed out of the admin panel.',
-      close: 'Close', paymentReceipt: 'Payment Receipt', winner: 'Winner', round: 'Round', date: 'Date', noWinners: 'No previous winners found.', loadingWinners: 'Loading winners...', quantity: 'Qty', ticketPrice: 'Ticket',
-    },
-    am: {
-      adminPanel: 'አድሚን ፓነል', welcome: 'ሰላም', users: 'ተጠቃሚዎች', sold: 'የተሸጡ', pending: 'በመጠባበቅ', revenue: 'ገቢ', left: 'የቀሩ', 
-      submissions: 'ግቤቶች', total: 'ጠቅላላ', user: 'ተጠቃሚ', phone: 'ስልክ', numbers: 'ቁጥሮች', amount: 'መጠን', receipt: 'ደረሰኝ', status: 'ሁኔታ', submitted: 'የተላከበት', action: 'ተግባር',
-      pickWinner: 'አሸናፊ ምረጥ', picking: 'በመምረጥ ላይ...', previousWinners: 'የቀድሞ አሸናፊዎች', clearAll: 'ሁሉንም አጽዳ', logout: 'ውጣ', noSubmissions: 'ምንም ግቤት አልተገኘም።',
-      viewReceipt: 'ደረሰኝ ይመልከቱ', loading: 'በመጫን ላይ...', noReceipt: 'ደረሰኝ የለም', approve: 'አጽድቅ', reject: 'ውድቅ አድርግ', approving: 'በማጽደቅ ላይ...', rejecting: 'ውድቅ በማድረግ ላይ...', processed: 'ተከናውኗል',
-      unknown: 'ያልታወቀ',
-      paymentReceiptAlt: 'የክፍያ ደረሰኝ',
-      approved: 'ጸድቋል', rejected: 'ውድቅ ተደርጓል', clearTitle: 'ሁሉንም ግቤቶች ማጽዳት?', clearMsg: 'ይህ ሁሉንም የአሁኑን ግቤቶች ያስወግዳል። ይህ ድርጊት መመለስ አይቻልም።',
-      cancel: 'ይቅር', yesClear: 'አዎ፣ አጽዳ', clearing: 'በማጽዳት ላይ...', logoutTitle: 'መውጣት ይፈልጋሉ?', logoutMsg: 'ከአድሚን ፓነል ይወጣሉ።',
-      close: 'ዝጋ', paymentReceipt: 'የክፍያ ደረሰኝ', winner: 'አሸናፊ', round: 'ዙር', date: 'ቀን', noWinners: 'ምንም አሸናፊ አልተገኘም።', loadingWinners: 'አሸናፊዎች በመጫን ላይ...', quantity: 'ብዛት', ticketPrice: 'ቲኬት',
-    },
-  }[lang];
-
 
   const getSubmissionNumbers = (sub: any) => {
     if (Array.isArray(sub.numbers) && sub.numbers.length > 0) {
@@ -215,7 +189,7 @@ export default function AdminPage() {
       const data = await fetchWinners();
       setWinners(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      toast.error(err.message || 'Failed to load winners');
+      toast.error(err.message || txt.failedToLoadWinners);
     } finally {
       setWinnersLoading(false);
     }
@@ -238,7 +212,7 @@ export default function AdminPage() {
           <p className="mt-1 text-sm text-slate-500">{txt.welcome}, {displayName} 👋</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setLang(lang === 'en' ? 'am' : 'en')} className="rounded bg-white px-4 py-2 font-semibold shadow">{lang === 'en' ? 'አማርኛ' : 'English'}</button>
+          <button onClick={() => setLang(lang === 'en' ? 'am' : 'en')} className="rounded bg-white px-4 py-2 font-semibold shadow">{lang === 'en' ? txt.switchToAmharic : txt.switchToEnglish}</button>
           <ThemeToggle />
           <button onClick={() => setShowPickWinnerModal(true)} className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50">{txt.pickWinner}</button>
           <button onClick={handleOpenWinners} className="rounded bg-blue-600 px-4 py-2 text-white">{txt.previousWinners}</button>
@@ -299,7 +273,7 @@ export default function AdminPage() {
                       </td>
                       <td className="p-3 text-sm">
                         <div><b>{Number(sub.total_amount || 0).toLocaleString()} Birr</b></div>
-                        <div className="text-xs text-gray-500">{txt.ticketPrice}: {Number(sub.ticket_price || 0).toLocaleString()}</div>
+                        <div className="text-xs text-gray-500">{txt.ticket}: {Number(sub.ticket_price || 0).toLocaleString()}</div>
                       </td>
                       <td className="p-3">
                         {sub.has_receipt || sub.receipt_url ? (
@@ -329,13 +303,13 @@ export default function AdminPage() {
         )}
       </div>
 
-      {showLogoutModal && <Modal onClose={() => setShowLogoutModal(false)}><h2 className="text-xl font-bold text-gray-900">{txt.logoutTitle}</h2><p className="mt-2 text-sm text-gray-600">{txt.logoutMsg}</p><div className="mt-6 flex gap-3"><button onClick={() => setShowLogoutModal(false)} className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700">{txt.cancel}</button><button onClick={handleLogout} className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white">{txt.logout}</button></div></Modal>}
-      {showClearModal && <Modal onClose={() => setShowClearModal(false)}><h2 className="text-xl font-bold text-gray-900">{txt.clearTitle}</h2><p className="mt-3 text-sm text-gray-600">{txt.clearMsg}</p><div className="mt-6 flex gap-3"><button onClick={() => setShowClearModal(false)} disabled={clearing} className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700 disabled:opacity-50">{txt.cancel}</button><button onClick={confirmClearAll} disabled={clearing} className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white disabled:opacity-50">{clearing ? txt.clearing : txt.yesClear}</button></div></Modal>}
+      {showLogoutModal && <Modal onClose={() => setShowLogoutModal(false)}><h2 className="text-xl font-bold text-gray-900">{txt.logoutConfirmTitle}</h2><p className="mt-2 text-sm text-gray-600">{txt.adminLogoutConfirmMessage}</p><div className="mt-6 flex gap-3"><button onClick={() => setShowLogoutModal(false)} className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700">{txt.cancel}</button><button onClick={handleLogout} className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white">{txt.logout}</button></div></Modal>}
+      {showClearModal && <Modal onClose={() => setShowClearModal(false)}><h2 className="text-xl font-bold text-gray-900">{txt.clearAllSubmissionsTitle}</h2><p className="mt-3 text-sm text-gray-600">{txt.clearAllSubmissionsMessage}</p><div className="mt-6 flex gap-3"><button onClick={() => setShowClearModal(false)} disabled={clearing} className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700 disabled:opacity-50">{txt.cancel}</button><button onClick={confirmClearAll} disabled={clearing} className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white disabled:opacity-50">{clearing ? txt.clearing : txt.yesClearAll}</button></div></Modal>}
 
       {showWinnersModal && (
         <Modal onClose={() => setShowWinnersModal(false)} wide>
           <div className="mb-4 flex items-center justify-between border-b pb-3"><h2 className="text-xl font-bold">{txt.previousWinners}</h2><button onClick={() => setShowWinnersModal(false)} className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-semibold">×</button></div>
-          {winnersLoading ? <div className="p-8 text-center text-gray-500">{txt.loadingWinners}</div> : winners.length === 0 ? <div className="p-8 text-center text-gray-500">{txt.noWinners}</div> : (
+          {winnersLoading ? <div className="p-8 text-center text-gray-500">{txt.loadingWinners}</div> : winners.length === 0 ? <div className="p-8 text-center text-gray-500">{txt.noPreviousWinners}</div> : (
             <div className="max-h-[60vh] overflow-auto"><table className="w-full text-sm"><thead className="sticky top-0 border-b bg-gray-50"><tr><th className="p-3 text-left">{txt.numbers}</th><th className="p-3 text-left">{txt.winner}</th><th className="p-3 text-left">{txt.phone}</th><th className="p-3 text-left">{txt.round}</th><th className="p-3 text-left">{txt.date}</th></tr></thead><tbody>{winners.map((w: any) => <tr key={w.id} className="border-b hover:bg-gray-50"><td className="p-3 font-bold">{w.number}</td><td className="p-3">{w.user_name || txt.unknown}</td><td className="p-3">{w.user_phone || '-'}</td><td className="p-3">{txt.round} {w.draw_round || 1}</td><td className="p-3">{w.drawn_at ? new Date(w.drawn_at).toLocaleString(lang === 'am' ? 'am-ET' : 'en-US') : '-'}</td></tr>)}</tbody></table></div>
           )}
         </Modal>

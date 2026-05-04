@@ -130,6 +130,8 @@ export default function RegisterPage() {
           >
             {lang === 'en' ? 'አማርኛ' : 'English'}
           </button>
+
+            <ThemeToggle />
         </div>
 
         <div className="text-center mb-8">

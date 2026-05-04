@@ -1,5 +1,9 @@
 'use client';
 
+import PickWinnerModal from '@/components/PickWinnerModal';
+
+import ThemeToggle from '@/components/ThemeToggle';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -31,6 +35,7 @@ export default function AdminPage() {
   const [showClearModal, setShowClearModal] = useState(false);
   const [showWinnersModal, setShowWinnersModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showPickWinnerModal, setShowPickWinnerModal] = useState(false);
   const [winners, setWinners] = useState<any[]>([]);
   const [winnersLoading, setWinnersLoading] = useState(false);
 
@@ -39,7 +44,6 @@ export default function AdminPage() {
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();
-  const { mutate: drawWinner, isPending: drawing } = useDrawWinner();
 
   const txt = {
     en: {
@@ -224,13 +228,6 @@ export default function AdminPage() {
     });
   };
 
-  const handleDrawWinner = () => {
-    drawWinner(undefined, {
-      onSuccess: (data: any) => toast.success(lang === 'am' ? `አሸናፊ: ${data.number} - ${data.userName || data.user_name || ''}` : `Winner: ${data.number} - ${data.userName || data.user_name || ''}`),
-      onError: (err: any) => toast.error(err.message || tm(lang, 'drawFailed')),
-    });
-  };
-
   if (submissionsLoading || statsLoading) return <div className="p-8 text-center">{txt.loading}</div>;
 
   return (
@@ -242,7 +239,8 @@ export default function AdminPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <button onClick={() => setLang(lang === 'en' ? 'am' : 'en')} className="rounded bg-white px-4 py-2 font-semibold shadow">{lang === 'en' ? 'አማርኛ' : 'English'}</button>
-          <button onClick={handleDrawWinner} disabled={drawing} className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50">{drawing ? txt.picking : txt.pickWinner}</button>
+          <ThemeToggle />
+          <button onClick={() => setShowPickWinnerModal(true)} className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50">{txt.pickWinner}</button>
           <button onClick={handleOpenWinners} className="rounded bg-blue-600 px-4 py-2 text-white">{txt.previousWinners}</button>
           <button onClick={() => setShowClearModal(true)} disabled={clearing} className="rounded bg-red-600 px-4 py-2 text-white disabled:opacity-50">{txt.clearAll}</button>
           <button onClick={() => setShowLogoutModal(true)} className="rounded bg-gray-700 px-4 py-2 text-white">{txt.logout}</button>
@@ -351,6 +349,13 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+      <PickWinnerModal
+        open={showPickWinnerModal}
+        onClose={() => setShowPickWinnerModal(false)}
+        onPicked={() => {}}
+        lang={lang}
+      />
+
     </div>
   );
 }

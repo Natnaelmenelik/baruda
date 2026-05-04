@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import NumberGrid from '@/components/NumberGrid';
+import WinnerAnnouncement from '@/components/WinnerAnnouncement';
+import ThemeToggle from '@/components/ThemeToggle';
 import MyPurchasesModal from '@/components/MyPurchasesModal';
 import { useMySubmissions } from '@/hooks/useLottery';
 import { useLang } from '@/hooks/useLang';
@@ -72,6 +74,8 @@ export default function DashboardPage() {
               {lang === 'en' ? 'አማርኛ' : 'English'}
             </button>
 
+            <ThemeToggle />
+
             <button
               onClick={() => setShowPurchasesModal(true)}
               className="flex-1 rounded-xl bg-blue-600 px-3 py-2 text-white sm:flex-none"
@@ -87,6 +91,8 @@ export default function DashboardPage() {
             </button>
           </div>
         </div>
+
+        <WinnerAnnouncement />
 
         <section className="overflow-hidden bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 shadow rounded-2xl">
           <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
@@ -126,8 +132,7 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="p-4 bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 shadow rounded-2xl">
-          <h2 className="mb-4 text-2xl font-extrabold text-blue-800">{t.pickNumber}</h2>
+        <section>
           <NumberGrid />
         </section>
       </div>

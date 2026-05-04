@@ -32,7 +32,7 @@ function LoginPageContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { lang, setLang } = useLang();
+  const { t, lang, setLang } = useLang();
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userRaw = localStorage.getItem('user');
@@ -81,7 +81,14 @@ function LoginPageContent() {
       const data = await res.json();
 
       if (!res.ok || !data.token) {
-        const msg = data.error || tm(lang, 'loginFailed');
+        let msg = tm(lang, 'loginFailed');
+        if (data.error === 'Invalid credentials') {
+          msg = tm(lang, 'invalidCredentials');
+        } else if (data.error === 'Phone and password are required') {
+          msg = tm(lang, 'phonePasswordRequired');
+        } else if (data.error) {
+          msg = lang === 'am' ? tm(lang, 'loginFailed') : data.error;
+        }
         setError(msg);
         toast.error(msg, { id: 'login' });
         return;
@@ -126,7 +133,7 @@ function LoginPageContent() {
             onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
             className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow border"
           >
-            {lang === 'en' ? 'አማርኛ' : 'English'}
+            {lang === 'en' ? t.switchToAmharic : t.switchToEnglish}
           </button>
 
             <ThemeToggle />
@@ -140,20 +147,18 @@ function LoginPageContent() {
           />
 
           <h1 className="text-2xl font-bold text-gray-800 mt-2">
-            {lang === 'am' ? 'እንኳን ደህና መጡ' : 'Welcome Back'}
+            {t.welcomeBack}
           </h1>
 
           <p className="text-gray-500 text-sm mt-1">
-            {lang === 'am'
-              ? 'ወደ ሎተሪዎ ለመግባት ይግቡ'
-              : 'Login to access your lottery'}
+            {t.loginSubtitle}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'ስልክ ቁጥር' : 'Phone Number'}
+              {t.phoneNumber}
             </label>
 
             <input
@@ -168,7 +173,7 @@ function LoginPageContent() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {lang === 'am' ? 'የይለፍ ቃል' : 'Password'}
+              {t.password}
             </label>
 
             <div className="relative">
@@ -176,7 +181,7 @@ function LoginPageContent() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder={lang === 'am' ? 'የይለፍ ቃልዎን ያስገቡ' : 'Enter your password'}
+                placeholder={t.enterPassword}
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                 required
               />
@@ -202,19 +207,13 @@ function LoginPageContent() {
             disabled={loading}
             className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 rounded-xl transition-all disabled:opacity-50"
           >
-            {loading
-              ? lang === 'am'
-                ? 'በመግባት ላይ...'
-                : 'Logging in...'
-              : lang === 'am'
-              ? 'ግባ'
-              : 'Login'}
+            {loading ? t.loggingIn : t.login}
           </button>
 
           <p className="text-center text-gray-600 text-sm">
-            {lang === 'am' ? 'አካውንት የለዎትም?' : "Don't have an account?"}{' '}
+            {t.dontHaveAccount}{' '}
             <Link href="/register" className="text-blue-600 hover:text-blue-700 font-medium">
-              {lang === 'am' ? 'ይመዝገቡ' : 'Sign up'}
+              {t.signUp}
             </Link>
           </p>
         </form>
