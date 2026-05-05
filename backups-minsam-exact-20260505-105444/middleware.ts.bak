@@ -26,7 +26,7 @@ export async function middleware(req: NextRequest) {
 
   const isLoginRoute = path === "/login";
   const isRegisterRoute = path === "/register";
-  const isAdminRoute = path.startsWith("/admin") || path.startsWith("/minsam");
+  const isAdminRoute = path.startsWith("/admin");
   const isDashboardRoute = path.startsWith("/dashboard");
 
   if (!token || token === "null" || token === "undefined") {
@@ -69,5 +69,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/admin/:path*", "/minsam/:path*", "/dashboard/:path*"],
+  matcher: ["/login", "/register", "/admin/:path*", "/dashboard/:path*"],
 };

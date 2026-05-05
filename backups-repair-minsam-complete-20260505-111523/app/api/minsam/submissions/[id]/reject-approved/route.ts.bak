@@ -1,21 +1,3 @@
-cat > fix-minsam-reject-approved-constraint.sh <<'EOF'
-#!/bin/bash
-
-echo "Fixing /minsam approved -> rejected logic to avoid duplicate rejected constraint..."
-
-FILE="app/api/minsam/submissions/[id]/reject-approved/route.ts"
-BACKUP_DIR="backups-minsam-reject-approved-constraint-$(date +%Y%m%d-%H%M%S)"
-
-if [ ! -f "$FILE" ]; then
-  echo "Error: $FILE not found."
-  echo "Run this script from your project root."
-  exit 1
-fi
-
-mkdir -p "$BACKUP_DIR"
-cp "$FILE" "$BACKUP_DIR/route.ts.bak"
-
-cat > "$FILE" <<'ROUTE'
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -55,50 +37,6 @@ export async function PATCH(
       );
     }
 
-    const targetRows = await sql`
-      SELECT id, number
-      FROM submissions
-      WHERE
-        id = ${sub.id}
-        OR (
-          ${sub.submission_group_id}::uuid IS NOT NULL
-          AND submission_group_id = ${sub.submission_group_id}
-        )
-    `;
-
-    const numbers = targetRows
-      .map((row: any) => Number(row.number))
-      .filter((num: number) => Number.isFinite(num));
-
-    if (!numbers.length) {
-      return NextResponse.json(
-        { error: 'No numbers found for this submission.' },
-        { status: 400 }
-      );
-    }
-
-    /*
-      Important:
-      Your database has a unique constraint like UNIQUE(number, status).
-      If another rejected row already exists for the same number, updating
-      approved -> rejected will fail.
-
-      To make the approved row become rejected and make the number free,
-      we first remove older rejected duplicate rows for the same number(s).
-    */
-    await sql`
-      DELETE FROM submissions
-      WHERE number = ANY(${numbers}::int[])
-        AND status = 'rejected'
-        AND NOT (
-          id = ${sub.id}
-          OR (
-            ${sub.submission_group_id}::uuid IS NOT NULL
-            AND submission_group_id = ${sub.submission_group_id}
-          )
-        )
-    `;
-
     const updated = await sql`
       UPDATE submissions
       SET
@@ -117,10 +55,20 @@ export async function PATCH(
       RETURNING id, number, status, approved_at, rejected_at
     `;
 
-    await sql`
-      DELETE FROM number_locks
-      WHERE number = ANY(${numbers}::int[])
-    `;
+    const numbers = updated
+      .map((row: any) => Number(row.number))
+      .filter((num: number) => Number.isFinite(num));
+
+    if (numbers.length > 0) {
+      try {
+        await sql`
+          DELETE FROM number_locks
+          WHERE number = ANY(${numbers}::int[])
+        `;
+      } catch (lockError) {
+        console.warn('Minsam: could not clear number locks:', lockError);
+      }
+    }
 
     try {
       await sql`
@@ -133,7 +81,6 @@ export async function PATCH(
             numbers,
             changedBy: admin.userId || admin.id || null,
             changedAt: new Date().toISOString(),
-            note: 'Approved submission changed to rejected. Older duplicate rejected rows for same numbers were removed to satisfy submissions_number_status_key.',
           })}
         )
       `;
@@ -143,7 +90,7 @@ export async function PATCH(
 
     return NextResponse.json({
       success: true,
-      message: 'Approved submission changed to rejected. Number is now available.',
+      message: 'Approved submission changed to rejected.',
       numbers,
       submissions: updated,
     });
@@ -166,16 +113,3 @@ export async function PATCH(
     );
   }
 }
-ROUTE
-
-echo ""
-echo "Done."
-echo "Backup saved in: $BACKUP_DIR"
-echo ""
-echo "Now run:"
-echo "npm run build"
-EOF
-
-chmod +x fix-minsam-reject-approved-constraint.sh
-./fix-minsam-reject-approved-constraint.sh
-npm run build

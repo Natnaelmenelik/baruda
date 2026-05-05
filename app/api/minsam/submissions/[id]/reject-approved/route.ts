@@ -1,21 +1,3 @@
-cat > fix-minsam-reject-approved-constraint.sh <<'EOF'
-#!/bin/bash
-
-echo "Fixing /minsam approved -> rejected logic to avoid duplicate rejected constraint..."
-
-FILE="app/api/minsam/submissions/[id]/reject-approved/route.ts"
-BACKUP_DIR="backups-minsam-reject-approved-constraint-$(date +%Y%m%d-%H%M%S)"
-
-if [ ! -f "$FILE" ]; then
-  echo "Error: $FILE not found."
-  echo "Run this script from your project root."
-  exit 1
-fi
-
-mkdir -p "$BACKUP_DIR"
-cp "$FILE" "$BACKUP_DIR/route.ts.bak"
-
-cat > "$FILE" <<'ROUTE'
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -166,16 +148,3 @@ export async function PATCH(
     );
   }
 }
-ROUTE
-
-echo ""
-echo "Done."
-echo "Backup saved in: $BACKUP_DIR"
-echo ""
-echo "Now run:"
-echo "npm run build"
-EOF
-
-chmod +x fix-minsam-reject-approved-constraint.sh
-./fix-minsam-reject-approved-constraint.sh
-npm run build
