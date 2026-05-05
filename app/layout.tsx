@@ -7,8 +7,8 @@ import AppToaster from '@/components/AppToaster';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Lottery System',
-  description: 'Pick your lucky number and win!',
+  title: 'ኦዳ የመኪና እቁብ ሎተሪ',
+  description: 'የእድል ቁጥርዎን ይምረጡ እና ያሸንፉ!',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
