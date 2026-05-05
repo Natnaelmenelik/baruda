@@ -7,30 +7,30 @@ import AppToaster from "@/components/AppToaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://oddda.vercel.app'),
-  title: 'ኦዳ የመኪና እቁብ ሎተሪ',
-  description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
+  metadataBase: new URL("https://oddda.vercel.app"),
+  title: "ኦዳ የመኪና እቁብ ሎተሪ",
+  description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
   openGraph: {
-    title: 'ኦዳ የመኪና እቁብ ሎተሪ',
-    description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
-    url: 'https://oddda.vercel.app',
-    siteName: 'ኦዳ የመኪና እቁብ ሎተሪ',
+    title: "ኦዳ የመኪና እቁብ ሎተሪ",
+    description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
+    url: "https://oddda.vercel.app",
+    siteName: "ኦዳ የመኪና እቁብ ሎተሪ",
     images: [
       {
-        url: '/og-image.jpg',
+        url: "/jetour_dashboard.png",
         width: 1200,
         height: 630,
-        alt: 'ኦዳ የመኪና እቁብ ሎተሪ',
+        alt: "ኦዳ የመኪና እቁብ ሎተሪ",
       },
     ],
-    locale: 'am_ET',
-    type: 'website',
+    locale: "am_ET",
+    type: "website",
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'ኦዳ የመኪና እቁብ ሎተሪ',
-    description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
-    images: ['/og-image.jpg'],
+    card: "summary_large_image",
+    title: "ኦዳ የመኪና እቁብ ሎተሪ",
+    description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
+    images: ["/jetour_dashboard.png"],
   },
 };
 
