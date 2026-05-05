@@ -276,7 +276,7 @@ export default function MinsamPage() {
           <p className="mt-1 text-sm text-slate-500">{txt.welcome}, {displayName} 👋</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => setLang(lang === 'en' ? 'am' : 'en')} className="rounded bg-white px-4 py-2 font-semibold shadow">{lang === 'en' ? txt.switchToAmharic : txt.switchToEnglish}</button>
+          <button onClick={() => setLang(lang === 'en' ? 'am' : lang === 'am' ? 'om' : 'en')} className="rounded bg-white px-4 py-2 font-semibold shadow">{lang === 'en' ? txt.switchToAmharic : lang === 'am' ? (txt.switchToOromifa || 'Oromifa') : txt.switchToEnglish}</button>
           <ThemeToggle />
           <button onClick={() => setShowPickWinnerModal(true)} className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50">{txt.pickWinner}</button>
           <button onClick={handleOpenWinners} className="rounded bg-blue-600 px-4 py-2 text-white">{txt.previousWinners}</button>

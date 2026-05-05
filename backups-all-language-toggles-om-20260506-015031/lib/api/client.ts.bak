@@ -1,0 +1,2 @@
+export function token(){ if(typeof window==='undefined') return ''; return localStorage.getItem('token') || ''; }
+export async function api(path:string, options:RequestInit={}){const res=await fetch(path,{...options,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`,...(options.headers||{})},cache:'no-store'}); const data=await res.json().catch(()=>({})); if(!res.ok) throw new Error(data.error || 'Request failed'); return data;}

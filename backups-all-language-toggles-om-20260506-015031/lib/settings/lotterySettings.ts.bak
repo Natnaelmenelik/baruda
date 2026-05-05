@@ -1,0 +1,45 @@
+import { sql } from '@/lib/db/sql';
+
+export const DEFAULT_TICKET_PRICE = 300;
+export const DEFAULT_GRID_SIZE = 2000;
+
+function cleanPositiveNumber(value: unknown, fallback: number) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+export async function getSettingNumber(key: string, fallback: number) {
+  try {
+    const rows = await sql`
+      SELECT value
+      FROM settings
+      WHERE key = ${key}
+      LIMIT 1
+    `;
+
+    return cleanPositiveNumber(rows?.[0]?.value, fallback);
+  } catch (error) {
+    console.error(`Failed to fetch setting ${key}:`, error);
+    return fallback;
+  }
+}
+
+export async function getTicketPrice() {
+  return getSettingNumber('ticket_price', DEFAULT_TICKET_PRICE);
+}
+
+export async function getGridSize() {
+  return getSettingNumber('grid_size', DEFAULT_GRID_SIZE);
+}
+
+export async function getLotterySettings() {
+  const [ticketPrice, gridSize] = await Promise.all([
+    getTicketPrice(),
+    getGridSize(),
+  ]);
+
+  return {
+    ticketPrice,
+    gridSize,
+  };
+}

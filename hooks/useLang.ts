@@ -11,7 +11,7 @@ function getSavedLang(): Lang {
 
   const saved = localStorage.getItem(LANG_KEY);
 
-  return saved === 'am' || saved === 'en' ? saved : 'am';
+  return saved === 'am' || saved === 'en' || saved === 'om' ? saved : 'am';
 }
 
 export function useLang() {

@@ -1,547 +1,214 @@
-cat > convert-minsam-reject-to-pending-full.sh <<'EOF'
+cat > update-toastMessages-om.sh <<'EOF'
 #!/bin/bash
 
-echo "=================================================="
-echo " Converting /minsam Change to Reject -> Return to Pending"
-echo "=================================================="
+echo "Updating lib/i18n/toastMessages.ts with Oromifa..."
 
-BACKUP_DIR="backups-minsam-convert-pending-$(date +%Y%m%d-%H%M%S)"
+FILE="lib/i18n/toastMessages.ts"
+BACKUP_DIR="backups-toastMessages-om-$(date +%Y%m%d-%H%M%S)"
+
+if [ ! -f "$FILE" ]; then
+  echo "Error: $FILE not found."
+  echo "Run this script from the project root."
+  exit 1
+fi
+
 mkdir -p "$BACKUP_DIR"
+cp "$FILE" "$BACKUP_DIR/toastMessages.ts.bak"
 
-backup_file() {
-  local file="$1"
-  if [ -f "$file" ]; then
-    mkdir -p "$BACKUP_DIR/$(dirname "$file")"
-    cp "$file" "$BACKUP_DIR/$file.bak"
-  fi
+cat > "$FILE" <<'TS'
+export type Lang = 'en' | 'am' | 'om';
+
+export const toastMessages = {
+  en: {
+    loginLoading: 'Logging in...',
+    loginSuccess: 'Login successful.',
+    loginFailed: 'Login failed.',
+    invalidCredentials: 'Invalid phone number or password.',
+    phonePasswordRequired: 'Phone number and password are required.',
+    networkError: 'Network error. Please try again.',
+
+    registerLoading: 'Creating account...',
+    registerSuccess: 'Registration successful. Please login.',
+    registerFailed: 'Registration failed.',
+    passwordMismatch: 'Passwords do not match.',
+    logoutSuccess: 'Logged out successfully.',
+
+    uploadLoading: 'Uploading receipt...',
+    uploadSuccess: 'Receipt uploaded successfully.',
+    uploadFailed: 'Receipt upload failed. Please try again.',
+    uploadNoUrl: 'Upload completed, but no image URL was returned.',
+    imageOnly: 'Please upload an image file only.',
+    imageTooLarge: 'Image must be less than 4MB.',
+    receiptRemoved: 'Receipt removed. You can upload another one.',
+
+    submitLoading: 'Submitting number...',
+    submitSuccess: 'Submission sent for admin approval.',
+    submitFailed: 'Submission failed.',
+    receiptRequired: 'Please upload receipt first.',
+    invalidReceipt: 'Invalid receipt. Please upload again.',
+
+    approveLoading: 'Approving submission...',
+    approveSuccess: 'Submission approved successfully.',
+    approveFailed: 'Approve failed.',
+
+    rejectLoading: 'Rejecting submission...',
+    rejectSuccess: 'Submission rejected successfully.',
+    rejectFailed: 'Reject failed.',
+
+    clearLoading: 'Clearing submissions...',
+    clearSuccess: 'All submissions cleared.',
+    clearFailed: 'Clear failed.',
+
+    drawLoading: 'Picking winner...',
+    drawFailed: 'Draw failed.',
+
+    receiptLoading: 'Loading receipt...',
+    receiptLoaded: 'Receipt loaded.',
+    receiptLoadFailed: 'Failed to load receipt.',
+
+    settingsLoading: 'Loading settings...',
+    settingsSaved: 'Lottery settings updated successfully.',
+    settingsSaveFailed: 'Failed to save settings.',
+    settingsLoadFailed: 'Failed to load settings.',
+
+    winnerPicked: 'Winner picked!',
+    winnerPickFailed: 'Failed to pick winner.',
+
+    numberAlreadyActive: 'This number is already pending or approved by another submission.',
+  },
+
+  am: {
+    loginLoading: 'በመግባት ላይ...',
+    loginSuccess: 'መግባት ተሳክቷል።',
+    loginFailed: 'መግባት አልተሳካም።',
+    invalidCredentials: 'የስልክ ቁጥር ወይም የይለፍ ቃል ትክክል አይደለም።',
+    phonePasswordRequired: 'ስልክ ቁጥር እና የይለፍ ቃል ያስፈልጋሉ።',
+    networkError: 'የኔትወርክ ችግር ተፈጥሯል። እባክዎ እንደገና ይሞክሩ።',
+
+    registerLoading: 'መለያ በመፍጠር ላይ...',
+    registerSuccess: 'ምዝገባው ተሳክቷል። እባክዎ ይግቡ።',
+    registerFailed: 'ምዝገባው አልተሳካም።',
+    passwordMismatch: 'የይለፍ ቃሎቹ አይዛመዱም።',
+    logoutSuccess: 'በተሳካ ሁኔታ ወጥተዋል።',
+
+    uploadLoading: 'ደረሰኝ በመስቀል ላይ...',
+    uploadSuccess: 'ደረሰኝ በተሳካ ሁኔታ ተሰቅሏል።',
+    uploadFailed: 'ደረሰኝ መስቀል አልተሳካም። እባክዎ እንደገና ይሞክሩ።',
+    uploadNoUrl: 'መስቀሉ ተጠናቋል፣ ግን የምስሉ URL አልተመለሰም።',
+    imageOnly: 'እባክዎ የምስል ፋይል ብቻ ይስቀሉ።',
+    imageTooLarge: 'ምስሉ ከ4MB በታች መሆን አለበት።',
+    receiptRemoved: 'ደረሰኙ ተወግዷል። ሌላ መስቀል ይችላሉ።',
+
+    submitLoading: 'ቁጥር በማስገባት ላይ...',
+    submitSuccess: 'ግቤቱ ለአስተዳዳሪ ማጽደቅ ተልኳል።',
+    submitFailed: 'ግቤቱ አልተሳካም።',
+    receiptRequired: 'እባክዎ መጀመሪያ ደረሰኝ ይስቀሉ።',
+    invalidReceipt: 'ደረሰኙ ትክክል አይደለም። እባክዎ እንደገና ይስቀሉ።',
+
+    approveLoading: 'ግቤቱን በማጽደቅ ላይ...',
+    approveSuccess: 'ግቤቱ በተሳካ ሁኔታ ጸድቋል።',
+    approveFailed: 'ማጽደቅ አልተሳካም።',
+
+    rejectLoading: 'ግቤቱን ውድቅ በማድረግ ላይ...',
+    rejectSuccess: 'ግቤቱ በተሳካ ሁኔታ ውድቅ ተደርጓል።',
+    rejectFailed: 'ውድቅ ማድረግ አልተሳካም።',
+
+    clearLoading: 'ግቤቶችን በማጽዳት ላይ...',
+    clearSuccess: 'ሁሉም ግቤቶች ተጠርገዋል።',
+    clearFailed: 'ማጽዳት አልተሳካም።',
+
+    drawLoading: 'አሸናፊ በመምረጥ ላይ...',
+    drawFailed: 'ዕጣ ማውጣት አልተሳካም።',
+
+    receiptLoading: 'ደረሰኝ በመጫን ላይ...',
+    receiptLoaded: 'ደረሰኝ ተጭኗል።',
+    receiptLoadFailed: 'ደረሰኝ መጫን አልተሳካም።',
+
+    settingsLoading: 'ቅንብሮችን በመጫን ላይ...',
+    settingsSaved: 'የሎተሪ ቅንብሮች በተሳካ ሁኔታ ተዘምነዋል።',
+    settingsSaveFailed: 'ቅንብሮችን ማስቀመጥ አልተሳካም።',
+    settingsLoadFailed: 'ቅንብሮችን መጫን አልተሳካም።',
+
+    winnerPicked: 'አሸናፊ ተመርጧል!',
+    winnerPickFailed: 'አሸናፊ መምረጥ አልተሳካም።',
+
+    numberAlreadyActive: 'ይህ ቁጥር ቀድሞውኑ በሌላ ግቤት በመጠባበቅ ላይ ወይም ጸድቋል።',
+  },
+
+  om: {
+    loginLoading: 'Seenaa jira...',
+    loginSuccess: 'Milkiidhaan seenteetta.',
+    loginFailed: 'Seenuun hin danda’amne.',
+    invalidCredentials: 'Lakkoofsa bilbilaa ykn jecha icciitii dogoggora.',
+    phonePasswordRequired: 'Lakkoofsi bilbilaa fi jechi icciitii barbaachisoo dha.',
+    networkError: 'Rakkoon neetworkii uumameera. Maaloo irra deebi’aa yaalaa.',
+
+    registerLoading: 'Herrega banaa jira...',
+    registerSuccess: 'Galmi milkiidhaan xumurameera. Maaloo seeni.',
+    registerFailed: 'Galmi hin milkoofne.',
+    passwordMismatch: 'Jechi icciitii wal hin fakkatu.',
+    logoutSuccess: 'Milkiidhaan herrega irraa baateetta.',
+
+    uploadLoading: 'Nagahee ol-kaasaa jira...',
+    uploadSuccess: 'Nagaheen milkiidhaan ol-ka’eera.',
+    uploadFailed: 'Nagahee ol-kaasuun hin danda’amne. Maaloo irra deebi’aa yaalaa.',
+    uploadNoUrl: 'Ol-kaasuun xumurameera, garuu URL suuraa hin deebine.',
+    imageOnly: 'Maaloo faayila suuraa qofa ol-kaasaa.',
+    imageTooLarge: 'Suuraan 4MB gadi ta’uu qaba.',
+    receiptRemoved: 'Nagaheen haqameera. Biraa ol-kaasuun ni danda’ama.',
+
+    submitLoading: 'Lakkoofsa galchaa jira...',
+    submitSuccess: 'Galchiin mirkaneessaaf gara bulchiinsaatti ergameera.',
+    submitFailed: 'Galchiin hin milkoofne.',
+    receiptRequired: 'Maaloo dura nagahee ol-kaasaa.',
+    invalidReceipt: 'Nagaheen dogoggora. Maaloo irra deebi’aa ol-kaasaa.',
+
+    approveLoading: 'Galchaa mirkaneessaa jira...',
+    approveSuccess: 'Galchiin milkiidhaan mirkanaa’eera.',
+    approveFailed: 'Mirkaneessi hin milkoofne.',
+
+    rejectLoading: 'Galchaa kufisiisaa jira...',
+    rejectSuccess: 'Galchiin milkiidhaan kufifameera.',
+    rejectFailed: 'Kufisiisuun hin milkoofne.',
+
+    clearLoading: 'Galchaalee qulqulleessaa jira...',
+    clearSuccess: 'Galchaaleen hundi qulqulleeffamaniiru.',
+    clearFailed: 'Qulqulleessi hin milkoofne.',
+
+    drawLoading: 'Mo’ataa filachaa jira...',
+    drawFailed: 'Ixaas buusuun hin danda’amne.',
+
+    receiptLoading: 'Nagahee fe’aa jira...',
+    receiptLoaded: 'Nagaheen fe’ameera.',
+    receiptLoadFailed: 'Nagahee fe’uun hin danda’amne.',
+
+    settingsLoading: 'Sajataa fe’aa jira...',
+    settingsSaved: 'Sajataan loatarii milkiidhaan fooyya’eera.',
+    settingsSaveFailed: 'Sajataa oolchuun hin danda’amne.',
+    settingsLoadFailed: 'Sajataa fe’uun hin danda’amne.',
+
+    winnerPicked: 'Mo’ataan filatameera!',
+    winnerPickFailed: 'Mo’ataa filuun hin danda’amne.',
+
+    numberAlreadyActive: 'Lakkoofsi kun galmee biraatiin eeggannaa irra jira ykn mirkanaa’eera.',
+  },
+} as const;
+
+export type ToastKey = keyof typeof toastMessages.en;
+
+export function tm(lang: Lang, key: ToastKey) {
+  return toastMessages[lang]?.[key] || toastMessages.en[key];
 }
-
-backup_file "app/(protected)/minsam/page.tsx"
-backup_file "components/minsam/RejectApprovedModal.tsx"
-backup_file "components/minsam/ReturnApprovedToPendingModal.tsx"
-backup_file "lib/api/adminsam.ts"
-backup_file "hooks/useAdminsam.ts"
-backup_file "app/api/minsam/submissions/[id]/reject-approved/route.ts"
-backup_file "app/api/minsam/submissions/[id]/return-pending/route.ts"
-
-mkdir -p "components/minsam"
-mkdir -p "app/api/minsam/submissions/[id]/return-pending"
-
-echo "1. Creating clean ReturnApprovedToPendingModal..."
-
-cat > "components/minsam/ReturnApprovedToPendingModal.tsx" <<'MODAL'
-'use client';
-
-import type { Lang } from '@/lib/i18n/translations';
-
-type Props = {
-  open: boolean;
-  lang: Lang;
-  isLoading: boolean;
-  cancelLabel: string;
-  confirmLabel: string;
-  onClose: () => void;
-  onConfirm: () => void;
-};
-
-export default function ReturnApprovedToPendingModal({
-  open,
-  lang,
-  isLoading,
-  cancelLabel,
-  confirmLabel,
-  onClose,
-  onConfirm,
-}: Props) {
-  if (!open) return null;
-
-  const title =
-    lang === 'am'
-      ? 'ግቤቱን ወደ በመጠባበቅ መመለስ?'
-      : 'Return Submission to Pending?';
-
-  const message =
-    lang === 'am'
-      ? 'ይህን ግቤት ወደ በመጠባበቅ ሁኔታ መመለስ ይፈልጋሉ?'
-      : 'Are you sure you want to return this submission to pending review?';
-
-  const warning =
-    lang === 'am'
-      ? 'ይህ እርምጃ ቁጥሩን ነፃ አያደርገውም። ቁጥሩ በቢጫ የበመጠባበቅ ሁኔታ ይቆያል።'
-      : 'This action will not release the number. It will stay pending/yellow for further review.';
-
-  const loadingText = lang === 'am' ? 'በመመለስ ላይ...' : 'Returning...';
-
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-
-        <p className="mt-3 text-sm leading-6 text-gray-600">{message}</p>
-
-        <div className="mt-5 rounded-xl border border-yellow-100 bg-yellow-50 p-3 text-sm text-yellow-800">
-          {warning}
-        </div>
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {cancelLabel}
-          </button>
-
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isLoading}
-            className="rounded-xl bg-yellow-500 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-600 disabled:opacity-50"
-          >
-            {isLoading ? loadingText : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-MODAL
-
-echo "2. Creating backend route approved/rejected -> pending..."
-
-cat > "app/api/minsam/submissions/[id]/return-pending/route.ts" <<'ROUTE'
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
-import { NextResponse } from 'next/server';
-import { sql } from '@/lib/db/sql';
-import { requireAdmin } from '@/lib/auth/server';
-
-export async function PATCH(
-  req: Request,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const admin = await requireAdmin(req);
-    const id = params.id;
-
-    const target = await sql`
-      SELECT id, submission_group_id, status
-      FROM submissions
-      WHERE id::text = ${id}
-         OR submission_group_id::text = ${id}
-      LIMIT 1
-    `;
-
-    if (!target.length) {
-      return NextResponse.json(
-        { error: 'Submission not found' },
-        { status: 404 }
-      );
-    }
-
-    const sub = target[0];
-
-    if (!['approved', 'rejected'].includes(sub.status)) {
-      return NextResponse.json(
-        { error: 'Only approved or rejected submissions can be returned to pending.' },
-        { status: 400 }
-      );
-    }
-
-    const targetRows = await sql`
-      SELECT id, number
-      FROM submissions
-      WHERE
-        id = ${sub.id}
-        OR (
-          ${sub.submission_group_id}::uuid IS NOT NULL
-          AND submission_group_id = ${sub.submission_group_id}
-        )
-    `;
-
-    const numbers = targetRows
-      .map((row: any) => Number(row.number))
-      .filter((num: number) => Number.isFinite(num));
-
-    if (!numbers.length) {
-      return NextResponse.json(
-        { error: 'No numbers found for this submission.' },
-        { status: 400 }
-      );
-    }
-
-    /*
-      Safety check:
-      rejected -> pending can only happen if the number is not already
-      pending or approved by another submission.
-    */
-    const conflicts = await sql`
-      SELECT id, number, status
-      FROM submissions
-      WHERE number = ANY(${numbers}::int[])
-        AND status IN ('pending', 'approved')
-        AND NOT (
-          id = ${sub.id}
-          OR (
-            ${sub.submission_group_id}::uuid IS NOT NULL
-            AND submission_group_id = ${sub.submission_group_id}
-          )
-        )
-      LIMIT 10
-    `;
-
-    if (conflicts.length > 0) {
-      return NextResponse.json(
-        {
-          error: 'This number is already pending or approved by another submission.',
-          conflicts,
-        },
-        { status: 409 }
-      );
-    }
-
-    const updated = await sql`
-      UPDATE submissions
-      SET
-        status = 'pending',
-        approved_at = NULL,
-        rejected_at = NULL
-      WHERE
-        (
-          id = ${sub.id}
-          OR (
-            ${sub.submission_group_id}::uuid IS NOT NULL
-            AND submission_group_id = ${sub.submission_group_id}
-          )
-        )
-        AND status IN ('approved', 'rejected')
-      RETURNING id, number, status, approved_at, rejected_at
-    `;
-
-    /*
-      Do NOT delete number_locks here.
-      Pending numbers must stay unavailable/yellow.
-    */
-
-    try {
-      await sql`
-        INSERT INTO audit_logs(admin_id, action, details)
-        VALUES (
-          ${admin.userId || admin.id || null},
-          'minsam_returned_to_pending',
-          ${JSON.stringify({
-            submissionId: id,
-            previousStatus: sub.status,
-            numbers,
-            changedBy: admin.userId || admin.id || null,
-            changedAt: new Date().toISOString(),
-          })}
-        )
-      `;
-    } catch (auditError) {
-      console.warn('Minsam return-pending audit log skipped:', auditError);
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Submission returned to pending.',
-      previousStatus: sub.status,
-      numbers,
-      submissions: updated,
-    });
-  } catch (error: any) {
-    console.error('Minsam return-pending error:', error);
-
-    return NextResponse.json(
-      {
-        error:
-          error.message || 'Failed to return submission to pending',
-      },
-      {
-        status:
-          error.message === 'Unauthorized'
-            ? 401
-            : error.message === 'Forbidden'
-            ? 403
-            : 500,
-      }
-    );
-  }
-}
-ROUTE
-
-echo "3. Updating lib/api/adminsam.ts..."
-
-python3 <<'PY'
-from pathlib import Path
-import re
-
-file_path = Path("lib/api/adminsam.ts")
-
-if not file_path.exists():
-    raise SystemExit("lib/api/adminsam.ts not found")
-
-content = file_path.read_text()
-
-# Remove old reject-approved function
-content = re.sub(
-    r"\nexport async function rejectApprovedSubmission\(id: string\) \{[\s\S]*?\n\}",
-    "",
-    content,
-    count=1
-)
-
-# Add return-to-pending function
-if "returnApprovedToPendingSubmission" not in content:
-    content += """
-
-export async function returnApprovedToPendingSubmission(id: string) {
-  const res = await apiFetch(
-    `/api/minsam/submissions/${id}/return-pending?t=${Date.now()}`,
-    {
-      method: 'PATCH',
-    }
-  );
-
-  return readJson(res);
-}
-"""
-
-file_path.write_text(content)
-print("lib/api/adminsam.ts updated.")
-PY
-
-echo "4. Updating hooks/useAdminsam.ts..."
-
-python3 <<'PY'
-from pathlib import Path
-import re
-
-file_path = Path("hooks/useAdminsam.ts")
-
-if not file_path.exists():
-    raise SystemExit("hooks/useAdminsam.ts not found")
-
-content = file_path.read_text()
-
-# Remove old import references
-content = content.replace("rejectApprovedSubmission,", "")
-content = content.replace("  rejectApprovedSubmission,\n", "")
-
-# Ensure new API import exists
-if "returnApprovedToPendingSubmission" not in content:
-    content = content.replace(
-        "} from '@/lib/api/adminsam';",
-        "  returnApprovedToPendingSubmission,\n} from '@/lib/api/adminsam';"
-    )
-
-# Remove old hook
-content = re.sub(
-    r"\nexport const useMinsamRejectApprovedSubmission = \(\) => \{[\s\S]*?\n\};",
-    "",
-    content,
-    count=1
-)
-
-# Add new hook
-if "useMinsamReturnApprovedToPendingSubmission" not in content:
-    content += """
-
-export const useMinsamReturnApprovedToPendingSubmission = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: returnApprovedToPendingSubmission,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['minsam', 'submissions'] });
-      queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'submissions'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
-    },
-  });
-};
-"""
-
-file_path.write_text(content)
-print("hooks/useAdminsam.ts updated.")
-PY
-
-echo "5. Updating app/(protected)/minsam/page.tsx..."
-
-python3 <<'PY'
-from pathlib import Path
-import re
-
-file_path = Path("app/(protected)/minsam/page.tsx")
-
-if not file_path.exists():
-    raise SystemExit("app/(protected)/minsam/page.tsx not found")
-
-content = file_path.read_text()
-
-# Replace modal import
-content = content.replace(
-    "import RejectApprovedModal from '@/components/minsam/RejectApprovedModal';",
-    "import ReturnApprovedToPendingModal from '@/components/minsam/ReturnApprovedToPendingModal';"
-)
-
-if "ReturnApprovedToPendingModal" not in content:
-    content = content.replace(
-        "import AdminSettingsPanel from '@/components/AdminSettingsPanel';",
-        "import AdminSettingsPanel from '@/components/AdminSettingsPanel';\nimport ReturnApprovedToPendingModal from '@/components/minsam/ReturnApprovedToPendingModal';"
-    )
-
-# Replace hook import
-content = content.replace(
-    "useMinsamRejectApprovedSubmission,",
-    "useMinsamReturnApprovedToPendingSubmission,"
-)
-
-if "useMinsamReturnApprovedToPendingSubmission" not in content:
-    content = content.replace(
-        "useMinsamClearAllSubmissions,",
-        "useMinsamClearAllSubmissions,\n  useMinsamReturnApprovedToPendingSubmission,"
-    )
-
-# Rename state variables
-content = content.replace("rejectApprovedModalId", "returnPendingModalId")
-content = content.replace("setRejectApprovedModalId", "setReturnPendingModalId")
-
-# Replace mutation
-content = content.replace(
-    "const { mutate: rejectApproved } = useMinsamRejectApprovedSubmission();",
-    "const { mutate: returnToPending } = useMinsamReturnApprovedToPendingSubmission();"
-)
-
-if "const { mutate: returnToPending } = useMinsamReturnApprovedToPendingSubmission();" not in content:
-    content = content.replace(
-        "const { mutate: reject } = useMinsamRejectSubmission();",
-        "const { mutate: reject } = useMinsamRejectSubmission();\n  const { mutate: returnToPending } = useMinsamReturnApprovedToPendingSubmission();"
-    )
-
-# Processing type
-content = content.replace("'reject-approved'", "'return-pending'")
-content = content.replace('"reject-approved"', '"return-pending"')
-
-# Label variable replacements
-content = content.replace("changeToRejectLabel", "returnToPendingLabel")
-content = content.replace("rejectApprovedSuccess", "returnToPendingSuccess")
-content = content.replace("rejectApprovedFailed", "returnToPendingFailed")
-
-# Text replacements
-content = content.replace("'ወደ ውድቅ ቀይር'", "'ወደ በመጠባበቅ መልስ'")
-content = content.replace("'Change to Reject'", "'Return to Pending'")
-
-content = content.replace(
-    "'የጸደቀው ግቤት ወደ ውድቅ ተቀይሯል።'",
-    "'ግቤቱ ወደ በመጠባበቅ ተመልሷል።'"
-)
-
-content = content.replace(
-    "'Approved submission changed to rejected.'",
-    "'Submission returned to pending.'"
-)
-
-content = content.replace(
-    "'የጸደቀውን ግቤት ወደ ውድቅ መቀየር አልተሳካም።'",
-    "'ግቤቱን ወደ በመጠባበቅ መመለስ አልተሳካም።'"
-)
-
-content = content.replace(
-    "'Failed to change approved submission to rejected.'",
-    "'Failed to return submission to pending.'"
-)
-
-# Rename handler functions
-content = content.replace("handleRejectApproved", "handleReturnToPending")
-content = content.replace("confirmRejectApproved", "confirmReturnToPending")
-content = content.replace("closeRejectApprovedModal", "closeReturnPendingModal")
-
-# Replace mutation call
-content = content.replace("rejectApproved(id,", "returnToPending(id,")
-
-# Replace modal component
-content = content.replace("RejectApprovedModal", "ReturnApprovedToPendingModal")
-
-# Replace approved-only action condition with approved or rejected
-content = content.replace(
-    "sub.status === 'approved' ? (",
-    "['approved', 'rejected'].includes(sub.status) ? ("
-)
-content = content.replace(
-    'sub.status === "approved" ? (',
-    '["approved", "rejected"].includes(sub.status) ? ('
-)
-
-# Button style from red to yellow
-content = content.replace(
-    'className="rounded border border-red-300 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"',
-    'className="rounded border border-yellow-300 px-3 py-1 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 disabled:opacity-50"'
-)
-
-# Loading label
-content = content.replace(
-    "(lang === 'am' ? 'በመቀየር ላይ...' : 'Changing...') : returnToPendingLabel",
-    "(lang === 'am' ? 'በመመለስ ላይ...' : 'Returning...') : returnToPendingLabel"
-)
-
-# Error handler: translate conflict message
-content = re.sub(
-    r"onError:\s*\(err:\s*any\)\s*=>\s*\{\s*const message\s*=\s*err\.message === 'This number is already pending or approved by another submission\.'[\s\S]*?toast\.error\(message\);\s*\}",
-    """onError: (err: any) => {
-        const message =
-          err.message === 'This number is already pending or approved by another submission.'
-            ? txt.numberAlreadyActive
-            : err.message || returnToPendingFailed;
-
-        toast.error(message);
-      }""",
-    content,
-    count=1
-)
-
-# If still simple old error handler exists, replace it
-content = re.sub(
-    r"onError:\s*\(err:\s*any\)\s*=>\s*toast\.error\(\s*err\.message\s*\|\|\s*returnToPendingFailed\s*\)",
-    """onError: (err: any) => {
-        const message =
-          err.message === 'This number is already pending or approved by another submission.'
-            ? txt.numberAlreadyActive
-            : err.message || returnToPendingFailed;
-
-        toast.error(message);
-      }""",
-    content,
-    count=1
-)
-
-file_path.write_text(content)
-print("/minsam/page.tsx updated.")
-PY
-
-echo "6. Optional cleanup: removing old reject-approved route/component if you want"
-
-# Keep old files as harmless backups in the codebase? We won't delete automatically.
-# They are no longer used after imports/routes move to return-pending.
+TS
 
 echo ""
-echo "=================================================="
-echo " Done"
-echo "=================================================="
+echo "Done."
 echo "Backup saved in: $BACKUP_DIR"
-echo ""
-echo "Updated behavior:"
-echo "Pending  -> Approve / Reject"
-echo "Approved -> Return to Pending"
-echo "Rejected -> Return to Pending"
 echo ""
 echo "Now run:"
 echo "npm run build"
 EOF
 
-chmod +x convert-minsam-reject-to-pending-full.sh
-./convert-minsam-reject-to-pending-full.sh
+chmod +x update-toastMessages-om.sh
+./update-toastMessages-om.sh
+npm run build
