@@ -13,14 +13,14 @@ import {
   useMinsamApproveSubmission,
   useMinsamRejectSubmission,
   useMinsamClearAllSubmissions,
-  useMinsamReturnApprovedToPendingSubmission,
+  useMinsamRejectApprovedSubmission,
 } from '@/hooks/useAdminsam';
 import { fetchReceipt, fetchWinners } from '@/lib/api/adminsam';
 import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
 import { clearClientSession } from '@/lib/auth/client';
 import AdminSettingsPanel from '@/components/AdminSettingsPanel';
-import ReturnApprovedToPendingModal from '@/components/minsam/ReturnApprovedToPendingModal';
+import RejectApprovedModal from '@/components/minsam/RejectApprovedModal';
 
 export default function MinsamPage() {
   const router = useRouter();
@@ -29,25 +29,25 @@ export default function MinsamPage() {
   const user = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('user') || '{}') : {};
   const displayName = user?.name || user?.fullName || user?.full_name || user?.username || user?.phone || 'Admin';
 
-  const returnToPendingLabel =
-    lang === 'am' ? 'ወደ በመጠባበቅ መልስ' : 'Return to Pending';
+  const changeToRejectLabel =
+    lang === 'am' ? 'ወደ ውድቅ ቀይር' : 'Change to Reject';
 
-  const returnToPendingSuccess =
+  const rejectApprovedSuccess =
     lang === 'am'
-      ? 'ግቤቱ ወደ በመጠባበቅ ተመልሷል።'
-      : 'Submission returned to pending.';
+      ? 'የጸደቀው ግቤት ወደ ውድቅ ተቀይሯል።'
+      : 'Approved submission changed to rejected.';
 
-  const returnToPendingFailed =
+  const rejectApprovedFailed =
     lang === 'am'
-      ? 'ግቤቱን ወደ በመጠባበቅ መመለስ አልተሳካም።'
-      : 'Failed to return submission to pending.';
+      ? 'የጸደቀውን ግቤት ወደ ውድቅ መቀየር አልተሳካም።'
+      : 'Failed to change approved submission to rejected.';
 
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [receiptLoadingId, setReceiptLoadingId] = useState<string | null>(null);
   const [processingSubmissionId, setProcessingSubmissionId] = useState<string | null>(null);
-  const [returnPendingModalId, setReturnPendingModalId] = useState<string | null>(null);
-  const [processingType, setProcessingType] = useState<'approve' | 'reject' | 'return-pending' | null>(null);
+  const [rejectApprovedModalId, setRejectApprovedModalId] = useState<string | null>(null);
+  const [processingType, setProcessingType] = useState<'approve' | 'reject' | 'reject-approved' | null>(null);
   const [showClearModal, setShowClearModal] = useState(false);
   const [showWinnersModal, setShowWinnersModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -59,7 +59,7 @@ export default function MinsamPage() {
   const { data: stats = {}, isLoading: statsLoading } = useMinsamStats();
   const { mutate: approve } = useMinsamApproveSubmission();
   const { mutate: reject } = useMinsamRejectSubmission();
-  const { mutate: returnToPending } = useMinsamReturnApprovedToPendingSubmission();
+  const { mutate: rejectApproved } = useMinsamRejectApprovedSubmission();
   const { mutate: clearAll, isPending: clearing } = useMinsamClearAllSubmissions();
 
   const getSubmissionNumbers = (sub: any) => {
@@ -184,29 +184,22 @@ export default function MinsamPage() {
   };
 
 
-  const handleReturnToPending = (id: string) => {
-    setReturnPendingModalId(id);
+  const handleRejectApproved = (id: string) => {
+    setRejectApprovedModalId(id);
   };
 
-  const confirmReturnToPending = () => {
-    if (!returnPendingModalId) return;
+  const confirmRejectApproved = () => {
+    if (!rejectApprovedModalId) return;
 
-    const id = returnPendingModalId;
+    const id = rejectApprovedModalId;
 
-    setReturnPendingModalId(null);
+    setRejectApprovedModalId(null);
     setProcessingSubmissionId(id);
-    setProcessingType('return-pending');
+    setProcessingType('reject-approved');
 
-    returnToPending(id, {
-      onSuccess: () => toast.success(returnToPendingSuccess),
-      onError: (err: any) => {
-        const message =
-          err.message === 'This number is already pending or approved by another submission.'
-            ? txt.numberAlreadyActive
-            : err.message || returnToPendingFailed;
-
-        toast.error(message);
-      },
+    rejectApproved(id, {
+      onSuccess: () => toast.success(rejectApprovedSuccess),
+      onError: (err: any) => toast.error(err.message || rejectApprovedFailed),
       onSettled: () => {
         setProcessingSubmissionId(null);
         setProcessingType(null);
@@ -214,9 +207,9 @@ export default function MinsamPage() {
     });
   };
 
-  const closeReturnPendingModal = () => {
-    if (processingType === 'return-pending') return;
-    setReturnPendingModalId(null);
+  const closeRejectApprovedModal = () => {
+    if (processingType === 'reject-approved') return;
+    setRejectApprovedModalId(null);
   };
 
   const handleViewReceipt = async (sub: any) => {
@@ -259,14 +252,14 @@ export default function MinsamPage() {
 
   return (
     <>
-    <ReturnApprovedToPendingModal
-      open={!!returnPendingModalId}
+    <RejectApprovedModal
+      open={!!rejectApprovedModalId}
       lang={lang}
-      isLoading={processingType === 'return-pending'}
+      isLoading={processingType === 'reject-approved'}
       cancelLabel={txt.cancel}
-      confirmLabel={returnToPendingLabel}
-      onClose={closeReturnPendingModal}
-      onConfirm={confirmReturnToPending}
+      confirmLabel={changeToRejectLabel}
+      onClose={closeRejectApprovedModal}
+      onConfirm={confirmRejectApproved}
     />
 
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
@@ -356,13 +349,13 @@ export default function MinsamPage() {
                             <button onClick={() => handleApprove(sub.id)} disabled={processingSubmissionId === sub.id} className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50">{processingSubmissionId === sub.id && processingType === 'approve' ? txt.approving : txt.approve}</button>
                             <button onClick={() => handleReject(sub.id)} disabled={processingSubmissionId === sub.id} className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50">{processingSubmissionId === sub.id && processingType === 'reject' ? txt.rejecting : txt.reject}</button>
                           </div>
-                        ) : ['approved', 'rejected'].includes(sub.status) ? (
+                        ) : sub.status === 'approved' ? (
                           <button
-                            onClick={() => handleReturnToPending(sub.id)}
+                            onClick={() => handleRejectApproved(sub.id)}
                             disabled={processingSubmissionId === sub.id}
-                            className="rounded border border-yellow-300 px-3 py-1 text-sm font-semibold text-yellow-700 hover:bg-yellow-50 disabled:opacity-50"
+                            className="rounded border border-red-300 px-3 py-1 text-sm font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
                           >
-                            {processingSubmissionId === sub.id && processingType === 'return-pending' ? (lang === 'am' ? 'በመመለስ ላይ...' : 'Returning...') : returnToPendingLabel}
+                            {processingSubmissionId === sub.id && processingType === 'reject-approved' ? (lang === 'am' ? 'በመቀየር ላይ...' : 'Changing...') : changeToRejectLabel}
                           </button>
                         ) : <span className="text-sm text-gray-400">{txt.processed}</span>}
                       </td>

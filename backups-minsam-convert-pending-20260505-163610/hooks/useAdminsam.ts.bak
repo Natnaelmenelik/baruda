@@ -8,8 +8,7 @@ import {
   rejectSubmission,
   clearAllSubmissions,
   drawWinner,
-  
-  returnApprovedToPendingSubmission,
+  rejectApprovedSubmission,
 } from '@/lib/api/adminsam';
 
 export const useMinsamSubmissions = () => {
@@ -95,13 +94,11 @@ export const useMinsamDrawWinner = () => {
   });
 };
 
-
-
-export const useMinsamReturnApprovedToPendingSubmission = () => {
+export const useMinsamRejectApprovedSubmission = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: returnApprovedToPendingSubmission,
+    mutationFn: rejectApprovedSubmission,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['minsam', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });

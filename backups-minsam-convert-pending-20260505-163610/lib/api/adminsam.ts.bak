@@ -48,11 +48,9 @@ export {
   fetchWinners,
 };
 
-
-
-export async function returnApprovedToPendingSubmission(id: string) {
+export async function rejectApprovedSubmission(id: string) {
   const res = await apiFetch(
-    `/api/minsam/submissions/${id}/return-pending?t=${Date.now()}`,
+    `/api/minsam/submissions/${id}/reject-approved?t=${Date.now()}`,
     {
       method: 'PATCH',
     }
