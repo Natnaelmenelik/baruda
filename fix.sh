@@ -1,14 +1,14 @@
-cat > update-layout-title-description-only.sh <<'EOF'
+cat > update-social-preview-odda.sh <<'EOF'
 #!/bin/bash
 
-echo "Updating only app/layout.tsx metadata title and description..."
+echo "Updating social media preview metadata for oddda.vercel.app..."
 
 FILE="app/layout.tsx"
-BACKUP_DIR="backups-layout-title-description-only-$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="backups-social-preview-$(date +%Y%m%d-%H%M%S)"
 
 if [ ! -f "$FILE" ]; then
   echo "Error: $FILE not found."
-  echo "Run this script from the project root."
+  echo "Run this script from your project root."
   exit 1
 fi
 
@@ -22,31 +22,50 @@ import re
 file_path = Path("app/layout.tsx")
 content = file_path.read_text()
 
-content, title_count = re.subn(
-    r"title:\s*['\"][^'\"]*['\"]",
-    "title: 'ኦዳ የመኪና እቁብ ሎተሪ'",
-    content,
-    count=1
+# Ensure Metadata import exists
+if "import type { Metadata } from 'next';" not in content and 'import type { Metadata } from "next";' not in content:
+    content = "import type { Metadata } from 'next';\n" + content
+
+metadata_block = """export const metadata: Metadata = {
+  metadataBase: new URL('https://oddda.vercel.app'),
+  title: 'ኦዳ የመኪና እቁብ ሎተሪ',
+  description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
+  openGraph: {
+    title: 'ኦዳ የመኪና እቁብ ሎተሪ',
+    description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
+    url: 'https://oddda.vercel.app',
+    siteName: 'ኦዳ የመኪና እቁብ ሎተሪ',
+    images: [
+      {
+        url: '/og-image.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'ኦዳ የመኪና እቁብ ሎተሪ',
+      },
+    ],
+    locale: 'am_ET',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ኦዳ የመኪና እቁብ ሎተሪ',
+    description: 'ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!',
+    images: ['/og-image.jpg'],
+  },
+};"""
+
+pattern = re.compile(
+    r"export\s+const\s+metadata\s*(?::\s*Metadata)?\s*=\s*\{.*?\};",
+    re.DOTALL
 )
 
-content, desc_count = re.subn(
-    r"description:\s*['\"][^'\"]*['\"]",
-    "description: 'የእድል ቁጥርዎን ይምረጡ እና ያሸንፉ!'",
-    content,
-    count=1
-)
-
-if title_count == 0:
-    print("Could not find metadata title field.")
-    raise SystemExit(1)
-
-if desc_count == 0:
-    print("Could not find metadata description field.")
-    raise SystemExit(1)
+if pattern.search(content):
+    content = pattern.sub(metadata_block, content, count=1)
+else:
+    content = content.replace("\nexport default", "\n" + metadata_block + "\n\nexport default", 1)
 
 file_path.write_text(content)
-
-print("app/layout.tsx metadata title and description updated successfully.")
+print("app/layout.tsx social preview metadata updated successfully.")
 PY
 
 if [ $? -ne 0 ]; then
@@ -58,9 +77,13 @@ echo ""
 echo "Done."
 echo "Backup saved in: $BACKUP_DIR"
 echo ""
-echo "Now run:"
-echo "npm run build"
+echo "Next steps:"
+echo "1. Add your preview image as public/og-image.jpg"
+echo "2. Run: npm run build"
+echo "3. Deploy to Vercel"
+echo "4. Open: https://oddda.vercel.app/og-image.jpg"
+echo "5. Refresh Telegram preview with @WebpageBot"
 EOF
 
-chmod +x update-layout-title-description-only.sh
-./update-layout-title-description-only.sh
+chmod +x update-social-preview-odda.sh
+./update-social-preview-odda.sh
