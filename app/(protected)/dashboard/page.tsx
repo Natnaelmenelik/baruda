@@ -62,6 +62,8 @@ export default function DashboardPage() {
             <p className="mt-1 text-sm text-slate-500">
               {lang === 'am'
                 ? `ሰላም፣ ${displayName} 👋`
+                : lang === 'om'
+                ? `Baga nagaan dhufte, ${displayName} 👋`
                 : `Welcome, ${displayName} 👋`}
             </p>
           </div>
@@ -71,7 +73,7 @@ export default function DashboardPage() {
               onClick={() => setLang(lang === 'en' ? 'am' : lang === 'am' ? 'om' : 'en')}
               className="flex-1 rounded-xl bg-white px-3 py-2 shadow sm:flex-none"
             >
-              {lang === 'en' ? t.switchToAmharic : t.switchToEnglish}
+              {lang === 'en' ? t.switchToAmharic : lang === 'am' ? t.switchToOromifa : t.switchToEnglish}
             </button>
 
             <ThemeToggle />

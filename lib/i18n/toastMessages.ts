@@ -1,4 +1,4 @@
-export type Lang = 'en' | 'am' | 'om';
+export type Lang = 'en' | 'am' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om' | 'om';
 
 export const toastMessages = {
   en: {

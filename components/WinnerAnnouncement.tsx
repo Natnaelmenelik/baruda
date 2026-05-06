@@ -37,8 +37,25 @@ function maskPhone(phone?: string) {
   return `+251*******${cleaned.slice(-2) || '98'}`;
 }
 
+const copy = {
+  en: {
+    closeWinnerAnnouncement: 'Close winner announcement',
+    winnerAnnounced: '🎉 Winner Announced',
+  },
+  am: {
+    closeWinnerAnnouncement: 'የአሸናፊ ማሳወቂያን ዝጋ',
+    winnerAnnounced: '🎉 አሸናፊ ተገልጿል',
+  },
+  om: {
+    closeWinnerAnnouncement: "Beeksisa mo'ataa cufi",
+    winnerAnnounced: "🎉 Mo'ataan beekameera",
+  },
+} as const;
+
 export default function WinnerAnnouncement() {
   const { lang } = useLang();
+  const txt = copy[lang];
+
   const [winner, setWinner] = useState<any>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -89,14 +106,14 @@ export default function WinnerAnnouncement() {
         type="button"
         onClick={closeBanner}
         className="absolute right-4 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-lg font-bold text-gray-700 shadow hover:bg-white dark:bg-slate-800 dark:text-white"
-        aria-label="Close winner announcement"
+        aria-label={txt.closeWinnerAnnouncement}
       >
         ×
       </button>
 
       <div className="relative text-center">
         <p className="text-sm font-extrabold uppercase tracking-widest text-yellow-700 dark:text-yellow-300">
-          {lang === 'am' ? '🎉 አሸናፊ ተገልጿል' : '🎉 Winner Announced'}
+          {txt.winnerAnnounced}
         </p>
 
         <h2 className="mt-4 inline-block rounded-3xl bg-gradient-to-r from-orange-500 to-yellow-400 px-8 py-4 text-7xl font-black tracking-tight text-white shadow-2xl ring-4 ring-yellow-200 dark:ring-yellow-700 sm:text-8xl">
@@ -113,7 +130,9 @@ export default function WinnerAnnouncement() {
 
         <p className="mt-3 text-sm font-medium text-gray-600 dark:text-slate-400">
           {winner.drawn_at
-            ? new Date(winner.drawn_at).toLocaleString(lang === 'am' ? 'am-ET' : 'en-US')
+            ? new Date(winner.drawn_at).toLocaleString(
+                lang === 'am' ? 'am-ET' : 'en-US',
+              )
             : ''}
         </p>
       </div>

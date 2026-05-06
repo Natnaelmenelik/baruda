@@ -11,10 +11,45 @@ type Props = {
   onChange: (url: string, key?: string) => void;
 };
 
+const copy = {
+  en: {
+    uploadPaymentReceipt: 'Upload Payment Receipt',
+    receiptUploaderHelp: 'Take a clear photo or choose from your gallery.',
+    receiptFileHint: 'JPG/PNG, max 4MB.',
+    uploading: 'Uploading...',
+    chooseFile: 'Choose File',
+    receiptUploadedSuccessfully: 'Receipt uploaded successfully',
+    receiptPreview: 'Receipt preview',
+    removeUploadAgain: 'Remove / Upload Again',
+  },
+  am: {
+    uploadPaymentReceipt: 'የክፍያ ደረሰኝ ይጫኑ',
+    receiptUploaderHelp: 'ግልጽ ፎቶ ያንሱ ወይም ከጋለሪ ይምረጡ።',
+    receiptFileHint: 'JPG/PNG, max 4MB.',
+    uploading: 'በመጫን ላይ...',
+    chooseFile: 'ፋይል ይምረጡ',
+    receiptUploadedSuccessfully: 'ደረሰኝ በተሳካ ሁኔታ ተጫኗል',
+    receiptPreview: 'የደረሰኝ ቅድመ እይታ',
+    removeUploadAgain: 'አስወግድ / እንደገና ጫን',
+  },
+  om: {
+    uploadPaymentReceipt: 'Nagahee Kafaltii Ol-kaasi',
+    receiptUploaderHelp: 'Suuraa ifaa kaasi ykn galarii kee keessaa filadhu.',
+    receiptFileHint: 'JPG/PNG, max 4MB.',
+    uploading: 'Ol-kaasaa jira...',
+    chooseFile: 'Faayila Filadhu',
+    receiptUploadedSuccessfully: "Nagaheen milkiidhaan ol-ka'eera",
+    receiptPreview: 'Nagahee dursa ilaali',
+    removeUploadAgain: "Balleessi / Irra deebi'ii ol-kaasi",
+  },
+} as const;
+
 export default function ReceiptUploader({ value, onChange }: Props) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const { lang } = useLang();
+
+  const txt = copy[lang];
 
   const { startUpload } = useUploadThing('receiptUploader', {
     headers: (): Record<string, string> => {
@@ -96,15 +131,13 @@ export default function ReceiptUploader({ value, onChange }: Props) {
           </div>
 
           <h3 className="text-lg font-bold text-gray-900">
-            {lang === 'am' ? 'የክፍያ ደረሰኝ ይጫኑ' : 'Upload Payment Receipt'}
+            {txt.uploadPaymentReceipt}
           </h3>
 
           <p className="mt-2 text-sm text-gray-500">
-            {lang === 'am'
-              ? 'ግልጽ ፎቶ ያንሱ ወይም ከጋለሪ ይምረጡ።'
-              : 'Take a clear photo or choose from your gallery.'}
+            {txt.receiptUploaderHelp}
             <br />
-            JPG/PNG, max 4MB.
+            {txt.receiptFileHint}
           </p>
 
           <input
@@ -121,27 +154,19 @@ export default function ReceiptUploader({ value, onChange }: Props) {
             disabled={uploading}
             className="mx-auto mt-5 block rounded-xl bg-blue-600 px-8 py-3 font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {uploading
-              ? lang === 'am'
-                ? 'በመጫን ላይ...'
-                : 'Uploading...'
-              : lang === 'am'
-              ? 'ፋይል ይምረጡ'
-              : 'Choose File'}
+            {uploading ? txt.uploading : txt.chooseFile}
           </button>
         </div>
       ) : (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-4">
           <div className="mb-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-green-700 shadow-sm">
-            {lang === 'am'
-              ? 'ደረሰኝ በተሳካ ሁኔታ ተጫኗል'
-              : 'Receipt uploaded successfully'}
+            {txt.receiptUploadedSuccessfully}
           </div>
 
           <div className="overflow-hidden rounded-xl border bg-white p-2">
             <img
               src={value}
-              alt={lang === "am" ? "የደረሰኝ ቅድመ እይታ" : "Receipt preview"}
+              alt={txt.receiptPreview}
               className="h-48 w-full rounded-lg object-contain"
             />
           </div>
@@ -154,7 +179,7 @@ export default function ReceiptUploader({ value, onChange }: Props) {
             }}
             className="mt-4 w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white hover:bg-red-700"
           >
-            {lang === 'am' ? 'አስወግድ / እንደገና ጫን' : 'Remove / Upload Again'}
+            {txt.removeUploadAgain}
           </button>
         </div>
       )}

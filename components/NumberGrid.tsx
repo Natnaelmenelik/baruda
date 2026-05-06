@@ -8,6 +8,7 @@ import SelectedNumbersPanel from "@/components/SelectedNumbersPanel";
 import ConfirmSelectionModal from "@/components/ConfirmSelectionModal";
 import { useLang } from "@/hooks/useLang";
 import { apiFetch } from "@/lib/auth/client";
+import { translations } from "@/lib/i18n/translations";
 
 type NumberStatus =
   | "available"
@@ -49,6 +50,7 @@ async function fetchTicketPrice(): Promise<number> {
 export default function NumberGrid() {
   const queryClient = useQueryClient();
   const { lang } = useLang();
+  const txt = translations[lang];
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [searchNumber, setSearchNumber] = useState("");
@@ -101,7 +103,7 @@ export default function NumberGrid() {
 
       return same ? prev : merged;
     });
-  }, [numbers]);
+  }, [numbers, safeNumbers]);
 
   const lockNumbers = async (nums: number[]) => {
     const res = await apiFetch("/api/numbers/lock-bulk", {
@@ -149,20 +151,12 @@ export default function NumberGrid() {
     }
 
     if (item.status === "locked") {
-      toast.error(
-        lang === "am"
-          ? `ቁጥር ${num} በሌላ ተጠቃሚ ተይዟል።`
-          : `Number ${num} is currently locked by another user.`,
-      );
+      toast.error(`${txt.numberLockedByAnotherUser} ${num}`);
       return;
     }
 
     if (item.status === "pending" || item.status === "taken") {
-      toast.error(
-        lang === "am"
-          ? `ቁጥር ${num} አስቀድሞ ተይዟል።`
-          : `Number ${num} is already taken or pending approval.`,
-      );
+      toast.error(`${txt.numberTakenOrPending} ${num}`);
       return;
     }
 
@@ -175,7 +169,7 @@ export default function NumberGrid() {
       await queryClient.invalidateQueries({ queryKey: ["numbers"] });
       await queryClient.refetchQueries({ queryKey: ["numbers"] });
     } catch (err: any) {
-      toast.error(err.message || "Failed to lock number");
+      toast.error(err.message || txt.failedToLockNumber);
       await queryClient.invalidateQueries({ queryKey: ["numbers"] });
     } finally {
       setLockingNumber(null);
@@ -184,9 +178,7 @@ export default function NumberGrid() {
 
   const handleProceed = async () => {
     if (!selectedNumbers.length) {
-      toast.error(
-        lang === "am" ? "ቁጥር ይምረጡ።" : "Please select at least one number.",
-      );
+      toast.error(txt.selectAtLeastOneNumber);
       return;
     }
 
@@ -202,11 +194,7 @@ export default function NumberGrid() {
 
         setSelectedNumbers((prev) => prev.filter((n) => !invalid.includes(n)));
 
-        toast.error(
-          lang === "am"
-            ? `አንዳንድ ቁጥሮች አይገኙም: ${invalid.join(", ")}`
-            : `Some numbers are not available: ${invalid.join(", ")}`,
-        );
+        toast.error(`${txt.someNumbersNotAvailable}: ${invalid.join(", ")}`);
 
         await queryClient.invalidateQueries({ queryKey: ["numbers"] });
         return;
@@ -214,7 +202,7 @@ export default function NumberGrid() {
 
       setShowConfirmModal(true);
     } catch (err: any) {
-      toast.error(err.message || "Validation failed");
+      toast.error(err.message || txt.validationFailed);
     }
   };
 
@@ -238,9 +226,10 @@ export default function NumberGrid() {
 
     if (!Number.isInteger(num) || num < 1 || num > safeNumbers.length) {
       toast.error(
-        lang === "am"
-          ? `ትክክለኛ ቁጥር ያስገቡ። ከ1 እስከ ${safeNumbers.length}`
-          : `Enter a valid number between 1 and ${safeNumbers.length}`,
+        txt.enterValidNumberBetweenFull.replace(
+          "{gridSize}",
+          String(safeNumbers.length),
+        ),
       );
       return;
     }
@@ -252,7 +241,7 @@ export default function NumberGrid() {
       const target = numberRefs.current[num];
 
       if (!target) {
-        toast.error(lang === "am" ? "ቁጥሩ አልተገኘም" : "Number not found");
+        toast.error(txt.numberNotFound);
         return;
       }
 
@@ -273,7 +262,7 @@ export default function NumberGrid() {
   if (isLoading) {
     return (
       <div className="p-6 text-center text-gray-500">
-        {lang === "am" ? "ቁጥሮች በመጫን ላይ..." : "Loading numbers..."}
+        {txt.loadingNumbers}
       </div>
     );
   }
@@ -281,7 +270,7 @@ export default function NumberGrid() {
   if (error) {
     return (
       <div className="p-6 text-center text-red-600">
-        {lang === "am" ? "ቁጥሮችን መጫን አልተቻለም።" : "Failed to load numbers."}
+        {txt.failedLoadNumbers}
       </div>
     );
   }
@@ -290,13 +279,13 @@ export default function NumberGrid() {
     <div className="space-y-5">
       <div className="p-4 border shadow-sm rounded-xl bg-white/95 backdrop-blur dark:bg-slate-950/95 lg:sticky lg:top-4 lg:z-40">
         <h2 className="mb-4 text-2xl font-extrabold text-blue-800 dark:text-blue-100">
-          {lang === "am" ? "ቁጥር ይምረጡ" : "Pick a Number"}
+          {txt.pickNumber}
         </h2>
 
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <div>
             <label className="block mb-1 text-sm font-semibold text-gray-700">
-              {lang === "am" ? "ቁጥር ፈልግ" : "Search number"}
+              {txt.searchNumber}
             </label>
 
             <input
@@ -308,11 +297,10 @@ export default function NumberGrid() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleSearchNumber();
               }}
-              placeholder={
-                lang === "am"
-                  ? `1 - ${safeNumbers.length}`
-                  : `Enter 1 - ${safeNumbers.length}`
-              }
+              placeholder={txt.enterRange.replace(
+                "{gridSize}",
+                String(safeNumbers.length),
+              )}
               className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
             />
           </div>
@@ -323,41 +311,26 @@ export default function NumberGrid() {
               onClick={handleSearchNumber}
               className="w-full px-5 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 md:w-auto"
             >
-              {lang === "am" ? "ፈልግ" : "Search"}
+              {txt.search}
             </button>
           </div>
         </div>
 
         <div className="flex flex-wrap gap-3 mt-3 text-base text-gray-700">
           <span>
-            {lang === "am" ? "የቲኬት ዋጋ:" : "Ticket price:"}{" "}
+            {txt.ticketPriceColon}{" "}
             <strong className="text-xl font-extrabold text-blue-700">
-              {ticketPrice} Birr
+              {ticketPrice.toLocaleString()} {txt.birr}
             </strong>
           </span>
         </div>
 
         <div className="flex flex-wrap gap-3 mt-4 text-sm">
-          <Legend
-            color="bg-gray-200"
-            label={lang === "am" ? "ክፍት" : "Available"}
-          />
-          <Legend
-            color="bg-blue-500"
-            label={lang === "am" ? "የመረጡት" : "Selected by you"}
-          />
-          <Legend
-            color="bg-green-500"
-            label={lang === "am" ? "በሌላ ሰው ተመርጧል" : "Being selected"}
-          />
-          <Legend
-            color="bg-yellow-400"
-            label={lang === "am" ? "በመጠባበቅ" : "Pending"}
-          />
-          <Legend
-            color="bg-orange-500"
-            label={lang === "am" ? "ተይዟል" : "Taken"}
-          />
+          <Legend color="bg-gray-200" label={txt.available} />
+          <Legend color="bg-blue-500" label={txt.selectedByYou} />
+          <Legend color="bg-green-500" label={txt.beingSelected} />
+          <Legend color="bg-yellow-400" label={txt.pending} />
+          <Legend color="bg-orange-500" label={txt.taken} />
         </div>
       </div>
 
@@ -407,9 +380,8 @@ export default function NumberGrid() {
 
             <div className="flex flex-col gap-3 p-3 bg-white border shadow-sm rounded-xl dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-sm font-semibold text-gray-700 dark:text-slate-200">
-                {lang === "am"
-                  ? `ገጽ ${safeCurrentPage} / ${totalPages} — ${startIndex + 1} - ${Math.min(endIndex, safeNumbers.length)}`
-                  : `Page ${safeCurrentPage} / ${totalPages} — ${startIndex + 1} - ${Math.min(endIndex, safeNumbers.length)}`}
+                {txt.page} {safeCurrentPage} / {totalPages} — {startIndex + 1} -{" "}
+                {Math.min(endIndex, safeNumbers.length)}
               </div>
 
               <div className="flex gap-2">
@@ -419,7 +391,7 @@ export default function NumberGrid() {
                   disabled={safeCurrentPage <= 1}
                   className="flex-1 px-4 py-2 font-semibold border rounded-lg disabled:opacity-40 sm:flex-none"
                 >
-                  {lang === "am" ? "ቀዳሚ" : "Previous"}
+                  {txt.previous}
                 </button>
 
                 <button
@@ -430,7 +402,7 @@ export default function NumberGrid() {
                   disabled={safeCurrentPage >= totalPages}
                   className="flex-1 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg disabled:opacity-40 sm:flex-none"
                 >
-                  {lang === "am" ? "ቀጣይ" : "Next"}
+                  {txt.next}
                 </button>
               </div>
             </div>

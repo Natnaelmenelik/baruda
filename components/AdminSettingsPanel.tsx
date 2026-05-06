@@ -7,35 +7,52 @@ import { useLang } from '@/hooks/useLang';
 export default function AdminSettingsPanel() {
   const { lang } = useLang();
 
-  const t = lang === 'am'
-    ? {
-        title: 'የሎተሪ ቅንብሮች',
-        description: 'የቲኬት ዋጋን እና የቁጥሮች መጠንን ከአድሚን ፓነል ያስተካክሉ።',
-        loading: 'ቅንብሮች በመጫን ላይ...',
-        ticketPrice: 'የቲኬት ዋጋ',
-        gridSize: 'የቁጥሮች መጠን',
-        save: 'ቅንብሮችን አስቀምጥ',
-        saving: 'በማስቀመጥ ላይ...',
-        invalidPrice: 'የቲኬት ዋጋ ከ0 በላይ መሆን አለበት',
-        invalidGrid: 'የቁጥሮች መጠን ከ1 እስከ 20000 መሆን አለበት',
-        loadError: 'ቅንብሮችን መጫን አልተቻለም',
-        saveError: 'ቅንብሮችን ማስቀመጥ አልተቻለም',
-        saved: 'የሎተሪ ቅንብሮች ተሻሽለዋል',
-      }
-    : {
-        title: 'Lottery Settings',
-        description: 'Set ticket price and numbers grid size from the admin panel.',
-        loading: 'Loading settings...',
-        ticketPrice: 'Ticket Price',
-        gridSize: 'Numbers Grid Size',
-        save: 'Save Settings',
-        saving: 'Saving...',
-        invalidPrice: 'Ticket price must be a positive number',
-        invalidGrid: 'Grid size must be between 1 and 20000',
-        loadError: 'Failed to load settings',
-        saveError: 'Failed to save settings',
-        saved: 'Lottery settings updated successfully',
-      };
+  const text = {
+    en: {
+      title: 'Lottery Settings',
+      description: 'Set ticket price and numbers grid size from the admin panel.',
+      loading: 'Loading settings...',
+      ticketPrice: 'Ticket Price',
+      gridSize: 'Numbers Grid Size',
+      save: 'Save Settings',
+      saving: 'Saving...',
+      invalidPrice: 'Ticket price must be a positive number',
+      invalidGrid: 'Grid size must be between 1 and 20000',
+      loadError: 'Failed to load settings',
+      saveError: 'Failed to save settings',
+      saved: 'Lottery settings updated successfully',
+    },
+    am: {
+      title: 'የሎተሪ ቅንብሮች',
+      description: 'የቲኬት ዋጋን እና የቁጥሮች መጠንን ከአድሚን ፓነል ያስተካክሉ።',
+      loading: 'ቅንብሮች በመጫን ላይ...',
+      ticketPrice: 'የቲኬት ዋጋ',
+      gridSize: 'የቁጥሮች መጠን',
+      save: 'ቅንብሮችን አስቀምጥ',
+      saving: 'በማስቀመጥ ላይ...',
+      invalidPrice: 'የቲኬት ዋጋ ከ0 በላይ መሆን አለበት',
+      invalidGrid: 'የቁጥሮች መጠን ከ1 እስከ 20000 መሆን አለበት',
+      loadError: 'ቅንብሮችን መጫን አልተቻለም',
+      saveError: 'ቅንብሮችን ማስቀመጥ አልተቻለም',
+      saved: 'የሎተሪ ቅንብሮች ተሻሽለዋል',
+    },
+    om: {
+      title: 'Sajataa Loatarii',
+      description: 'Gatii tikkeetii fi hamma lakkoofsotaa paaneelii bulchiinsaa irraa sirreessi.',
+      loading: "Sajataa fe'aa jira...",
+      ticketPrice: 'Gatii Tikkeetii',
+      gridSize: 'Hamma Lakkoofsotaa',
+      save: 'Sajataa Oolchi',
+      saving: 'Oolchaa jira...',
+      invalidPrice: "Gatiin tikkeetii lakkoofsa lakkii ta'uu qaba",
+      invalidGrid: 'Hammi lakkoofsaa 1 hanga 20000 gidduu ta’uu qaba',
+      loadError: "Sajataa fe'uun hin danda'amne",
+      saveError: 'Sajataa oolchuun hin danda’amne',
+      saved: 'Sajataan loatarii milkiidhaan fooyya’eera',
+    },
+  } as const;
+
+  const t = text[lang];
 
   const [ticketPrice, setTicketPrice] = useState('');
   const [gridSize, setGridSize] = useState('');
