@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { setClientSession } from '@/lib/auth/client';
 import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
+import LanguageButtons from '@/components/LanguageButtons';
 
 function EyeIcon({ show }: { show: boolean }) {
   return show ? (
@@ -128,13 +129,7 @@ function LoginPageContent() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 px-4 py-12">
       <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
         <div className="mb-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setLang(lang === 'en' ? 'am' : lang === 'am' ? 'om' : 'en')}
-            className="rounded-xl bg-white px-3 py-2 text-sm font-semibold shadow border"
-          >
-            {lang === 'en' ? t.switchToAmharic : t.switchToEnglish}
-          </button>
+          <LanguageButtons lang={lang} setLang={setLang} />
 
             <ThemeToggle />
         </div>

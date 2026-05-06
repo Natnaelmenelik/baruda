@@ -11,6 +11,7 @@ import { useMySubmissions } from '@/hooks/useLottery';
 import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
 import { clearClientSession } from '@/lib/auth/client';
+import LanguageButtons from '@/components/LanguageButtons';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -69,12 +70,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-            <button
-              onClick={() => setLang(lang === 'en' ? 'am' : lang === 'am' ? 'om' : 'en')}
-              className="flex-1 rounded-xl bg-white px-3 py-2 shadow sm:flex-none"
-            >
-              {lang === 'en' ? t.switchToAmharic : lang === 'am' ? t.switchToOromifa : t.switchToEnglish}
-            </button>
+            <LanguageButtons lang={lang} setLang={setLang} />
 
             <ThemeToggle />
 
