@@ -412,7 +412,7 @@ export const translations = {
     adminPanel: "Paaneelii Bulchiinsaa",
     approve: "Mirkaneessi",
     reject: "Kufisiisi",
-    clearAll: "Qulqulleessi fi Marsaa Haaraa Jalqabi",
+    clearAll: "Qulqulleessi & Marsaa Haaraa Jalqabi",
     pickWinner: "Akaayyiidhaan Mo'ataa Filadhu",
     timeLeft: "Yeroo Hafe",
     warning: "Daqiiqaa 1 gadiitu hafe",
