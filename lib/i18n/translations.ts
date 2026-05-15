@@ -430,7 +430,7 @@ export const translations = {
     yourEmail: "Iimeeyilii kee",
     requestReset: "Ira-deebii gaafadhu",
     welcomeBack: "Baga Nagaan Deebite",
-    loginSubtitle: "Loatarii kee arguuf seeni",
+    loginSubtitle: "Akkaawuntii keessan galchuuf odeeffannoo keessan galchaa",
     phoneNumber: "Lakkoofsa Bilbilaa",
     enterPassword: "Jecha icctii kee galchi",
     loggingIn: "Seenaa jira...",
