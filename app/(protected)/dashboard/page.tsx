@@ -1,17 +1,17 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import NumberGrid from '@/components/NumberGrid';
-import WinnerAnnouncement from '@/components/WinnerAnnouncement';
-import ThemeToggle from '@/components/ThemeToggle';
-import MyPurchasesModal from '@/components/MyPurchasesModal';
-import { useMySubmissions } from '@/hooks/useLottery';
-import { useLang } from '@/hooks/useLang';
-import { tm } from '@/lib/i18n/toastMessages';
-import { clearClientSession } from '@/lib/auth/client';
-import LanguageButtons from '@/components/LanguageButtons';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import NumberGrid from "@/components/NumberGrid";
+import WinnerAnnouncement from "@/components/WinnerAnnouncement";
+import ThemeToggle from "@/components/ThemeToggle";
+import MyPurchasesModal from "@/components/MyPurchasesModal";
+import { useMySubmissions } from "@/hooks/useLottery";
+import { useLang } from "@/hooks/useLang";
+import { tm } from "@/lib/i18n/toastMessages";
+import { clearClientSession } from "@/lib/auth/client";
+import LanguageButtons from "@/components/LanguageButtons";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -22,15 +22,15 @@ export default function DashboardPage() {
 
   let user: any = {};
 
-  if (typeof window !== 'undefined') {
+  if (typeof window !== "undefined") {
     try {
-      user = JSON.parse(localStorage.getItem('user') || '{}');
+      user = JSON.parse(localStorage.getItem("user") || "{}");
     } catch {
       user = {};
     }
   }
 
-  const displayName = user?.name || 'User';
+  const displayName = user?.name || "User";
 
   const getSubmissionNumbers = (sub: any) => {
     if (Array.isArray(sub.numbers) && sub.numbers.length > 0) {
@@ -46,10 +46,10 @@ export default function DashboardPage() {
 
   function logout() {
     clearClientSession();
-    toast.success(tm(lang, 'logoutSuccess'));
+    toast.success(tm(lang, "logoutSuccess"));
 
     setTimeout(() => {
-      router.push('/login');
+      router.push("/login");
       router.refresh();
     }, 400);
   }
@@ -61,29 +61,29 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold">{t.dashboard}</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {lang === 'am'
+              {lang === "am"
                 ? `ሰላም፣ ${displayName} 👋`
-                : lang === 'om'
-                ? `Baga nagaan dhufte, ${displayName} 👋`
-                : `Welcome, ${displayName} 👋`}
+                : lang === "om"
+                  ? `Baga nagaan dhufte, ${displayName} 👋`
+                  : `Welcome, ${displayName} 👋`}
             </p>
           </div>
 
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <div className="flex flex-wrap items-center w-full gap-2 sm:w-auto">
             <LanguageButtons lang={lang} setLang={setLang} />
 
             <ThemeToggle />
 
             <button
               onClick={() => setShowPurchasesModal(true)}
-              className="flex-1 rounded-xl bg-blue-600 px-3 py-2 text-white sm:flex-none"
+              className="flex-1 px-3 py-2 text-white bg-blue-600 rounded-xl sm:flex-none"
             >
               {t.myPurchases}
             </button>
 
             <button
               onClick={() => setShowLogoutModal(true)}
-              className="flex-1 rounded-xl bg-red-600 px-3 py-2 text-white sm:flex-none"
+              className="flex-1 px-3 py-2 text-white bg-red-600 rounded-xl sm:flex-none"
             >
               {t.logout}
             </button>
@@ -92,7 +92,7 @@ export default function DashboardPage() {
 
         <WinnerAnnouncement />
 
-        <section className="overflow-hidden bg-gradient-to-r from-blue-50 to-sky-50 border border-blue-100 shadow rounded-2xl">
+        {/* <section className="overflow-hidden border border-blue-100 shadow bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl">
           <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
             <div className="flex items-center justify-center md:justify-start">
               <img
@@ -118,6 +118,32 @@ export default function DashboardPage() {
               </ul>
             </div>
           </div>
+        </section> */}
+
+        <section className="overflow-hidden border border-blue-100 shadow bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl">
+          <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
+            <div className="flex items-center justify-center md:justify-start">
+              <img
+                src="/images/jetour_dashboard.png"
+                alt={t.prizeCar}
+                className="mx-auto max-h-[420px] w-full max-w-xl object-contain drop-shadow-2xl"
+              />
+            </div>
+
+            <div className="text-center md:text-left">
+              <h2 className="mb-4 text-2xl font-extrabold text-blue-800">
+                {t.gameRules}
+              </h2>
+
+              <ul className="max-w-md mx-auto space-y-3 text-base font-medium text-center text-blue-700 sm:text-lg md:mx-0 md:text-left">
+                <li>• {t.chooseNumbersRule}</li>
+                <li>• {t.uploadReceiptRule}</li>
+                <li>• {t.waitApprovalRule}</li>
+                <li>• {t.winnerRandomRule}</li>
+                <li>• {t.unapprovedNotCountedRule}</li>
+              </ul>
+            </div>
+          </div>
         </section>
 
         <section>
@@ -139,7 +165,7 @@ export default function DashboardPage() {
           onClick={() => setShowLogoutModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl"
+            className="w-full max-w-sm p-6 bg-white shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-gray-900">
@@ -150,11 +176,11 @@ export default function DashboardPage() {
               {t.userLogoutConfirmMessage}
             </p>
 
-            <div className="mt-6 flex gap-3">
+            <div className="flex gap-3 mt-6">
               <button
                 type="button"
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700"
+                className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl"
               >
                 {t.cancel}
               </button>
@@ -162,7 +188,7 @@ export default function DashboardPage() {
               <button
                 type="button"
                 onClick={logout}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white"
+                className="flex-1 px-4 py-3 font-semibold text-white bg-red-600 rounded-xl"
               >
                 {t.logout}
               </button>
