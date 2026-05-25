@@ -345,7 +345,7 @@ export default function AdminPage() {
             onClick={() =>
               window.dispatchEvent(new Event("open-dashboard-message-modal"))
             }
-            className="px-4 py-2 font-semibold transition rounded text-amber-900 dark:text-amber-100 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
+            className="px-4 py-2 font-semibold transition rounded text-amber-950 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200 dark:from-amber-200 dark:to-orange-300 dark:text-black dark:hover:from-amber-100 dark:hover:to-orange-200"
           >
             {(txt as any).writeDashboardMessage || "Write a Message"}
           </button>
@@ -479,7 +479,7 @@ export default function AdminPage() {
                           {nums.map((n: any, index: number) => (
                             <span
                               key={`${n}-${index}`}
-                              className={`rounded-full px-2 py-1 text-xs font-bold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                              className={`rounded-full px-2 py-1 text-xs font-bold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 dark:bg-gradient-to-r dark:from-amber-500 dark:to-orange-600 dark:text-white dark:hover:from-amber-400 dark:hover:to-orange-500 text-yellow-700" : "bg-red-100 text-red-700"}`}
                             >
                               {n}
                             </span>
@@ -518,7 +518,7 @@ export default function AdminPage() {
                       </td>
                       <td className="p-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 dark:bg-gradient-to-r dark:from-amber-500 dark:to-orange-600 dark:text-white dark:hover:from-amber-400 dark:hover:to-orange-500 text-yellow-700" : "bg-red-100 text-red-700"}`}
                         >
                           {statusLabel(sub.status)}
                         </span>
