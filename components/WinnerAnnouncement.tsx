@@ -67,21 +67,24 @@ export default function WinnerAnnouncement({ announcement }: Props) {
 
   const winnerSizeClasses = [
     {
-      card: "h-[92px] max-w-[110px] sm:h-[150px] sm:max-w-[190px] md:h-auto md:max-w-[300px]",
-      brand: "text-base sm:text-3xl md:text-6xl",
-      number: "text-[2.5rem] sm:text-[4.6rem] md:text-[8rem]",
-      label: "text-[10px] sm:text-sm md:text-base",
+      card: "h-[92px] max-w-[110px] sm:h-[155px] sm:max-w-[195px] md:h-[220px] md:max-w-[230px] lg:h-[270px] lg:max-w-[285px] xl:h-[300px] xl:max-w-[310px]",
+      brand: "text-base sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl",
+      number:
+        "text-[2.5rem] sm:text-[4.6rem] md:text-[5.8rem] lg:text-[7rem] xl:text-[8rem]",
+      label: "text-[10px] sm:text-sm md:text-sm lg:text-base",
     },
     {
-      card: "h-[86px] max-w-[100px] sm:h-[135px] sm:max-w-[165px] md:h-auto md:max-w-[250px]",
-      brand: "text-sm sm:text-2xl md:text-5xl",
-      number: "text-[2.25rem] sm:text-[3.9rem] md:text-[6.5rem]",
+      card: "h-[86px] max-w-[100px] sm:h-[140px] sm:max-w-[170px] md:h-[190px] md:max-w-[205px] lg:h-[230px] lg:max-w-[245px] xl:h-[260px] xl:max-w-[265px]",
+      brand: "text-sm sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl",
+      number:
+        "text-[2.25rem] sm:text-[3.9rem] md:text-[5rem] lg:text-[5.9rem] xl:text-[6.5rem]",
       label: "text-[9px] sm:text-xs md:text-sm",
     },
     {
-      card: "h-[80px] max-w-[92px] sm:h-[120px] sm:max-w-[145px] md:h-auto md:max-w-[215px]",
-      brand: "text-xs sm:text-xl md:text-4xl",
-      number: "text-[2rem] sm:text-[3.3rem] md:text-[5.6rem]",
+      card: "h-[80px] max-w-[92px] sm:h-[125px] sm:max-w-[150px] md:h-[165px] md:max-w-[180px] lg:h-[200px] lg:max-w-[215px] xl:h-[225px] xl:max-w-[235px]",
+      brand: "text-xs sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl",
+      number:
+        "text-[2rem] sm:text-[3.3rem] md:text-[4.2rem] lg:text-[5rem] xl:text-[5.6rem]",
       label: "text-[8px] sm:text-[11px] md:text-xs",
     },
   ];
@@ -118,7 +121,7 @@ export default function WinnerAnnouncement({ announcement }: Props) {
         </button>
       </div>
 
-      <div className="relative grid items-start grid-cols-3 gap-2 justify-items-center md:gap-5">
+      <div className="relative grid items-end grid-cols-3 gap-2 justify-items-center sm:gap-4 md:gap-5 lg:gap-6">
         {winners.map((winner, index) => {
           const size = winnerSizeClasses[index] || winnerSizeClasses[2];
 
@@ -131,7 +134,7 @@ export default function WinnerAnnouncement({ announcement }: Props) {
               </div>
 
               <div
-                className={`group relative mx-auto aspect-square w-full overflow-hidden rounded-[1.2rem] border border-white/75 bg-white/25 p-2 shadow-[0_22px_55px_rgba(30,64,175,0.14)] ring-1 ring-white/70 backdrop-blur-2xl md:rounded-[1.8rem] md:p-4 ${size.card}`}
+                className={`group relative mx-auto w-full overflow-hidden rounded-[1.2rem] border border-white/75 bg-white/25 p-2 shadow-[0_22px_55px_rgba(30,64,175,0.14)] ring-1 ring-white/70 backdrop-blur-2xl md:rounded-[1.8rem] md:p-4 ${size.card}`}
               >
                 <div className="pointer-events-none absolute inset-0 rounded-[1.2rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.12)_30%,rgba(219,234,254,0.32)_58%,rgba(147,197,253,0.12)_100%)] md:rounded-[1.8rem]" />
                 <div className="pointer-events-none absolute inset-[5px] rounded-[1rem] border border-white/60 shadow-[inset_0_4px_18px_rgba(255,255,255,0.72),inset_0_-14px_30px_rgba(30,64,175,0.08)] md:inset-[7px] md:rounded-[1.45rem]" />
