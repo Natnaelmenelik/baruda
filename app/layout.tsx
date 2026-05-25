@@ -7,10 +7,10 @@ import { Analytics } from "@vercel/analytics/next";
 export const metadata: Metadata = {
   metadataBase: new URL("https://baruda.vercel.app"),
   title: "ባሩዳ ዶት ኮም",
-  description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
+  description: "የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
   openGraph: {
     title: "ባሩዳ ዶት ኮም",
-    description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
+    description: "የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
     url: "https://baruda.vercel.app",
     siteName: "ባሩዳ ዶት ኮም",
     images: [
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "ባሩዳ ዶት ኮም",
-    description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
+    description: "የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
     images: ["/bardua-telega.jpg"],
   },
 };
