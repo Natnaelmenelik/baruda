@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import QueryProvider from "./providers/QueryProvider";
 import AppToaster from "@/components/AppToaster";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://baruda.vercel.app"),
@@ -58,6 +59,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <Analytics />
         <QueryProvider>
           {children}
           <AppToaster />
