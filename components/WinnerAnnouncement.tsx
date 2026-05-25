@@ -118,7 +118,7 @@ export default function WinnerAnnouncement({ announcement }: Props) {
         </button>
       </div>
 
-      <div className="relative grid gap-5 md:grid-cols-3">
+      <div className="relative grid gap-4 justify-items-center md:grid-cols-3 md:gap-5">
         {winners.map((winner, index) => {
           const size = winnerSizeClasses[index] || winnerSizeClasses[2];
 
