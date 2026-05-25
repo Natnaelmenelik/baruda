@@ -424,12 +424,12 @@ const handleProceed = async () => {
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-white p-4 shadow dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
+      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
             {txt.chooseYourNumbers}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-slate-300">
+          <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-300">
             {txt.availableWhiteTakenGreen}
           </p>
         </div>
@@ -465,11 +465,11 @@ const handleProceed = async () => {
               const status = item.status || "available";
 
               let colorClass =
-                "border-gray-200 bg-white text-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+                "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
               if (status === "taken" || status === "closed") {
                 colorClass =
-                  "border-green-300 bg-green-100 text-green-800 dark:border-green-700 dark:bg-green-950 dark:text-green-200";
+                  "border-green-300 bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-800 dark:text-emerald-100 dark:border-green-700 dark:bg-green-950 dark:text-green-200";
               }
 
               if (status === "pending") {
@@ -500,8 +500,8 @@ const handleProceed = async () => {
             })}
           </div>
 
-          <div className="flex flex-col gap-3 rounded-xl border bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-semibold text-gray-700 dark:text-slate-200">
+          <div className="flex flex-col gap-3 rounded-xl border bg-white dark:bg-slate-900 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm font-semibold text-gray-700 dark:text-slate-200 dark:text-slate-200">
               {txt.page} {safeCurrentPage} / {totalPages} — {startIndex + 1} -{" "}
               {Math.min(endIndex, safeNumbers.length)}
             </div>

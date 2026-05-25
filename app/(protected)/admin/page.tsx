@@ -327,7 +327,7 @@ export default function AdminPage() {
       <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{txt.adminPanel}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {txt.welcome}, {displayName} 👋
           </p>
         </div>
@@ -337,7 +337,7 @@ export default function AdminPage() {
           <button
             type="button"
             onClick={() => window.dispatchEvent(new Event("open-dashboard-message-modal"))}
-            className="px-4 py-2 font-semibold text-amber-900 transition rounded bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
+            className="px-4 py-2 font-semibold text-amber-900 dark:text-amber-100 transition rounded bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
           >
             {((txt as any).writeDashboardMessage || "Write a Message")}
           </button>
@@ -385,11 +385,11 @@ export default function AdminPage() {
         <StatCard title={txt.left} value={stats.numbersLeft || 0} />
       </div>
 
-      <div className="overflow-hidden bg-white shadow rounded-xl">
+      <div className="overflow-hidden bg-white dark:bg-slate-900 shadow rounded-xl">
         <div className="flex flex-col gap-4 p-4 border-b lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-bold">{txt.submissions}</h2>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
               {txt.total}: {submissionTotal}
             </p>
           </div>
@@ -407,7 +407,7 @@ export default function AdminPage() {
                   className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
                     submissionStatusFilter === status
                       ? "bg-blue-600 text-white shadow"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 dark:text-slate-200 hover:bg-gray-200"
                   }`}
                 >
                   {status === "all"
@@ -427,7 +427,7 @@ export default function AdminPage() {
         </div>
 
         {safeSubmissions.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-gray-500 dark:text-slate-400">
             {txt.noSubmissions}
           </div>
         ) : (
@@ -454,7 +454,7 @@ export default function AdminPage() {
                     <tr
                       key={sub.id}
                       onClick={() => setSelectedSubmission(sub)}
-                      className="border-b cursor-pointer hover:bg-gray-50"
+                      className="border-b cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800"
                     >
                       <td className="p-3">{sub.user_name || txt.unknown}</td>
                       <td className="p-3">
@@ -465,7 +465,7 @@ export default function AdminPage() {
                           {nums.map((n: any, index: number) => (
                             <span
                               key={`${n}-${index}`}
-                              className={`rounded-full px-2 py-1 text-xs font-bold ${sub.status === "approved" ? "bg-green-100 text-green-700" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                              className={`rounded-full px-2 py-1 text-xs font-bold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
                             >
                               {n}
                             </span>
@@ -479,7 +479,7 @@ export default function AdminPage() {
                             Birr
                           </b>
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-slate-400">
                           {txt.ticket}:{" "}
                           {Number(sub.ticket_price || 0).toLocaleString()}
                         </div>
@@ -504,7 +504,7 @@ export default function AdminPage() {
                       </td>
                       <td className="p-3">
                         <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${sub.status === "approved" ? "bg-green-100 text-green-700" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${sub.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
                         >
                           {statusLabel(sub.status)}
                         </span>
@@ -560,7 +560,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t p-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 border-t p-4 text-sm text-gray-600 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
           <span>
             {((txt as any).page || "Page")} {currentSubmissionPage} / {submissionTotalPages}
           </span>
@@ -569,7 +569,7 @@ export default function AdminPage() {
               type="button"
               onClick={() => setSubmissionPage((p) => Math.max(1, p - 1))}
               disabled={currentSubmissionPage <= 1}
-              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {((txt as any).previous || "Previous")}
             </button>
@@ -579,7 +579,7 @@ export default function AdminPage() {
                 setSubmissionPage((p) => Math.min(submissionTotalPages, p + 1))
               }
               disabled={currentSubmissionPage >= submissionTotalPages}
-              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {((txt as any).next || "Next")}
             </button>
@@ -591,10 +591,10 @@ export default function AdminPage() {
         <Modal onClose={() => setSelectedSubmission(null)} wide>
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
                 {txt.submissionDetails || "Submission Details"}
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 dark:text-slate-300">
                 {txt.clickRowDetails ||
                   "Review receipt, user information, and contribution breakdown."}
               </p>
@@ -659,7 +659,7 @@ export default function AdminPage() {
 
             <div className="rounded-xl border p-4 dark:border-slate-700">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-bold text-gray-900 dark:text-white">
+                <h3 className="font-bold text-gray-900 dark:text-white dark:text-white">
                   {txt.contributionBreakdown || txt.numbers}
                 </h3>
                 <span className="text-xs font-semibold text-gray-400">
@@ -696,12 +696,12 @@ export default function AdminPage() {
                 ).map((item: any, index: number) => (
                   <div
                     key={`${item.number}-${index}`}
-                    className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-sm dark:bg-blue-950/50"
+                    className="flex items-center justify-between rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm dark:bg-blue-950/50"
                   >
-                    <span className="font-bold text-blue-700 dark:text-blue-200">
+                    <span className="font-bold text-blue-700 dark:text-blue-200 dark:text-blue-200">
                       {item.number}
                     </span>
-                    <span className="font-semibold text-gray-800 dark:text-slate-100">
+                    <span className="font-semibold text-gray-800 dark:text-slate-100 dark:text-slate-100">
                       {Number(item.amount || 0).toLocaleString()} {txt.birr}
                     </span>
                   </div>
@@ -713,7 +713,7 @@ export default function AdminPage() {
               <button
                 type="button"
                 onClick={() => setSelectedSubmission(null)}
-                className="rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {txt.close}
               </button>
@@ -764,16 +764,16 @@ export default function AdminPage() {
 
       {showLogoutModal && (
         <Modal onClose={() => setShowLogoutModal(false)}>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {txt.logoutConfirmTitle}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
             {txt.adminLogoutConfirmMessage}
           </p>
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowLogoutModal(false)}
-              className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl"
             >
               {txt.cancel}
             </button>
@@ -788,17 +788,17 @@ export default function AdminPage() {
       )}
       {showClearModal && (
         <Modal onClose={() => setShowClearModal(false)}>
-          <h2 className="text-xl font-bold text-gray-900">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {txt.clearAllSubmissionsTitle}
           </h2>
-          <p className="mt-3 text-sm text-gray-600">
+          <p className="mt-3 text-sm text-gray-600 dark:text-slate-300">
             {txt.clearAllSubmissionsMessage}
           </p>
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowClearModal(false)}
               disabled={clearing}
-              className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl disabled:opacity-50"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl disabled:opacity-50"
             >
               {txt.cancel}
             </button>
@@ -825,11 +825,11 @@ export default function AdminPage() {
             </button>
           </div>
           {winnersLoading ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-slate-400">
               {txt.loadingWinners}
             </div>
           ) : winners.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">
+            <div className="p-8 text-center text-gray-500 dark:text-slate-400">
               {txt.noPreviousWinners}
             </div>
           ) : (
@@ -846,7 +846,7 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {winners.map((w: any) => (
-                    <tr key={w.id} className="border-b hover:bg-gray-50">
+                    <tr key={w.id} className="border-b hover:bg-gray-50 dark:hover:bg-slate-800">
                       <td className="p-3 font-bold">{w.number}</td>
                       <td className="p-3">{w.user_name || txt.unknown}</td>
                       <td className="p-3">{w.user_phone || "-"}</td>
@@ -871,15 +871,15 @@ export default function AdminPage() {
 
       {selectedImage && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 dark:bg-black/80 p-4"
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl rounded-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white dark:bg-slate-900 shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {txt.paymentReceipt}
               </h2>
               <button
@@ -911,9 +911,9 @@ export default function AdminPage() {
 
 function InfoLine({ label, value }: { label: string; value: any }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-1.5 last:border-b-0 dark:border-slate-700">
-      <span className="text-gray-500 dark:text-slate-400">{label}</span>
-      <b className="text-right text-gray-900 dark:text-white">{value}</b>
+    <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-slate-700 pb-1.5 last:border-b-0 dark:border-slate-700">
+      <span className="text-gray-500 dark:text-slate-400 dark:text-slate-400">{label}</span>
+      <b className="text-right text-gray-900 dark:text-white dark:text-white">{value}</b>
     </div>
   );
 }
@@ -929,11 +929,11 @@ function Modal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 p-4"
       onClick={onClose}
     >
       <div
-        className={`w-full ${wide ? "max-w-2xl" : "max-w-sm"} rounded-2xl bg-white p-6 shadow-2xl`}
+        className={`w-full ${wide ? "max-w-2xl" : "max-w-sm"} rounded-2xl bg-white dark:bg-slate-900 p-6 shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -944,9 +944,9 @@ function Modal({
 
 function StatCard({ title, value }: { title: string; value: any }) {
   return (
-    <div className="p-5 text-center bg-white shadow rounded-xl">
-      <div className="text-3xl font-extrabold text-gray-950">{value}</div>
-      <div className="mt-1 text-base font-medium text-gray-500">{title}</div>
+    <div className="p-5 text-center bg-white dark:bg-slate-900 shadow rounded-xl">
+      <div className="text-3xl font-extrabold text-gray-950 dark:text-white">{value}</div>
+      <div className="mt-1 text-base font-medium text-gray-500 dark:text-slate-400">{title}</div>
     </div>
   );
 }

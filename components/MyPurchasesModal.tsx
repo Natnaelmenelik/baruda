@@ -145,36 +145,36 @@ export default function MyPurchasesModal({
   };
 
   const statusClass = (status: string) => {
-    if (status === "approved") return "bg-green-100 text-green-700";
+    if (status === "approved") return "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200";
     if (status === "pending") return "bg-yellow-100 text-yellow-700";
     if (status === "rejected") return "bg-red-100 text-red-700";
-    return "bg-gray-100 text-gray-600";
+    return "bg-gray-100 text-gray-600 dark:text-slate-300";
   };
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 p-4"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900"
+        className="w-full max-w-4xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b px-5 py-4 dark:border-slate-700">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-bold text-gray-700 hover:bg-gray-300 dark:bg-slate-700 dark:text-white"
+            className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-bold text-gray-700 dark:text-slate-200 hover:bg-gray-300 dark:bg-slate-700 dark:text-white"
           >
             ×
           </button>
         </div>
 
         {subs.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 dark:text-slate-400">
+          <div className="p-8 text-center text-gray-500 dark:text-slate-400 dark:text-slate-400">
             {txt.noPurchases}
           </div>
         ) : (
@@ -188,19 +188,19 @@ export default function MyPurchasesModal({
                 return (
                   <div
                     key={sub.id || sub.submission_group_id || sub.primary_submission_id}
-                    className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                    className="rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"
                   >
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-500 dark:text-slate-400">
+                          <span className="text-sm font-semibold text-gray-500 dark:text-slate-400 dark:text-slate-400">
                             {txt.numbers}:
                           </span>
                           {numbers.length ? (
                             numbers.map((num: any, index: number) => (
                               <span
                                 key={`${num}-${index}`}
-                                className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-800 dark:bg-blue-950 dark:text-blue-200"
+                                className="rounded-full bg-blue-100 dark:bg-blue-500/20 px-3 py-1 text-sm font-bold text-blue-800 dark:text-blue-100 dark:bg-blue-950 dark:text-blue-200"
                               >
                                 {num}
                               </span>
@@ -214,12 +214,12 @@ export default function MyPurchasesModal({
                           {items.map((item: any, index: number) => (
                             <div
                               key={`${item.number}-${index}`}
-                              className="flex items-center justify-between rounded-xl bg-blue-50 px-3 py-2 text-sm dark:bg-blue-950/50"
+                              className="flex items-center justify-between rounded-xl bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm dark:bg-blue-950/50"
                             >
-                              <span className="font-bold text-blue-700 dark:text-blue-200">
+                              <span className="font-bold text-blue-700 dark:text-blue-200 dark:text-blue-200">
                                 {item.number}
                               </span>
-                              <span className="font-semibold text-gray-800 dark:text-slate-100">
+                              <span className="font-semibold text-gray-800 dark:text-slate-100 dark:text-slate-100">
                                 {Number(item.amount || 0).toLocaleString()} {txt.birr}
                               </span>
                             </div>
@@ -229,7 +229,7 @@ export default function MyPurchasesModal({
 
                       <div className="w-full rounded-xl bg-gray-50 p-3 text-sm dark:bg-slate-800 md:w-64">
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-gray-500 dark:text-slate-400">
+                          <span className="text-gray-500 dark:text-slate-400 dark:text-slate-400">
                             {txt.status}
                           </span>
                           <span
@@ -240,19 +240,19 @@ export default function MyPurchasesModal({
                         </div>
 
                         <div className="mb-2 flex items-center justify-between gap-3">
-                          <span className="text-gray-500 dark:text-slate-400">
+                          <span className="text-gray-500 dark:text-slate-400 dark:text-slate-400">
                             {txt.totalAmount}
                           </span>
-                          <b className="text-gray-900 dark:text-white">
+                          <b className="text-gray-900 dark:text-white dark:text-white">
                             {Number(total || 0).toLocaleString()} {txt.birr}
                           </b>
                         </div>
 
                         <div className="mb-3">
-                          <span className="block text-gray-500 dark:text-slate-400">
+                          <span className="block text-gray-500 dark:text-slate-400 dark:text-slate-400">
                             {txt.date}
                           </span>
-                          <b className="text-gray-900 dark:text-white">
+                          <b className="text-gray-900 dark:text-white dark:text-white">
                             {sub.submitted_at
                               ? new Date(sub.submitted_at).toLocaleString(
                                   lang === "am" ? "am-ET" : "en-US",
@@ -270,7 +270,7 @@ export default function MyPurchasesModal({
                             {txt.viewReceipt}
                           </button>
                         ) : (
-                          <div className="rounded-xl bg-gray-100 px-4 py-2.5 text-center text-sm font-semibold text-gray-500 dark:bg-slate-700 dark:text-slate-300">
+                          <div className="rounded-xl bg-gray-100 px-4 py-2.5 text-center text-sm font-semibold text-gray-500 dark:text-slate-400 dark:bg-slate-700 dark:text-slate-300">
                             {txt.noReceipt}
                           </div>
                         )}
@@ -287,22 +287,22 @@ export default function MyPurchasesModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             {txt.close}
           </button>
         </div>
         {selectedReceiptUrl && (
           <div
-            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 dark:bg-black/80 p-4"
             onClick={() => setSelectedReceiptUrl(null)}
           >
             <div
-              className="w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900"
+              className="w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl dark:bg-slate-900"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-4 flex items-center justify-between border-b pb-3 dark:border-slate-700">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white dark:text-white">
                   {txt.receiptPreview || txt.receipt}
                 </h3>
 

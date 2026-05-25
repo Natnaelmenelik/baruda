@@ -37,13 +37,13 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl dark:bg-slate-900">
         <div className="max-h-[90vh] overflow-y-auto p-5 md:p-6">
           <div className="flex justify-end mb-4">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-xl border px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="rounded-xl border px-3 py-1.5 text-sm font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               ✕
             </button>
@@ -160,7 +160,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         <button
           type="button"
           onClick={() => loadSelections()}
-          className="px-4 py-2 text-sm font-semibold text-blue-700 bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
+          className="px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-200 bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 shadow-sm rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 dark:border-slate-700 dark:bg-slate-900 dark:text-blue-300 dark:hover:bg-slate-800"
         >
           {txt.viewSelections || "View Selections"}
         </button>
@@ -177,12 +177,12 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         <Modal onClose={() => setOpen(false)}>
           <div className="flex flex-col gap-3 mb-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
                 {txt.numberManagement ||
                   txt.manageNumbers ||
                   "Number Management"}
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400">
                 {txt.selectedNumbersByUsers ||
                   "Selected numbers and pool status"}
               </p>
@@ -197,17 +197,17 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
               <button
                 type="button"
                 onClick={() => loadSelections()}
-                className="px-4 py-2 text-sm font-semibold text-gray-700 border rounded-xl hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {txt.viewSelections || "View Selections"}
               </button>
             </div>
           </div>
 
-          <div className="overflow-hidden border border-gray-200 rounded-xl dark:border-slate-700">
+          <div className="overflow-hidden border border-gray-200 dark:border-slate-700 rounded-xl dark:border-slate-700">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] table-fixed text-sm">
-                <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-300">
+                <thead className="text-xs text-gray-500 dark:text-slate-400 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-300">
                   <tr>
                     <th className="w-24 px-4 py-3 text-left">
                       {txt.number || "Number"}
@@ -237,7 +237,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-4 py-8 text-center text-gray-500"
+                        className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                       >
                         {txt.loading || "Loading..."}
                       </td>
@@ -246,7 +246,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-4 py-8 text-center text-gray-500"
+                        className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                       >
                         {txt.noNumberData || "No number data available"}
                       </td>
@@ -264,9 +264,9 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                       return (
                         <tr
                           key={row.number}
-                          className="bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800/70"
+                          className="bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/70"
                         >
-                          <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                          <td className="px-4 py-3 font-bold text-gray-900 dark:text-white dark:text-white">
                             {row.number}
                           </td>
                           <td className="px-4 py-3 text-right tabular-nums">
@@ -282,7 +282,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                           </td>
                           <td className="px-4 py-3 text-center">
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 text-green-700" : "bg-white text-gray-700 ring-1 ring-gray-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"}`}
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : "bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-200 ring-1 ring-gray-200 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700"}`}
                             >
                               {closed
                                 ? txt.taken || txt.closed || "Taken"
@@ -304,7 +304,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                                 <>
                                   <button
                                     onClick={() => editTarget(row)}
-                                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
                                   >
                                     {txt.editTarget || "Edit Target"}
                                   </button>
@@ -333,19 +333,19 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         <Modal onClose={() => setSelectionOpen(false)}>
           <div className="flex items-center justify-between gap-3 mb-5">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
                 {txt.selectedNumbersByUsers || "Selected Numbers by Users"}
               </h2>
-              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400">
                 {txt.numberSelections || "Number selections"}
               </p>
             </div>
           </div>
 
-          <div className="overflow-hidden border border-gray-200 rounded-xl dark:border-slate-700">
+          <div className="overflow-hidden border border-gray-200 dark:border-slate-700 rounded-xl dark:border-slate-700">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[850px] table-fixed text-sm">
-                <thead className="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-300">
+                <thead className="text-xs text-gray-500 dark:text-slate-400 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-300">
                   <tr>
                     <th className="w-24 px-4 py-3 text-left">
                       {txt.number || "Number"}
@@ -375,7 +375,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-4 py-8 text-center text-gray-500"
+                        className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                       >
                         {txt.loadingSelections || txt.loading || "Loading..."}
                       </td>
@@ -384,7 +384,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-4 py-8 text-center text-gray-500"
+                        className="px-4 py-8 text-center text-gray-500 dark:text-slate-400"
                       >
                         {txt.noSelectionsYet || "No selections yet"}
                       </td>
@@ -393,9 +393,9 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                     selectionRows.map((row, idx) => (
                       <tr
                         key={`${row.submission_id}-${row.number}-${idx}`}
-                        className="bg-white hover:bg-gray-50 dark:bg-slate-900 dark:hover:bg-slate-800/70"
+                        className="bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/70"
                       >
-                        <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                        <td className="px-4 py-3 font-bold text-gray-900 dark:text-white dark:text-white">
                           {row.number}
                         </td>
                         <td className="px-4 py-3 truncate">
@@ -410,7 +410,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <span
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${row.status === "approved" ? "bg-green-100 text-green-700" : row.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${row.status === "approved" ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : row.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
                           >
                             {row.status === "approved"
                               ? txt.approved || "Approved"
@@ -419,7 +419,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                                 : txt.rejected || "Rejected"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-gray-500">
+                        <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">
                           {row.submitted_at
                             ? new Date(row.submitted_at).toLocaleString()
                             : "-"}
@@ -429,7 +429,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                             <button
                               type="button"
                               onClick={() => setSelectionReceiptImage(String(row.receipt_url))}
-                              className="text-sm font-semibold text-blue-600 hover:underline"
+                              className="text-sm font-semibold text-blue-600 dark:text-blue-300 hover:underline"
                             >
                               {txt.view || txt.receipt || "View"}
                             </button>
@@ -449,15 +449,15 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
 
       {selectionReceiptImage && (
         <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 dark:bg-black/80 p-4"
           onClick={() => setSelectionReceiptImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-900"
+            className="relative w-full max-w-4xl rounded-2xl bg-white dark:bg-slate-900 p-5 shadow-2xl dark:bg-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between border-b pb-3 dark:border-slate-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
                 {txt.paymentReceipt || txt.receipt || "Payment Receipt"}
               </h2>
               <button

@@ -447,7 +447,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{t.dashboard}</h1>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
               {lang === "am"
                 ? `ሰላም፣ ${displayName} 👋`
                 : lang === "om"
@@ -460,14 +460,14 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={() => setShowNumberAmounts(true)}
-              className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50"
+              className="px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-200 transition bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 shadow-sm rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30"
             >
               {label("numberAmounts", "Number Amounts")}
             </button>
             <button
               type="button"
               onClick={() => setShowPurchasesModal(true)}
-              className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50"
+              className="px-4 py-2 text-sm font-semibold text-green-700 dark:text-emerald-200 transition bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 shadow-sm rounded-xl hover:bg-green-50 dark:hover:bg-emerald-950/40 dark:bg-emerald-950/30"
             >
               {t.myPurchases}
             </button>
@@ -484,7 +484,7 @@ export default function DashboardPage() {
 
         {dashboardMessage && (
           <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 p-[1px] shadow-xl shadow-blue-900/10">
-            <div className="p-4 rounded-3xl bg-white/95 backdrop-blur md:p-5">
+            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900/95 dark:bg-slate-900/90 backdrop-blur md:p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="flex gap-3">
                   <div className="flex items-center justify-center text-xl text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-600 to-sky-500 shadow-blue-900/20">
@@ -494,7 +494,7 @@ export default function DashboardPage() {
                     <div className="text-xs font-black uppercase tracking-[0.25em] text-indigo-600">
                       {label("dashboardMessageTitle", "Announcement")}
                     </div>
-                    <p className="mt-2 text-xl font-semibold leading-7 text-gray-800 whitespace-pre-wrap md:text-2xl">
+                    <p className="mt-2 text-xl font-semibold leading-7 text-gray-800 dark:text-slate-100 whitespace-pre-wrap md:text-2xl">
                       {dashboardMessage.text}
                     </p>
                   </div>
@@ -514,10 +514,10 @@ export default function DashboardPage() {
         <WinnerAnnouncement announcement={winnerAnnouncement} />
 
         {approvalNotifications.length > 0 && (
-          <section className="p-4 border shadow-md rounded-2xl border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
+          <section className="p-4 border shadow-md rounded-2xl border-emerald-200 dark:border-emerald-800/60 bg-gradient-to-br from-emerald-50 dark:from-emerald-950/40 via-white dark:via-slate-900/60 to-emerald-100">
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="px-6 py-4 shadow-inner rounded-2xl bg-white/80 ring-1 ring-emerald-100">
-                <div className="text-3xl font-black text-emerald-700 md:text-4xl">
+              <div className="px-6 py-4 shadow-inner rounded-2xl bg-white dark:bg-slate-900/80 dark:bg-slate-900/80 ring-1 ring-emerald-100">
+                <div className="text-3xl font-black text-emerald-700 dark:text-emerald-200 md:text-4xl">
                   {label("approvalGoodLuck", "Good luck!")}
                 </div>
               </div>
@@ -525,24 +525,24 @@ export default function DashboardPage() {
                 {approvalNotifications.map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 text-left border shadow-sm rounded-xl border-emerald-100 bg-white/90"
+                    className="p-3 text-left border shadow-sm rounded-xl border-emerald-100 dark:border-emerald-800/60 bg-white dark:bg-slate-900/90 dark:bg-slate-900/85"
                   >
                     <div className="flex items-center justify-between gap-3 mb-2">
-                      <span className="text-sm font-black text-emerald-950">
+                      <span className="text-sm font-black text-emerald-950 dark:text-emerald-50">
                         {label("numbers", "Numbers")}
                       </span>
-                      <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">
+                      <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-200">
                         {label("approved", "Approved")}
                       </span>
                     </div>
-                    <div className="text-lg font-black text-gray-950">
+                    <div className="text-lg font-black text-gray-950 dark:text-white">
                       {formatApprovedNumbers(item)}
                     </div>
-                    <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-1.5 text-xs">
-                      <span className="font-bold text-emerald-800">
+                    <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 text-xs">
+                      <span className="font-bold text-emerald-800 dark:text-emerald-100">
                         {label("amount", "Amount")}
                       </span>
-                      <span className="font-extrabold text-emerald-950">
+                      <span className="font-extrabold text-emerald-950 dark:text-emerald-50">
                         {Number(
                           item.total_amount || item.ticket_price || 0,
                         ).toLocaleString()}{" "}
@@ -572,11 +572,11 @@ export default function DashboardPage() {
                 className="mx-auto w-full max-w-5xl object-contain drop-shadow-xl max-h-[220px] sm:max-h-[260px] md:max-h-[320px] lg:max-h-[420px]"
               />
             </div>
-            <div className="w-full max-w-5xl p-3 mx-auto text-center border border-pink-100 shadow-md rounded-3xl bg-white/90 shadow-pink-900/5 backdrop-blur sm:p-4 md:p-4 lg:p-5">
+            <div className="w-full max-w-5xl p-3 mx-auto text-center border border-pink-100 shadow-md rounded-3xl bg-white dark:bg-slate-900/90 dark:bg-slate-900/85 shadow-pink-900/5 backdrop-blur sm:p-4 md:p-4 lg:p-5">
               <p className="max-w-4xl mx-auto text-lg font-black leading-snug tracking-tight text-rose-700 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
                 የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ
               </p>
-              <p className="max-w-4xl mx-auto my-3 text-lg font-black leading-snug tracking-tight text-blue-700 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
+              <p className="max-w-4xl mx-auto my-3 text-lg font-black leading-snug tracking-tight text-blue-700 dark:text-blue-200 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
                 560,000 ብር
               </p>
               <a
@@ -612,24 +612,24 @@ export default function DashboardPage() {
 
       {showLogoutModal && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 p-4"
           onClick={() => setShowLogoutModal(false)}
         >
           <div
-            className="w-full max-w-sm p-6 bg-white shadow-2xl rounded-2xl"
+            className="w-full max-w-sm p-6 bg-white dark:bg-slate-900 shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {t.logoutConfirmTitle}
             </h2>
-            <p className="mt-2 text-sm text-gray-600">
+            <p className="mt-2 text-sm text-gray-600 dark:text-slate-300">
               {t.userLogoutConfirmMessage}
             </p>
             <div className="flex gap-3 mt-6">
               <button
                 type="button"
                 onClick={() => setShowLogoutModal(false)}
-                className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl"
+                className="flex-1 px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl"
               >
                 {t.cancel}
               </button>

@@ -632,7 +632,7 @@
 //           type="button"
 //           onClick={loadSelections}
 //           disabled={loadingType !== null}
-//           className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 disabled:opacity-50"
+//           className="px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-200 transition bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 shadow-sm rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 disabled:opacity-50"
 //         >
 //           {loadingType === "selections"
 //             ? label("loading", "Loading...")
@@ -643,7 +643,7 @@
 //           type="button"
 //           onClick={openApprovedUsers}
 //           disabled={loadingType !== null}
-//           className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50 disabled:opacity-50"
+//           className="px-4 py-2 text-sm font-semibold text-green-700 dark:text-emerald-200 transition bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 shadow-sm rounded-xl hover:bg-green-50 dark:hover:bg-emerald-950/40 dark:bg-emerald-950/30 disabled:opacity-50"
 //         >
 //           {loadingType === "approvedUsers"
 //             ? label("loading", "Loading...")
@@ -657,7 +657,7 @@
 //             copyApprovedNumberAmountsForTelegram();
 //           }}
 //           disabled={loadingType !== null}
-//           className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50"
+//           className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white dark:bg-slate-900 border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50"
 //         >
 //           {loadingType === "copyAmounts"
 //             ? label("copying", "Copying...")
@@ -682,14 +682,14 @@
 //           title={label("writeDashboardMessage", "Write a Message")}
 //         >
 //           <div className="space-y-4">
-//             <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-900">
+//             <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 dark:border-amber-800/60 bg-gradient-to-br from-amber-50 dark:from-amber-950/40 via-white dark:via-slate-900/60 to-orange-50 dark:to-orange-950/30 text-amber-900 dark:text-amber-100">
 //               <div className="font-extrabold">
 //                 {label(
 //                   "messageVisibleFor24Hours",
 //                   "This message will be visible on every user dashboard for 24 hours.",
 //                 )}
 //               </div>
-//               <div className="mt-1 text-xs font-semibold text-amber-700">
+//               <div className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-200">
 //                 {label(
 //                   "usersCanDismissMessage",
 //                   "If a user closes it, it will stay hidden for that user after reload.",
@@ -697,7 +697,7 @@
 //               </div>
 //             </div>
 
-//             <label className="block text-sm font-bold text-gray-800">
+//             <label className="block text-sm font-bold text-gray-800 dark:text-slate-100">
 //               {label("messageToUsers", "Message to users")}
 //             </label>
 
@@ -710,10 +710,10 @@
 //                 "dashboardMessagePlaceholder",
 //                 "Write the announcement or instruction users should see...",
 //               )}
-//               className="w-full px-4 py-3 text-sm font-semibold text-gray-900 transition bg-white border outline-none resize-none rounded-2xl border-amber-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+//               className="w-full px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white transition bg-white dark:bg-slate-900 border outline-none resize-none rounded-2xl border-amber-200 dark:border-amber-800/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
 //             />
 
-//             <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+//             <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-slate-400">
 //               <span>
 //                 {label("messageCharacterLimit", "Maximum 600 characters")}
 //               </span>
@@ -724,7 +724,7 @@
 //               <button
 //                 type="button"
 //                 onClick={() => setShowMessageModal(false)}
-//                 className="px-4 py-3 font-semibold text-gray-700 transition border border-gray-200 rounded-xl hover:bg-gray-50"
+//                 className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 transition border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
 //               >
 //                 {label("cancel", "Cancel")}
 //               </button>
@@ -733,7 +733,7 @@
 //                 type="button"
 //                 onClick={sendDashboardMessage}
 //                 disabled={loadingType === "message"}
-//                 className="px-4 py-3 font-extrabold text-white transition shadow-lg rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 shadow-orange-900/20 hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
+//                 className="px-4 py-3 font-extrabold text-white transition shadow-lg rounded-xl bg-gradient-to-r from-amber-50 dark:from-amber-950/400 to-orange-600 shadow-orange-900/20 hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
 //               >
 //                 {loadingType === "message"
 //                   ? label("sending", "Sending...")
@@ -750,12 +750,12 @@
 //           title={label("approvedUsersNumbers", "Approved Users Numbers")}
 //           wide
 //         >
-//           <div className="mb-4 grid gap-3 rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-800 md:grid-cols-[1fr_auto] md:items-end">
+//           <div className="mb-4 grid gap-3 rounded-xl bg-green-50 dark:bg-emerald-950/30 p-3 text-sm font-semibold text-green-800 dark:text-emerald-100 md:grid-cols-[1fr_auto] md:items-end">
 //             <div>
 //               <div className="mb-1">
 //                 {label("approvedOnly", "Approved only")}
 //               </div>
-//               <label className="block mb-1 text-xs font-bold text-green-900">
+//               <label className="block mb-1 text-xs font-bold text-green-900 dark:text-emerald-100">
 //                 {label("filterByNumber", "Filter by Number")}
 //               </label>
 //               <input
@@ -764,7 +764,7 @@
 //                 value={approvedNumberFilter}
 //                 onChange={(e) => setApprovedNumberFilter(e.target.value)}
 //                 placeholder={label("showAllNumbers", "Show all numbers")}
-//                 className="w-full px-4 py-2 text-sm font-semibold text-gray-900 bg-white border border-green-200 outline-none rounded-xl focus:ring-2 focus:ring-green-500"
+//                 className="w-full px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 outline-none rounded-xl focus:ring-2 focus:ring-green-500"
 //               />
 //             </div>
 
@@ -774,13 +774,13 @@
 //                 setApprovedNumberFilter("");
 //                 setApprovedUsersPage(1);
 //               }}
-//               className="px-4 py-2 text-sm font-bold text-green-700 bg-white border border-green-200 rounded-xl hover:bg-green-100"
+//               className="px-4 py-2 text-sm font-bold text-green-700 dark:text-emerald-200 bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 rounded-xl hover:bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20"
 //             >
 //               {label("clearFilter", "Clear Filter")}
 //             </button>
 //           </div>
 
-//           <div className="mb-3 text-sm font-semibold text-gray-600">
+//           <div className="mb-3 text-sm font-semibold text-gray-600 dark:text-slate-300">
 //             {label("matchingUsers", "Matching Users")}: {approvedUsersTotal}
 //           </div>
 
@@ -809,7 +809,7 @@
 //               <tbody>
 //                 {filteredApprovedUsers.length === 0 ? (
 //                   <tr>
-//                     <td colSpan={5} className="p-8 text-center text-gray-500">
+//                     <td colSpan={5} className="p-8 text-center text-gray-500 dark:text-slate-400">
 //                       {label("noData", "No data found")}
 //                     </td>
 //                   </tr>
@@ -817,12 +817,12 @@
 //                   filteredApprovedUsers.map((user, index) => (
 //                     <tr
 //                       key={`${user.user_phone || user.user_name || index}`}
-//                       className="border-b hover:bg-gray-50"
+//                       className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
 //                     >
-//                       <td className="p-3 font-semibold text-gray-900">
+//                       <td className="p-3 font-semibold text-gray-900 dark:text-white">
 //                         {user.user_name || "-"}
 //                       </td>
-//                       <td className="p-3 text-gray-700">
+//                       <td className="p-3 text-gray-700 dark:text-slate-200">
 //                         {user.user_phone || "-"}
 //                       </td>
 //                       <td className="p-3">
@@ -834,7 +834,7 @@
 //                                 approvedNumberFilter.trim() &&
 //                                 String(num) === approvedNumberFilter.trim()
 //                                   ? "bg-blue-600 text-white"
-//                                   : "bg-green-100 text-green-700"
+//                                   : "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200"
 //                               }`}
 //                             >
 //                               {num}
@@ -858,7 +858,7 @@
 //             </table>
 //           </div>
 
-//           <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-semibold text-gray-700 rounded-xl bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
+//           <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-semibold text-gray-700 dark:text-slate-200 rounded-xl bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
 //             <div>
 //               {label("page", "Page")} {approvedUsersPage} {label("of", "of")}{" "}
 //               {approvedUsersTotalPages}
@@ -877,7 +877,7 @@
 //                 disabled={
 //                   loadingType === "approvedUsers" || approvedUsersPage <= 1
 //                 }
-//                 className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
+//                 className="px-4 py-2 font-bold text-gray-700 dark:text-slate-200 transition bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-100 disabled:opacity-50"
 //               >
 //                 {label("previous", "Previous")}
 //               </button>
@@ -895,7 +895,7 @@
 //                   loadingType === "approvedUsers" ||
 //                   approvedUsersPage >= approvedUsersTotalPages
 //                 }
-//                 className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
+//                 className="px-4 py-2 font-bold text-gray-700 dark:text-slate-200 transition bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-100 disabled:opacity-50"
 //               >
 //                 {label("next", "Next")}
 //               </button>
@@ -910,10 +910,10 @@
 //           title={label("manageNumbers", "Manage Numbers")}
 //           wide
 //         >
-//           <div className="p-4 mb-4 border border-blue-100 rounded-2xl bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+//           <div className="p-4 mb-4 border border-blue-100 dark:border-blue-800/60 rounded-2xl bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 dark:bg-blue-950/30">
 //             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
 //               <div className="flex-1">
-//                 <label className="block mb-1 text-sm font-bold text-gray-900 dark:text-white">
+//                 <label className="block mb-1 text-sm font-bold text-gray-900 dark:text-white dark:text-white">
 //                   {label("globalTargetAmount", "Global Target Amount")}
 //                 </label>
 //                 <input
@@ -921,7 +921,7 @@
 //                   min={1}
 //                   value={globalTargetInput}
 //                   onChange={(e) => setGlobalTargetInput(e.target.value)}
-//                   className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-blue-200 outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+//                   className="w-full px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
 //                 />
 //               </div>
 
@@ -991,7 +991,7 @@
 //                 <tbody>
 //                   {numbers.length === 0 ? (
 //                     <tr>
-//                       <td colSpan={8} className="p-8 text-center text-gray-500">
+//                       <td colSpan={8} className="p-8 text-center text-gray-500 dark:text-slate-400">
 //                         {label("noData", "No data found")}
 //                       </td>
 //                     </tr>
@@ -1009,7 +1009,7 @@
 //                       return (
 //                         <tr
 //                           key={n.number}
-//                           className="border-b hover:bg-gray-50"
+//                           className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
 //                         >
 //                           <td className="p-3 font-bold">{n.number}</td>
 //                           <td className="p-3 text-right">
@@ -1039,7 +1039,7 @@
 //                           </td>
 //                           <td className="p-3 text-center">
 //                             <span
-//                               className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 text-green-700" : "bg-blue-50 text-blue-700"}`}
+//                               className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-200"}`}
 //                             >
 //                               {closed
 //                                 ? label("taken", "Taken")
@@ -1098,7 +1098,7 @@
 //           wide
 //         >
 //           {loadingType === "selections" ? (
-//             <div className="p-8 text-sm font-semibold text-center text-gray-500">
+//             <div className="p-8 text-sm font-semibold text-center text-gray-500 dark:text-slate-400">
 //               {label("loading", "Loading...")}
 //             </div>
 //           ) : (
@@ -1119,7 +1119,7 @@
 //           wide
 //         >
 //           {loadingType === "view" ? (
-//             <div className="p-8 text-sm font-semibold text-center text-gray-500">
+//             <div className="p-8 text-sm font-semibold text-center text-gray-500 dark:text-slate-400">
 //               {label("loading", "Loading...")}
 //             </div>
 //           ) : (
@@ -1142,14 +1142,14 @@
 //           )}
 //         >
 //           <div className="space-y-4">
-//             <p className="text-sm text-gray-600">
+//             <p className="text-sm text-gray-600 dark:text-slate-300">
 //               {label(
 //                 "confirmGlobalTargetMessage",
 //                 "This will update the target amount for all numbers in the current grid.",
 //               )}
 //             </p>
 
-//             <div className="p-4 text-center text-blue-900 rounded-xl bg-blue-50">
+//             <div className="p-4 text-center text-blue-900 dark:text-blue-100 rounded-xl bg-blue-50 dark:bg-blue-950/30">
 //               <div className="text-sm font-semibold">
 //                 {label("globalTargetAmount", "Global Target Amount")}
 //               </div>
@@ -1163,7 +1163,7 @@
 //               <button
 //                 type="button"
 //                 onClick={() => setShowGlobalTargetConfirm(false)}
-//                 className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+//                 className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
 //               >
 //                 {label("cancel", "Cancel")}
 //               </button>
@@ -1208,13 +1208,13 @@
 //             </div>
 
 //             <div className="p-4 text-center rounded-2xl bg-gray-50">
-//               <div className="text-sm font-semibold text-gray-500">
+//               <div className="text-sm font-semibold text-gray-500 dark:text-slate-400">
 //                 {label("number", "Number")}
 //               </div>
-//               <div className="mt-1 text-4xl font-black text-gray-950">
+//               <div className="mt-1 text-4xl font-black text-gray-950 dark:text-white">
 //                 {selectedNumber.number}
 //               </div>
-//               <div className="mt-2 text-sm font-semibold text-gray-600">
+//               <div className="mt-2 text-sm font-semibold text-gray-600 dark:text-slate-300">
 //                 {label("remainingAmount", "Remaining Amount")}:{" "}
 //                 {getRemaining(selectedNumber).toLocaleString()}{" "}
 //                 {label("birr", "Birr")}
@@ -1228,7 +1228,7 @@
 //                   setShowCloseConfirm(false);
 //                   setSelectedNumber(null);
 //                 }}
-//                 className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+//                 className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
 //               >
 //                 {label("cancel", "Cancel")}
 //               </button>
@@ -1250,15 +1250,15 @@
 
 //       {selectionReceiptImage && (
 //         <div
-//           className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+//           className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 dark:bg-black/80 p-4"
 //           onClick={() => setSelectionReceiptImage(null)}
 //         >
 //           <div
-//             className="relative w-full max-w-4xl p-5 bg-white shadow-2xl rounded-2xl"
+//             className="relative w-full max-w-4xl p-5 bg-white dark:bg-slate-900 shadow-2xl rounded-2xl"
 //             onClick={(e) => e.stopPropagation()}
 //           >
 //             <div className="flex items-center justify-between pb-3 mb-4 border-b">
-//               <h2 className="text-xl font-bold text-gray-900">
+//               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
 //                 {label("paymentReceipt", "Payment Receipt")}
 //               </h2>
 //               <button
@@ -1287,7 +1287,7 @@
 //           title={`${label("editTarget", "Edit Target")} - ${label("number", "Number")} ${selectedNumber.number}`}
 //         >
 //           <div className="space-y-4">
-//             <label className="block text-sm font-semibold text-gray-700">
+//             <label className="block text-sm font-semibold text-gray-700 dark:text-slate-200">
 //               {label("targetAmount", "Target Amount")}
 //             </label>
 //             <input
@@ -1302,7 +1302,7 @@
 //               <button
 //                 type="button"
 //                 onClick={() => setShowEditTarget(false)}
-//                 className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+//                 className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
 //               >
 //                 {label("cancel", "Cancel")}
 //               </button>
@@ -1327,8 +1327,8 @@
 // function SummaryCard({ label, value }: { label: string; value: any }) {
 //   return (
 //     <div className="p-3 text-center border rounded-xl bg-gray-50">
-//       <div className="text-lg font-extrabold text-gray-950">{value}</div>
-//       <div className="mt-1 text-xs font-semibold text-gray-500">{label}</div>
+//       <div className="text-lg font-extrabold text-gray-950 dark:text-white">{value}</div>
+//       <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">{label}</div>
 //     </div>
 //   );
 // }
@@ -1364,7 +1364,7 @@
 //           <tbody>
 //             {rows.length === 0 ? (
 //               <tr>
-//                 <td colSpan={7} className="p-8 text-center text-gray-500">
+//                 <td colSpan={7} className="p-8 text-center text-gray-500 dark:text-slate-400">
 //                   {label("noData", "No data found")}
 //                 </td>
 //               </tr>
@@ -1372,7 +1372,7 @@
 //               rows.map((s, index) => (
 //                 <tr
 //                   key={`${s.submission_id || s.id || index}-${s.number}-${index}`}
-//                   className="border-b hover:bg-gray-50"
+//                   className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
 //                 >
 //                   <td className="p-3 font-bold">{s.number || "-"}</td>
 //                   <td className="p-3">{s.user_name || "-"}</td>
@@ -1393,7 +1393,7 @@
 //                       <button
 //                         type="button"
 //                         onClick={() => onViewReceipt(String(s.receipt_url))}
-//                         className="font-semibold text-blue-600 hover:underline"
+//                         className="font-semibold text-blue-600 dark:text-blue-300 hover:underline"
 //                       >
 //                         {label("viewReceipt", "View Receipt")}
 //                       </button>
@@ -1424,21 +1424,21 @@
 // }) {
 //   return (
 //     <div
-//       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 md:p-4"
+//       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 p-3 md:p-4"
 //       onClick={onClose}
 //     >
 //       <div
-//         className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white shadow-2xl`}
+//         className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}
 //         onClick={(e) => e.stopPropagation()}
 //       >
 //         <div className="flex items-center justify-between px-5 py-4 border-b">
-//           <h2 className="text-lg font-bold text-gray-900 md:text-xl">
+//           <h2 className="text-lg font-bold text-gray-900 dark:text-white md:text-xl">
 //             {title}
 //           </h2>
 //           <button
 //             type="button"
 //             onClick={onClose}
-//             className="px-3 py-1 text-sm font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+//             className="px-3 py-1 text-sm font-bold text-gray-700 dark:text-slate-200 bg-gray-200 rounded-lg hover:bg-gray-300"
 //           >
 //             ×
 //           </button>
@@ -2073,7 +2073,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={loadSelections}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-blue-700 dark:text-blue-200 transition bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 shadow-sm rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 disabled:opacity-50"
         >
           {loadingType === "selections"
             ? label("loading", "Loading...")
@@ -2084,7 +2084,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={openApprovedUsers}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-green-700 dark:text-emerald-200 transition bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 shadow-sm rounded-xl hover:bg-green-50 dark:hover:bg-emerald-950/40 dark:bg-emerald-950/30 disabled:opacity-50"
         >
           {loadingType === "approvedUsers"
             ? label("loading", "Loading...")
@@ -2098,7 +2098,7 @@ export default function AdminNumbersPanel() {
             copyApprovedNumberAmountsForTelegram();
           }}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white dark:bg-slate-900 border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50"
         >
           {loadingType === "copyAmounts"
             ? label("copying", "Copying...")
@@ -2123,14 +2123,14 @@ export default function AdminNumbersPanel() {
           title={label("writeDashboardMessage", "Write a Message")}
         >
           <div className="space-y-4">
-            <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-900">
+            <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 dark:border-amber-800/60 bg-gradient-to-br from-amber-50 dark:from-amber-950/40 via-white dark:via-slate-900/60 to-orange-50 dark:to-orange-950/30 text-amber-900 dark:text-amber-100">
               <div className="font-extrabold">
                 {label(
                   "messageVisibleFor24Hours",
                   "This message will be visible on every user dashboard for 24 hours.",
                 )}
               </div>
-              <div className="mt-1 text-xs font-semibold text-amber-700">
+              <div className="mt-1 text-xs font-semibold text-amber-700 dark:text-amber-200">
                 {label(
                   "usersCanDismissMessage",
                   "If a user closes it, it will stay hidden for that user after reload.",
@@ -2138,7 +2138,7 @@ export default function AdminNumbersPanel() {
               </div>
             </div>
 
-            <label className="block text-sm font-bold text-gray-800">
+            <label className="block text-sm font-bold text-gray-800 dark:text-slate-100">
               {label("messageToUsers", "Message to users")}
             </label>
 
@@ -2151,10 +2151,10 @@ export default function AdminNumbersPanel() {
                 "dashboardMessagePlaceholder",
                 "Write the announcement or instruction users should see...",
               )}
-              className="w-full px-4 py-3 text-sm font-semibold text-gray-900 transition bg-white border outline-none resize-none rounded-2xl border-amber-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              className="w-full px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white transition bg-white dark:bg-slate-900 border outline-none resize-none rounded-2xl border-amber-200 dark:border-amber-800/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
             />
 
-            <div className="flex items-center justify-between text-xs font-bold text-gray-500">
+            <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-slate-400">
               <span>
                 {label("messageCharacterLimit", "Maximum 600 characters")}
               </span>
@@ -2165,7 +2165,7 @@ export default function AdminNumbersPanel() {
               <button
                 type="button"
                 onClick={() => setShowMessageModal(false)}
-                className="px-4 py-3 font-semibold text-gray-700 transition border border-gray-200 rounded-xl hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 transition border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -2174,7 +2174,7 @@ export default function AdminNumbersPanel() {
                 type="button"
                 onClick={sendDashboardMessage}
                 disabled={loadingType === "message"}
-                className="px-4 py-3 font-extrabold text-white transition shadow-lg rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 shadow-orange-900/20 hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
+                className="px-4 py-3 font-extrabold text-white transition shadow-lg rounded-xl bg-gradient-to-r from-amber-50 dark:from-amber-950/400 to-orange-600 shadow-orange-900/20 hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
               >
                 {loadingType === "message"
                   ? label("sending", "Sending...")
@@ -2191,12 +2191,12 @@ export default function AdminNumbersPanel() {
           title={label("approvedUsersNumbers", "Approved Users Numbers")}
           wide
         >
-          <div className="mb-4 grid gap-3 rounded-xl bg-green-50 p-3 text-sm font-semibold text-green-800 md:grid-cols-[1fr_auto] md:items-end">
+          <div className="mb-4 grid gap-3 rounded-xl bg-green-50 dark:bg-emerald-950/30 p-3 text-sm font-semibold text-green-800 dark:text-emerald-100 md:grid-cols-[1fr_auto] md:items-end">
             <div>
               <div className="mb-1">
                 {label("approvedOnly", "Approved only")}
               </div>
-              <label className="block mb-1 text-xs font-bold text-green-900">
+              <label className="block mb-1 text-xs font-bold text-green-900 dark:text-emerald-100">
                 {label("filterByNumber", "Filter by Number")}
               </label>
               <input
@@ -2205,7 +2205,7 @@ export default function AdminNumbersPanel() {
                 value={approvedNumberFilter}
                 onChange={(e) => setApprovedNumberFilter(e.target.value)}
                 placeholder={label("showAllNumbers", "Show all numbers")}
-                className="w-full px-4 py-2 text-sm font-semibold text-gray-900 bg-white border border-green-200 outline-none rounded-xl focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 outline-none rounded-xl focus:ring-2 focus:ring-green-500"
               />
             </div>
 
@@ -2215,13 +2215,13 @@ export default function AdminNumbersPanel() {
                 setApprovedNumberFilter("");
                 setApprovedUsersPage(1);
               }}
-              className="px-4 py-2 text-sm font-bold text-green-700 bg-white border border-green-200 rounded-xl hover:bg-green-100"
+              className="px-4 py-2 text-sm font-bold text-green-700 dark:text-emerald-200 bg-white dark:bg-slate-900 border border-green-200 dark:border-emerald-800/60 rounded-xl hover:bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20"
             >
               {label("clearFilter", "Clear Filter")}
             </button>
           </div>
 
-          <div className="mb-3 text-sm font-semibold text-gray-600">
+          <div className="mb-3 text-sm font-semibold text-gray-600 dark:text-slate-300">
             {label("matchingUsers", "Matching Users")}: {approvedUsersTotal}
           </div>
 
@@ -2250,7 +2250,7 @@ export default function AdminNumbersPanel() {
               <tbody>
                 {filteredApprovedUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-8 text-center text-gray-500">
+                    <td colSpan={5} className="p-8 text-center text-gray-500 dark:text-slate-400">
                       {label("noData", "No data found")}
                     </td>
                   </tr>
@@ -2258,12 +2258,12 @@ export default function AdminNumbersPanel() {
                   filteredApprovedUsers.map((user, index) => (
                     <tr
                       key={`${user.user_phone || user.user_name || index}`}
-                      className="border-b hover:bg-gray-50"
+                      className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
                     >
-                      <td className="p-3 font-semibold text-gray-900">
+                      <td className="p-3 font-semibold text-gray-900 dark:text-white">
                         {user.user_name || "-"}
                       </td>
-                      <td className="p-3 text-gray-700">
+                      <td className="p-3 text-gray-700 dark:text-slate-200">
                         {user.user_phone || "-"}
                       </td>
                       <td className="p-3">
@@ -2275,7 +2275,7 @@ export default function AdminNumbersPanel() {
                                 approvedNumberFilter.trim() &&
                                 String(num) === approvedNumberFilter.trim()
                                   ? "bg-blue-600 text-white"
-                                  : "bg-green-100 text-green-700"
+                                  : "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200"
                               }`}
                             >
                               {num}
@@ -2299,7 +2299,7 @@ export default function AdminNumbersPanel() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-semibold text-gray-700 rounded-xl bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-semibold text-gray-700 dark:text-slate-200 rounded-xl bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
             <div>
               {label("page", "Page")} {approvedUsersPage} {label("of", "of")}{" "}
               {approvedUsersTotalPages}
@@ -2318,7 +2318,7 @@ export default function AdminNumbersPanel() {
                 disabled={
                   loadingType === "approvedUsers" || approvedUsersPage <= 1
                 }
-                className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
+                className="px-4 py-2 font-bold text-gray-700 dark:text-slate-200 transition bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-100 disabled:opacity-50"
               >
                 {label("previous", "Previous")}
               </button>
@@ -2336,7 +2336,7 @@ export default function AdminNumbersPanel() {
                   loadingType === "approvedUsers" ||
                   approvedUsersPage >= approvedUsersTotalPages
                 }
-                className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
+                className="px-4 py-2 font-bold text-gray-700 dark:text-slate-200 transition bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl hover:bg-gray-100 disabled:opacity-50"
               >
                 {label("next", "Next")}
               </button>
@@ -2351,10 +2351,10 @@ export default function AdminNumbersPanel() {
           title={label("manageNumbers", "Manage Numbers")}
           wide
         >
-          <div className="p-4 mb-4 border border-blue-100 rounded-2xl bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
+          <div className="p-4 mb-4 border border-blue-100 dark:border-blue-800/60 rounded-2xl bg-blue-50 dark:bg-blue-950/30 dark:border-blue-900 dark:bg-blue-950/30">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="flex-1">
-                <label className="block mb-1 text-sm font-bold text-gray-900 dark:text-white">
+                <label className="block mb-1 text-sm font-bold text-gray-900 dark:text-white dark:text-white">
                   {label("globalTargetAmount", "Global Target Amount")}
                 </label>
                 <input
@@ -2362,7 +2362,7 @@ export default function AdminNumbersPanel() {
                   min={1}
                   value={globalTargetInput}
                   onChange={(e) => setGlobalTargetInput(e.target.value)}
-                  className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-blue-200 outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800/60 outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 />
               </div>
 
@@ -2432,7 +2432,7 @@ export default function AdminNumbersPanel() {
                 <tbody>
                   {numbers.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-gray-500">
+                      <td colSpan={8} className="p-8 text-center text-gray-500 dark:text-slate-400">
                         {label("noData", "No data found")}
                       </td>
                     </tr>
@@ -2450,7 +2450,7 @@ export default function AdminNumbersPanel() {
                       return (
                         <tr
                           key={n.number}
-                          className="border-b hover:bg-gray-50"
+                          className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
                         >
                           <td className="p-3 font-bold">{n.number}</td>
                           <td className="p-3 text-right">
@@ -2480,7 +2480,7 @@ export default function AdminNumbersPanel() {
                           </td>
                           <td className="p-3 text-center">
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 text-green-700" : "bg-blue-50 text-blue-700"}`}
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-700 dark:text-emerald-200" : "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-200"}`}
                             >
                               {closed
                                 ? label("taken", "Taken")
@@ -2539,7 +2539,7 @@ export default function AdminNumbersPanel() {
           wide
         >
           {loadingType === "selections" ? (
-            <div className="p-8 text-sm font-semibold text-center text-gray-500">
+            <div className="p-8 text-sm font-semibold text-center text-gray-500 dark:text-slate-400">
               {label("loading", "Loading...")}
             </div>
           ) : (
@@ -2560,7 +2560,7 @@ export default function AdminNumbersPanel() {
           wide
         >
           {loadingType === "view" ? (
-            <div className="p-8 text-sm font-semibold text-center text-gray-500">
+            <div className="p-8 text-sm font-semibold text-center text-gray-500 dark:text-slate-400">
               {label("loading", "Loading...")}
             </div>
           ) : (
@@ -2583,14 +2583,14 @@ export default function AdminNumbersPanel() {
           )}
         >
           <div className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-slate-300">
               {label(
                 "confirmGlobalTargetMessage",
                 "This will update the target amount for all numbers in the current grid.",
               )}
             </p>
 
-            <div className="p-4 text-center text-blue-900 rounded-xl bg-blue-50">
+            <div className="p-4 text-center text-blue-900 dark:text-blue-100 rounded-xl bg-blue-50 dark:bg-blue-950/30">
               <div className="text-sm font-semibold">
                 {label("globalTargetAmount", "Global Target Amount")}
               </div>
@@ -2604,7 +2604,7 @@ export default function AdminNumbersPanel() {
               <button
                 type="button"
                 onClick={() => setShowGlobalTargetConfirm(false)}
-                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -2649,13 +2649,13 @@ export default function AdminNumbersPanel() {
             </div>
 
             <div className="p-4 text-center rounded-2xl bg-gray-50">
-              <div className="text-sm font-semibold text-gray-500">
+              <div className="text-sm font-semibold text-gray-500 dark:text-slate-400">
                 {label("number", "Number")}
               </div>
-              <div className="mt-1 text-4xl font-black text-gray-950">
+              <div className="mt-1 text-4xl font-black text-gray-950 dark:text-white">
                 {selectedNumber.number}
               </div>
-              <div className="mt-2 text-sm font-semibold text-gray-600">
+              <div className="mt-2 text-sm font-semibold text-gray-600 dark:text-slate-300">
                 {label("remainingAmount", "Remaining Amount")}:{" "}
                 {getRemaining(selectedNumber).toLocaleString()}{" "}
                 {label("birr", "Birr")}
@@ -2669,7 +2669,7 @@ export default function AdminNumbersPanel() {
                   setShowCloseConfirm(false);
                   setSelectedNumber(null);
                 }}
-                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -2691,15 +2691,15 @@ export default function AdminNumbersPanel() {
 
       {selectionReceiptImage && (
         <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 p-4"
+          className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/70 dark:bg-black/80 p-4"
           onClick={() => setSelectionReceiptImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl rounded-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white dark:bg-slate-900 shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b">
-              <h2 className="text-xl font-bold text-gray-900">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {label("paymentReceipt", "Payment Receipt")}
               </h2>
               <button
@@ -2728,7 +2728,7 @@ export default function AdminNumbersPanel() {
           title={`${label("editTarget", "Edit Target")} - ${label("number", "Number")} ${selectedNumber.number}`}
         >
           <div className="space-y-4">
-            <label className="block text-sm font-semibold text-gray-700">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-slate-200">
               {label("targetAmount", "Target Amount")}
             </label>
             <input
@@ -2743,7 +2743,7 @@ export default function AdminNumbersPanel() {
               <button
                 type="button"
                 onClick={() => setShowEditTarget(false)}
-                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -2768,8 +2768,8 @@ export default function AdminNumbersPanel() {
 function SummaryCard({ label, value }: { label: string; value: any }) {
   return (
     <div className="p-3 text-center border rounded-xl bg-gray-50">
-      <div className="text-lg font-extrabold text-gray-950">{value}</div>
-      <div className="mt-1 text-xs font-semibold text-gray-500">{label}</div>
+      <div className="text-lg font-extrabold text-gray-950 dark:text-white">{value}</div>
+      <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">{label}</div>
     </div>
   );
 }
@@ -2805,7 +2805,7 @@ function SelectionsTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">
+                <td colSpan={7} className="p-8 text-center text-gray-500 dark:text-slate-400">
                   {label("noData", "No data found")}
                 </td>
               </tr>
@@ -2813,7 +2813,7 @@ function SelectionsTable({
               rows.map((s, index) => (
                 <tr
                   key={`${s.submission_id || s.id || index}-${s.number}-${index}`}
-                  className="border-b hover:bg-gray-50"
+                  className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
                 >
                   <td className="p-3 font-bold">{s.number || "-"}</td>
                   <td className="p-3">{s.user_name || "-"}</td>
@@ -2834,7 +2834,7 @@ function SelectionsTable({
                       <button
                         type="button"
                         onClick={() => onViewReceipt(String(s.receipt_url))}
-                        className="font-semibold text-blue-600 hover:underline"
+                        className="font-semibold text-blue-600 dark:text-blue-300 hover:underline"
                       >
                         {label("viewReceipt", "View Receipt")}
                       </button>
@@ -2865,21 +2865,21 @@ function Modal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 md:p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 dark:bg-black/75 p-3 md:p-4"
       onClick={onClose}
     >
       <div
-        className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white shadow-2xl`}
+        className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-900 md:text-xl">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white md:text-xl">
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1 text-sm font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+            className="px-3 py-1 text-sm font-bold text-gray-700 dark:text-slate-200 bg-gray-200 rounded-lg hover:bg-gray-300"
           >
             ×
           </button>
