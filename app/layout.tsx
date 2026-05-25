@@ -5,19 +5,19 @@ import AppToaster from "@/components/AppToaster";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://oddda.vercel.app"),
-  title: "ኦዳ የመኪና እቁብ ሎተሪ",
-  description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
+  title: "ባሩዳ ዶት ኮም",
+  description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
   openGraph: {
-    title: "ኦዳ የመኪና እቁብ ሎተሪ",
-    description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
+    title: "ባሩዳ ዶት ኮም",
+    description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
     url: "https://baruda.vercel.app",
-    siteName: "ኦዳ የመኪና እቁብ ሎተሪ",
+    siteName: "ባሩዳ ዶት ኮም",
     images: [
       {
-        url: "/bardua-dashboard.png",
+        url: "/baruda-dashboard.png",
         width: 1200,
         height: 630,
-        alt: "ኦዳ የመኪና እቁብ ሎተሪ",
+        alt: "ባሩዳ ዶት ኮም",
       },
     ],
     locale: "am_ET",
@@ -25,9 +25,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ኦዳ የመኪና እቁብ ሎተሪ",
-    description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
-    images: ["/jetour_dashboard.png"],
+    title: "ባሩዳ ዶት ኮም",
+    description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
+    images: ["/baruda-dashboard.png"],
   },
 };
 
