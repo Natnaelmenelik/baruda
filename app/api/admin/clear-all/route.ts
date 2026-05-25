@@ -113,7 +113,9 @@ async function removeStorageFilesInBatches(
   let deleted = 0;
   let failed = 0;
 
-  const uniqueKeys = Array.from(new Set(keys.map(normalizeReceiptKey).filter(Boolean)));
+  const uniqueKeys = Array.from(
+    new Set(keys.map(normalizeReceiptKey).filter(Boolean)),
+  );
 
   for (let i = 0; i < uniqueKeys.length; i += 100) {
     const batch = uniqueKeys.slice(i, i + 100);
@@ -167,7 +169,11 @@ async function deleteReceiptStorageFiles(
     errors.push(message);
   }
 
-  const allKeys = Array.from(new Set([...dbKeys, ...listedFiles].map(normalizeReceiptKey).filter(Boolean)));
+  const allKeys = Array.from(
+    new Set(
+      [...dbKeys, ...listedFiles].map(normalizeReceiptKey).filter(Boolean),
+    ),
+  );
 
   console.log("Deleting receipt files:", {
     bucket: RECEIPTS_BUCKET,
@@ -243,6 +249,8 @@ export async function POST(req: Request) {
     await client.query(`DELETE FROM submission_items`);
 
     await client.query(`DELETE FROM submissions`);
+
+    await client.query(`DELETE FROM approved_entry_backups`);
 
     await client.query(`
       UPDATE number_pools

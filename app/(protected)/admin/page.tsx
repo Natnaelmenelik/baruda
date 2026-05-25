@@ -66,7 +66,6 @@ export default function AdminPage() {
   const [submissionPage, setSubmissionPage] = useState(1);
   const submissionLimit = 20;
 
-
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setSubmissionSearch(submissionSearchInput.trim());
@@ -93,7 +92,11 @@ export default function AdminPage() {
     status: submissionStatusFilter,
     search: submissionSearch,
   });
-  const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useStats();
+  const {
+    data: stats = {},
+    isLoading: statsLoading,
+    refetch: refetchStats,
+  } = useStats();
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();
@@ -212,12 +215,14 @@ export default function AdminPage() {
       : [];
 
   const safeSubmissions = groupAdminSubmissions(submissions);
-  const submissionTotal = Number((submissionsResponse as any)?.total || safeSubmissions.length || 0);
-  const submissionTotalPages = Math.max(1, Number((submissionsResponse as any)?.totalPages || 1));
-  const currentSubmissionPage = Math.min(
-    submissionPage,
-    submissionTotalPages,
+  const submissionTotal = Number(
+    (submissionsResponse as any)?.total || safeSubmissions.length || 0,
   );
+  const submissionTotalPages = Math.max(
+    1,
+    Number((submissionsResponse as any)?.totalPages || 1),
+  );
+  const currentSubmissionPage = Math.min(submissionPage, submissionTotalPages);
 
   const statusLabel = (status: string) =>
     status === "approved"
@@ -227,10 +232,7 @@ export default function AdminPage() {
         : txt.pending;
 
   async function refreshAdminDataAfterClear() {
-    await Promise.allSettled([
-      refetchStats?.(),
-      refetchSubmissions?.(),
-    ]);
+    await Promise.allSettled([refetchStats?.(), refetchSubmissions?.()]);
   }
 
   const handleLogout = () => {
@@ -246,8 +248,8 @@ export default function AdminPage() {
         toast.error(translateApiError(err, lang) || tm(lang, "approveFailed")),
       onSettled: () => {
         setProcessingSubmissionId(null);
-        
-      setProcessingType(null);
+
+        setProcessingType(null);
       },
     });
   };
@@ -261,8 +263,8 @@ export default function AdminPage() {
         toast.error(translateApiError(err, lang) || tm(lang, "rejectFailed")),
       onSettled: () => {
         setProcessingSubmissionId(null);
-        
-      setProcessingType(null);
+
+        setProcessingType(null);
       },
     });
   };
@@ -274,7 +276,12 @@ export default function AdminPage() {
       // Always ask the backend for a fresh signed URL.
       // Do not open sub.receipt_url directly because it may be an expired Supabase signed URL.
       const data = await fetchReceipt(sub.id);
-      const freshUrl = data?.receiptUrl || data?.signedUrl || data?.url || sub?.receipt_url || "";
+      const freshUrl =
+        data?.receiptUrl ||
+        data?.signedUrl ||
+        data?.url ||
+        sub?.receipt_url ||
+        "";
 
       if (!freshUrl) {
         toast.error(tm(lang, "receiptLoadFailed"));
@@ -283,7 +290,9 @@ export default function AdminPage() {
 
       setSelectedImage(freshUrl);
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || tm(lang, "receiptLoadFailed"));
+      toast.error(
+        translateApiError(err, lang) || tm(lang, "receiptLoadFailed"),
+      );
     } finally {
       setReceiptLoadingId(null);
     }
@@ -310,9 +319,6 @@ export default function AdminPage() {
         setShowClearModal(false);
         await refreshAdminDataAfterClear();
         toast.success(tm(lang, "clearSuccess"));
-      
-        
-
       },
       onError: (err: any) =>
         toast.error(translateApiError(err, lang) || tm(lang, "clearFailed")),
@@ -336,10 +342,12 @@ export default function AdminPage() {
           <ThemeToggle />
           <button
             type="button"
-            onClick={() => window.dispatchEvent(new Event("open-dashboard-message-modal"))}
-            className="px-4 py-2 font-semibold text-amber-900 dark:text-amber-100 transition rounded bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
+            onClick={() =>
+              window.dispatchEvent(new Event("open-dashboard-message-modal"))
+            }
+            className="px-4 py-2 font-semibold transition rounded text-amber-900 dark:text-amber-100 bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
           >
-            {((txt as any).writeDashboardMessage || "Write a Message")}
+            {(txt as any).writeDashboardMessage || "Write a Message"}
           </button>
           <button
             onClick={() => setShowPickWinnerModal(true)}
@@ -372,12 +380,15 @@ export default function AdminPage() {
       </div>
 
       <AdminSettingsPanel />
-<AdminNumbersPanel />
+      <AdminNumbersPanel />
 
       <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-5">
         <StatCard title={txt.users} value={stats.totalUsers || 0} />
         <StatCard title={txt.sold} value={stats.numbersSold || 0} />
-        <StatCard title={txt.pending} value={stats.pendingNumbers ?? stats.pendingApprovals ?? 0} />
+        <StatCard
+          title={txt.pending}
+          value={stats.pendingNumbers ?? stats.pendingApprovals ?? 0}
+        />
         <StatCard
           title={txt.revenue}
           value={`${Number(stats.revenue || 0).toLocaleString()} Birr`}
@@ -385,7 +396,7 @@ export default function AdminPage() {
         <StatCard title={txt.left} value={stats.numbersLeft || 0} />
       </div>
 
-      <div className="overflow-hidden bg-white dark:bg-slate-900 shadow rounded-xl">
+      <div className="overflow-hidden bg-white shadow dark:bg-slate-900 rounded-xl">
         <div className="flex flex-col gap-4 p-4 border-b lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h2 className="font-bold">{txt.submissions}</h2>
@@ -396,32 +407,35 @@ export default function AdminPage() {
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="flex flex-wrap gap-2">
-              {(["pending", "all", "approved", "rejected"] as const).map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => {
-                    setSubmissionStatusFilter(status);
-                    setSubmissionPage(1);
-                  }}
-                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
-                    submissionStatusFilter === status
-                      ? "bg-blue-600 text-white shadow"
-                      : "bg-gray-100 text-gray-700 dark:text-slate-200 hover:bg-gray-200"
-                  }`}
-                >
-                  {status === "all"
-                    ? txt.all
-                    : statusLabel(status)}
-                </button>
-              ))}
+              {(["pending", "all", "approved", "rejected"] as const).map(
+                (status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => {
+                      setSubmissionStatusFilter(status);
+                      setSubmissionPage(1);
+                    }}
+                    className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                      submissionStatusFilter === status
+                        ? "bg-blue-600 text-white shadow"
+                        : "bg-gray-100 text-gray-700 dark:text-slate-200 hover:bg-gray-200"
+                    }`}
+                  >
+                    {status === "all" ? txt.all : statusLabel(status)}
+                  </button>
+                ),
+              )}
             </div>
 
             <input
               value={submissionSearchInput}
               onChange={(e) => setSubmissionSearchInput(e.target.value)}
-              placeholder={(txt as any).searchSubmissions || "Search name, phone, number..."}
-              className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-64"
+              placeholder={
+                (txt as any).searchSubmissions ||
+                "Search name, phone, number..."
+              }
+              className="w-full px-3 py-2 text-sm border outline-none rounded-xl focus:border-blue-500 sm:w-64"
             />
           </div>
         </div>
@@ -560,18 +574,19 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="flex flex-col gap-3 border-t p-4 text-sm text-gray-600 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 p-4 text-sm text-gray-600 border-t dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
           <span>
-            {((txt as any).page || "Page")} {currentSubmissionPage} / {submissionTotalPages}
+            {(txt as any).page || "Page"} {currentSubmissionPage} /{" "}
+            {submissionTotalPages}
           </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setSubmissionPage((p) => Math.max(1, p - 1))}
               disabled={currentSubmissionPage <= 1}
-              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="px-3 py-2 font-semibold text-gray-700 border rounded-lg dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {((txt as any).previous || "Previous")}
+              {(txt as any).previous || "Previous"}
             </button>
             <button
               type="button"
@@ -579,19 +594,19 @@ export default function AdminPage() {
                 setSubmissionPage((p) => Math.min(submissionTotalPages, p + 1))
               }
               disabled={currentSubmissionPage >= submissionTotalPages}
-              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+              className="px-3 py-2 font-semibold text-gray-700 border rounded-lg dark:text-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {((txt as any).next || "Next")}
+              {(txt as any).next || "Next"}
             </button>
           </div>
         </div>
       </div>
 
-            {selectedSubmission && (
+      {selectedSubmission && (
         <Modal onClose={() => setSelectedSubmission(null)} wide>
           <div className="space-y-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 {txt.submissionDetails || "Submission Details"}
               </h2>
               <p className="mt-1 text-sm text-gray-500 dark:text-slate-400 dark:text-slate-300">
@@ -600,7 +615,7 @@ export default function AdminPage() {
               </p>
             </div>
 
-            <div className="grid gap-4 rounded-xl bg-gray-50 p-4 text-sm dark:bg-slate-800 md:grid-cols-2">
+            <div className="grid gap-4 p-4 text-sm rounded-xl bg-gray-50 dark:bg-slate-800 md:grid-cols-2">
               <div className="space-y-2">
                 <InfoLine
                   label={txt.user}
@@ -634,9 +649,9 @@ export default function AdminPage() {
                   label={txt.submitted}
                   value={
                     selectedSubmission.submitted_at
-                      ? new Date(selectedSubmission.submitted_at).toLocaleString(
-                          lang === "am" ? "am-ET" : "en-US",
-                        )
+                      ? new Date(
+                          selectedSubmission.submitted_at,
+                        ).toLocaleString(lang === "am" ? "am-ET" : "en-US")
                       : "-"
                   }
                 />
@@ -657,13 +672,17 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border p-4 dark:border-slate-700">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="font-bold text-gray-900 dark:text-white dark:text-white">
+            <div className="p-4 border rounded-xl dark:border-slate-700">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h3 className="font-bold text-gray-900 dark:text-white">
                   {txt.contributionBreakdown || txt.numbers}
                 </h3>
                 <span className="text-xs font-semibold text-gray-400">
-                  {txt.total}: {Number(selectedSubmission.total_amount || 0).toLocaleString()} {txt.birr}
+                  {txt.total}:{" "}
+                  {Number(
+                    selectedSubmission.total_amount || 0,
+                  ).toLocaleString()}{" "}
+                  {txt.birr}
                 </span>
               </div>
 
@@ -696,12 +715,12 @@ export default function AdminPage() {
                 ).map((item: any, index: number) => (
                   <div
                     key={`${item.number}-${index}`}
-                    className="flex items-center justify-between rounded-lg bg-blue-50 dark:bg-blue-950/30 px-3 py-2 text-sm dark:bg-blue-950/50"
+                    className="flex items-center justify-between px-3 py-2 text-sm rounded-lg bg-blue-50 dark:bg-blue-950/30 dark:bg-blue-950/50"
                   >
-                    <span className="font-bold text-blue-700 dark:text-blue-200 dark:text-blue-200">
+                    <span className="font-bold text-blue-700 dark:text-blue-200">
                       {item.number}
                     </span>
-                    <span className="font-semibold text-gray-800 dark:text-slate-100 dark:text-slate-100">
+                    <span className="font-semibold text-gray-800 dark:text-slate-100">
                       {Number(item.amount || 0).toLocaleString()} {txt.birr}
                     </span>
                   </div>
@@ -773,7 +792,7 @@ export default function AdminPage() {
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowLogoutModal(false)}
-              className="flex-1 px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 border dark:text-slate-200 rounded-xl"
             >
               {txt.cancel}
             </button>
@@ -798,7 +817,7 @@ export default function AdminPage() {
             <button
               onClick={() => setShowClearModal(false)}
               disabled={clearing}
-              className="flex-1 px-4 py-3 font-semibold text-gray-700 dark:text-slate-200 border rounded-xl disabled:opacity-50"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 border dark:text-slate-200 rounded-xl disabled:opacity-50"
             >
               {txt.cancel}
             </button>
@@ -846,7 +865,10 @@ export default function AdminPage() {
                 </thead>
                 <tbody>
                   {winners.map((w: any) => (
-                    <tr key={w.id} className="border-b hover:bg-gray-50 dark:hover:bg-slate-800">
+                    <tr
+                      key={w.id}
+                      className="border-b hover:bg-gray-50 dark:hover:bg-slate-800"
+                    >
                       <td className="p-3 font-bold">{w.number}</td>
                       <td className="p-3">{w.user_name || txt.unknown}</td>
                       <td className="p-3">{w.user_phone || "-"}</td>
@@ -875,7 +897,7 @@ export default function AdminPage() {
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl p-5 bg-white dark:bg-slate-900 shadow-2xl rounded-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl dark:bg-slate-900 rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b">
@@ -912,8 +934,8 @@ export default function AdminPage() {
 function InfoLine({ label, value }: { label: string; value: any }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-gray-100 dark:border-slate-700 pb-1.5 last:border-b-0 dark:border-slate-700">
-      <span className="text-gray-500 dark:text-slate-400 dark:text-slate-400">{label}</span>
-      <b className="text-right text-gray-900 dark:text-white dark:text-white">{value}</b>
+      <span className="text-gray-500 dark:text-slate-400">{label}</span>
+      <b className="text-right text-gray-900 dark:text-white">{value}</b>
     </div>
   );
 }
@@ -944,9 +966,13 @@ function Modal({
 
 function StatCard({ title, value }: { title: string; value: any }) {
   return (
-    <div className="p-5 text-center bg-white dark:bg-slate-900 shadow rounded-xl">
-      <div className="text-3xl font-extrabold text-gray-950 dark:text-white">{value}</div>
-      <div className="mt-1 text-base font-medium text-gray-500 dark:text-slate-400">{title}</div>
+    <div className="p-5 text-center bg-white shadow dark:bg-slate-900 rounded-xl">
+      <div className="text-3xl font-extrabold text-gray-950 dark:text-white">
+        {value}
+      </div>
+      <div className="mt-1 text-base font-medium text-gray-500 dark:text-slate-400">
+        {title}
+      </div>
     </div>
   );
 }
