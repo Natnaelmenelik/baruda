@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
 import LanguageButtons from '@/components/LanguageButtons';
+import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 
 function EyeIcon({ show }: { show: boolean }) {
   return show ? (
@@ -84,22 +85,26 @@ export default function RegisterPage() {
         formattedPhone = '+251' + formattedPhone.substring(1);
       }
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-store',
         },
+        signal: controller.signal,
         body: JSON.stringify({
           ...form,
           phone: formattedPhone,
         }),
-      });
+      }).finally(() => window.clearTimeout(timeoutId));
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        const msg = data.error || tm(lang, 'registerFailed');
+        const msg = translateApiError(data, lang) || tm(lang, 'registerFailed');
         setError(msg);
         toast.error(msg, { id: 'register' });
         return;
@@ -110,9 +115,11 @@ export default function RegisterPage() {
       setTimeout(() => {
         router.push('/login');
       }, 500);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      const msg = tm(lang, 'networkError');
+      const msg = err?.name === 'AbortError'
+        ? (tm(lang, 'networkError') || 'Request timed out. Please try again.')
+        : tm(lang, 'networkError');
       setError(msg);
       toast.error(msg, { id: 'register' });
     } finally {

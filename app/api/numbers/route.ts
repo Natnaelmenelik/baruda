@@ -1,104 +1,82 @@
-export const dynamic = 'force-dynamic';
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/db/sql";
+
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const fetchCache = 'force-no-store';
 
-import { NextResponse } from 'next/server';
-import { sql } from '@/lib/db/sql';
-import { getTokenFromRequest } from '@/lib/auth/server';
-import { getGridSize } from '@/lib/settings/lotterySettings';
-import jwt from 'jsonwebtoken';
+function normalizeRow(row: any) {
+  const approved = Number(row.approved_amount || 0);
+  const pending = Number(row.pending_amount || 0);
+  const hold = Number(row.hold_amount || 0);
+  const remaining = Number(row.remaining_amount || 0);
+  const status = String(row.status || "open");
 
-const SECRET = process.env.JWT_SECRET || 'change-this-secret';
-
-function getCurrentUserId(req: Request) {
-  try {
-    const token = getTokenFromRequest(req);
-    if (!token) return null;
-
-    const user = jwt.verify(token, SECRET) as any;
-    return String(user.userId || user.id || '');
-  } catch {
-    return null;
-  }
+  return {
+    number: Number(row.number),
+    target_amount: Number(row.target_amount || 0),
+    approved_amount: approved,
+    pending_amount: pending,
+    hold_amount: hold,
+    sold_amount: Number(row.sold_amount ?? approved + pending + hold),
+    current_amount: approved,
+    remaining_amount: remaining,
+    remaining,
+    status: status === "sold" || status === "closed" ? "closed" : status === "pending" ? "pending" : "open",
+    updated_at: row.updated_at,
+  };
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const currentUserId = getCurrentUserId(req);
-    const gridSize = await getGridSize();
-
-    await sql`
-      DELETE FROM number_locks
-      WHERE expires_at < NOW()
+    let rows = await sql`
+      SELECT
+        number,
+        target_amount,
+        approved_amount,
+        pending_amount,
+        hold_amount,
+        sold_amount,
+        remaining_amount,
+        status,
+        updated_at
+      FROM number_status_summary_cache
+      ORDER BY number ASC
     `;
 
-    const submissions = await sql`
-      SELECT number, status
-      FROM submissions
-      WHERE status IN ('pending', 'approved')
-      AND number BETWEEN 1 AND ${gridSize}
-    `;
-
-    const locks = await sql`
-      SELECT number, user_id::text AS user_id
-      FROM number_locks
-      WHERE number BETWEEN 1 AND ${gridSize}
-    `;
-
-    const statusMap = new Map<number, string>();
-
-    submissions.forEach((s: any) => {
-      const num = Number(s.number);
-
-      if (s.status === 'approved') {
-        statusMap.set(num, 'taken');
+    // Safe fallback for first deploys where the SQL migration was not run yet or cache is empty.
+    if (!rows.length) {
+      try {
+        await sql`SELECT public.refresh_all_number_status_summary_cache()`;
+        rows = await sql`
+          SELECT
+            number,
+            target_amount,
+            approved_amount,
+            pending_amount,
+            hold_amount,
+            sold_amount,
+            remaining_amount,
+            status,
+            updated_at
+          FROM number_status_summary_cache
+          ORDER BY number ASC
+        `;
+      } catch (refreshError) {
+        console.warn("number_status_summary_cache refresh fallback failed:", refreshError);
       }
+    }
 
-      if (s.status === 'pending') {
-        statusMap.set(num, 'pending');
-      }
-    });
-
-    locks.forEach((l: any) => {
-      const num = Number(l.number);
-
-      if (!statusMap.has(num)) {
-        statusMap.set(
-          num,
-          currentUserId && String(l.user_id) === String(currentUserId)
-            ? 'locked_by_me'
-            : 'locked'
-        );
-      }
-    });
-
-    const result = Array.from({ length: gridSize }, (_, index) => {
-      const num = index + 1;
-
-      return {
-        num,
-        number: num,
-        status: statusMap.get(num) || 'available',
-      };
-    });
-
-    return NextResponse.json(
-      {
-        gridSize,
-        numbers: result,
+    return NextResponse.json(rows.map(normalizeRow), {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
       },
-      {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-        },
-      }
-    );
+    });
   } catch (error: any) {
-    console.error('Numbers API error:', error);
+    console.error("Numbers cache API error:", error);
 
     return NextResponse.json(
-      { error: error.message || 'Failed to load numbers' },
-      { status: 500 }
+      { error: error?.message || "Failed to load numbers" },
+      { status: 500 },
     );
   }
 }

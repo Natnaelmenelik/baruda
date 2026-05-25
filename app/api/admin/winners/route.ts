@@ -1,3 +1,9 @@
+// REALTIME_REFRESH_POINT:
+// After this route succeeds, the frontend action handler should refresh only affected data:
+// settings update/global target -> settings-updated + numbers-updated
+// dashboard message update      -> dashboard-message-refresh
+// winner announcement update    -> winner-announcement-refresh
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 

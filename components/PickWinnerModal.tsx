@@ -1,120 +1,104 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import toast from 'react-hot-toast';
-import { apiFetch } from '@/lib/auth/client';
-import type { Lang } from '@/lib/i18n/translations';
+import { useState } from "react";
+import toast from "react-hot-toast";
+import { translations } from "@/lib/i18n/translations";
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onPicked?: () => void;
-  lang: Lang;
+  lang?: "en" | "am" | "om";
 };
 
-const copy = {
-  en: {
-    enterValidNumbersOnly: 'Enter valid numbers only.',
-    duplicateNumbersNotAllowed: 'Duplicate numbers are not allowed.',
-    failedPickWinner: 'Failed to pick winner.',
-    winnerPicked: 'Winner picked!',
-    pickWinnerTitle: 'Pick Winner',
-    pickWinnerDescription:
-      'Enter up to 8 numbers. Empty fields are optional. Winner is selected only from approved numbers.',
-    winner: 'Winner',
-    cancel: 'Cancel',
-    picking: 'Picking...',
-    pickWinner: 'Pick Winner',
-  },
-  am: {
-    enterValidNumbersOnly: 'ትክክለኛ ቁጥሮችን ያስገቡ።',
-    duplicateNumbersNotAllowed: 'የተደጋገሙ ቁጥሮች አይፈቀዱም።',
-    failedPickWinner: 'አሸናፊ መምረጥ አልተሳካም።',
-    winnerPicked: 'አሸናፊ ተመርጧል!',
-    pickWinnerTitle: 'አሸናፊ ምረጥ',
-    pickWinnerDescription:
-      'እስከ 8 ቁጥሮች ያስገቡ። ባዶ ቦታዎች አማራጭ ናቸው። አሸናፊው የሚመረጠው ከጸደቁ ቁጥሮች ብቻ ነው።',
-    winner: 'አሸናፊ',
-    cancel: 'ይቅር',
-    picking: 'በመምረጥ ላይ...',
-    pickWinner: 'አሸናፊ ምረጥ',
-  },
-  om: {
-    enterValidNumbersOnly: 'Lakkoofsota sirrii qofa galchi.',
-    duplicateNumbersNotAllowed: "Lakkoofsota irra deebii galchuun hin danda'amu.",
-    failedPickWinner: "Mo'ataa filuun hin danda'amne.",
-    winnerPicked: "Mo'ataan filatameera!",
-    pickWinnerTitle: "Mo'ataa Filadhu",
-    pickWinnerDescription:
-      "Hanga lakkoofsa 8 galchi. Bakki duwwaan dabalata. Mo'ataan lakkoofsota mirkanaa'an qofa irraa filatama.",
-    winner: "Mo'ataa",
-    cancel: 'Haqi',
-    picking: 'Filachaa jira...',
-    pickWinner: "Mo'ataa Filadhu",
-  },
-} as const;
+export default function PickWinnerModal({
+  open,
+  onClose,
+  onPicked,
+  lang = "en",
+}: Props) {
+  const txt = translations[lang] || translations.en;
 
-export default function PickWinnerModal({ open, onClose, onPicked, lang }: Props) {
-  const [values, setValues] = useState<string[]>(Array(8).fill(''));
-  const [loading, setLoading] = useState(false);
-  const [winner, setWinner] = useState<any>(null);
-
-  const txt = copy[lang];
+  const [firstNumber, setFirstNumber] = useState("");
+  const [secondNumber, setSecondNumber] = useState("");
+  const [thirdNumber, setThirdNumber] = useState("");
+  const [publishing, setPublishing] = useState(false);
 
   if (!open) return null;
 
-  const updateValue = (index: number, value: string) => {
-    setValues((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
+  const label = (key: string, fallback: string) => {
+    const value = (txt as any)?.[key];
+    return typeof value === "string" && value.trim() ? value : fallback;
   };
 
-  const pickWinner = async () => {
-    const numbers = values
-      .map((v) => v.trim())
-      .filter(Boolean)
-      .map(Number);
+  const validate = () => {
+    const first = Number(firstNumber);
+    const second = Number(secondNumber);
+    const third = Number(thirdNumber);
 
-    const invalid = numbers.some((n) => !Number.isInteger(n) || n <= 0);
-
-    if (invalid) {
-      toast.error(txt.enterValidNumbersOnly);
-      return;
+    if (!Number.isInteger(first) || first <= 0) {
+      toast.error(label("enterFirstWinner", "Enter the 1st winner number"));
+      return null;
     }
 
-    const unique = Array.from(new Set(numbers));
-
-    if (unique.length !== numbers.length) {
-      toast.error(txt.duplicateNumbersNotAllowed);
-      return;
+    if (!Number.isInteger(second) || second <= 0) {
+      toast.error(label("enterSecondWinner", "Enter the 2nd winner number"));
+      return null;
     }
+
+    if (!Number.isInteger(third) || third <= 0) {
+      toast.error(label("enterThirdWinner", "Enter the 3rd winner number"));
+      return null;
+    }
+
+    return { first, second, third };
+  };
+
+  async function publishWinners() {
+    const winners = validate();
+    if (!winners) return;
 
     try {
-      setLoading(true);
+      setPublishing(true);
 
-      const res = await apiFetch('/api/admin/pick-winner', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ numbers: unique }),
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+      const res = await fetch("/api/admin/winner-announcement", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          firstNumber: winners.first,
+          secondNumber: winners.second,
+          thirdNumber: winners.third,
+        }),
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
-        throw new Error(data.error || txt.failedPickWinner);
+        throw new Error(data?.error || label("failedToPublishWinners", "Failed to publish winners"));
       }
 
-      setWinner(data.winner);
-      toast.success(txt.winnerPicked);
+      toast.success(label("winnersPublished", "Winners published for 24 hours"));
+
+      setFirstNumber("");
+      setSecondNumber("");
+      setThirdNumber("");
+
       onPicked?.();
+      onClose();
     } catch (err: any) {
-      toast.error(err.message || txt.failedPickWinner);
+      toast.error(err.message || label("failedToPublishWinners", "Failed to publish winners"));
     } finally {
-      setLoading(false);
+      setPublishing(false);
     }
-  };
+  }
+
+  const inputClass =
+    "w-full rounded-2xl border border-blue-100 bg-white px-4 py-4 text-center text-3xl font-black text-blue-700 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100";
 
   return (
     <div
@@ -122,76 +106,94 @@ export default function PickWinnerModal({ open, onClose, onPicked, lang }: Props
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-950"
-        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between border-b pb-3">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            {txt.pickWinnerTitle}
-          </h2>
+        <div className="mb-5 flex items-start justify-between gap-4 border-b pb-4">
+          <div>
+            <h2 className="text-2xl font-black text-gray-950">
+              {label("publishWinners", "Publish Winners")}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-gray-500">
+              {label(
+                "publishWinnersHelp",
+                "Enter the 1st, 2nd, and 3rd winner numbers. They will be shown for 24 hours.",
+              )}
+            </p>
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-gray-200 px-3 py-1 font-bold dark:bg-slate-800"
+            className="rounded-xl bg-gray-100 px-3 py-1 text-sm font-black text-gray-700 hover:bg-gray-200"
           >
             ×
           </button>
         </div>
 
-        <p className="mb-4 text-sm text-gray-600 dark:text-slate-300">
-          {txt.pickWinnerDescription}
-        </p>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {values.map((value, index) => (
+        <div className="grid gap-4">
+          <div>
+            <label className="mb-2 block text-sm font-black text-gray-700">
+              {label("firstWinner", "1st Winner")}
+            </label>
             <input
-              key={index}
               type="number"
-              value={value}
-              onChange={(e) => updateValue(index, e.target.value)}
-              placeholder={`${index + 1}`}
-              className="rounded-xl border px-3 py-3 text-center font-bold outline-none focus:border-blue-500 dark:bg-slate-900"
+              min={1}
+              value={firstNumber}
+              onChange={(event) => setFirstNumber(event.target.value)}
+              placeholder="1"
+              className={inputClass}
             />
-          ))}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-black text-gray-700">
+              {label("secondWinner", "2nd Winner")}
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={secondNumber}
+              onChange={(event) => setSecondNumber(event.target.value)}
+              placeholder="2"
+              className={inputClass}
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-black text-gray-700">
+              {label("thirdWinner", "3rd Winner")}
+            </label>
+            <input
+              type="number"
+              min={1}
+              value={thirdNumber}
+              onChange={(event) => setThirdNumber(event.target.value)}
+              placeholder="3"
+              className={inputClass}
+            />
+          </div>
         </div>
 
-        {winner && (
-          <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4 text-center dark:border-green-700 dark:bg-green-950">
-            <p className="text-sm font-bold text-green-700 dark:text-green-300">
-              🎉 {txt.winner}
-            </p>
-
-            <h3 className="mt-1 text-4xl font-extrabold text-green-800 dark:text-green-200">
-              #{winner.number}
-            </h3>
-
-            <p className="mt-2 font-bold text-gray-800 dark:text-white">
-              {winner.user_name}
-            </p>
-
-            <p className="text-sm text-gray-600 dark:text-slate-300">
-              {winner.user_phone}
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border px-4 py-3 font-semibold"
+            disabled={publishing}
+            className="rounded-2xl border px-4 py-3 text-sm font-black text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
-            {txt.cancel}
+            {label("cancel", "Cancel")}
           </button>
 
           <button
             type="button"
-            onClick={pickWinner}
-            disabled={loading}
-            className="flex-1 rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
+            onClick={publishWinners}
+            disabled={publishing}
+            className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-700/20 transition hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? txt.picking : txt.pickWinner}
+            {publishing
+              ? label("publishing", "Publishing...")
+              : label("pickWinner", "Pick Winner")}
           </button>
         </div>
       </div>

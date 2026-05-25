@@ -10,6 +10,7 @@ import { setClientSession } from '@/lib/auth/client';
 import { useLang } from '@/hooks/useLang';
 import { tm } from '@/lib/i18n/toastMessages';
 import LanguageButtons from '@/components/LanguageButtons';
+import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 
 function EyeIcon({ show }: { show: boolean }) {
   return show ? (
@@ -82,20 +83,13 @@ function LoginPageContent() {
       const data = await res.json();
 
       if (!res.ok || !data.token) {
-        let msg = tm(lang, 'loginFailed');
-        if (data.error === 'Invalid credentials') {
-          msg = tm(lang, 'invalidCredentials');
-        } else if (data.error === 'Phone and password are required') {
-          msg = tm(lang, 'phonePasswordRequired');
-        } else if (data.error) {
-          msg = lang === 'am' ? tm(lang, 'loginFailed') : data.error;
-        }
+        const msg = translateApiError(data, lang) || tm(lang, 'loginFailed');
         setError(msg);
         toast.error(msg, { id: 'login' });
         return;
       }
 
-      setClientSession(data.token, data.user);
+      setClientSession({ token: data.token, user: data.user });
 
       const redirectParam = searchParams.get('redirect');
 
@@ -113,7 +107,7 @@ function LoginPageContent() {
       toast.success(tm(lang, 'loginSuccess'), { id: 'login' });
 
       setTimeout(() => {
-        router.push(redirectTo);
+        window.location.replace(redirectTo);
       }, 300);
     } catch (err) {
       console.error(err);

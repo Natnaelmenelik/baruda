@@ -2,53 +2,79 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcrypt';
 import { sql } from '@/lib/db/sql';
 import { signUser, isAdminUser } from '@/lib/auth/server';
+import { consumeRateLimit, getClientIp, normalizeRateLimitKey } from '@/lib/rate-limit';
+
+const LOGIN_LIMIT = 5;
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+
+function normalizePhone(value: string) {
+  const phone = String(value || '').trim();
+  if (phone.startsWith('0')) return '+251' + phone.substring(1);
+  return phone;
+}
 
 export async function POST(req: Request) {
   try {
-    const { phone, password } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const phoneInput = String(body.phone || '').trim();
+    const password = String(body.password || '');
 
-    if (!phone || !password) {
+    if (!phoneInput || !password) {
       return NextResponse.json(
-        { error: 'Phone and password are required' },
+        { code: 'PHONE_PASSWORD_REQUIRED', error: 'Phone and password are required' },
         { status: 400 }
       );
     }
 
-    let formattedPhone = String(phone).trim();
+    const formattedPhone = normalizePhone(phoneInput);
 
-    if (formattedPhone.startsWith('0')) {
-      formattedPhone = '+251' + formattedPhone.substring(1);
+    const ip = getClientIp(req);
+    const rate = consumeRateLimit({
+      key: `auth-login:${ip}:${normalizeRateLimitKey(formattedPhone)}`,
+      limit: LOGIN_LIMIT,
+      windowMs: LOGIN_WINDOW_MS,
+    });
+
+    if (!rate.allowed) {
+      return NextResponse.json(
+        {
+          code: 'TOO_MANY_LOGIN_ATTEMPTS',
+          error: 'Too many login attempts. Please try again after 10 minutes.',
+          retryAfterSeconds: rate.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rate.retryAfterSeconds) },
+        }
+      );
     }
 
     const users = await sql`
-      SELECT *
+      SELECT id, name, phone, email, password_hash, is_admin, role
       FROM users
-      WHERE phone = ${phone}
-      OR phone = ${formattedPhone}
+      WHERE phone = ${phoneInput}
+         OR phone = ${formattedPhone}
       LIMIT 1
     `;
 
     if (!users.length) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
-    }
-
-    const user = users[0];
-    const passwordHash = user.password || user.password_hash;
-
-    if (!passwordHash) {
       return NextResponse.json(
-        { error: 'Invalid user password setup' },
-        { status: 500 }
+        { code: 'INVALID_CREDENTIALS', error: 'Invalid credentials' },
+        { status: 401 }
       );
     }
 
-    const valid = await bcrypt.compare(password, passwordHash);
+    const user = users[0];
 
-    if (!valid) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    // Per your instruction: do NOT hash password. Supabase table has password_hash column.
+    // So password_hash stores the plain password string.
+    if (!user.password_hash || String(user.password_hash) !== password) {
+      return NextResponse.json(
+        { code: 'INVALID_CREDENTIALS', error: 'Invalid credentials' },
+        { status: 401 }
+      );
     }
 
     const admin = isAdminUser(user);
@@ -58,6 +84,7 @@ export async function POST(req: Request) {
       userId: user.id,
       name: user.name,
       phone: user.phone,
+      email: user.email,
       role: admin ? 'admin' : user.role || 'user',
       isAdmin: admin,
     };
@@ -66,6 +93,7 @@ export async function POST(req: Request) {
 
     const response = NextResponse.json({
       success: true,
+      code: 'LOGIN_SUCCESS',
       token,
       redirectTo: admin ? '/admin' : '/dashboard',
       user: sessionUser,
@@ -75,11 +103,16 @@ export async function POST(req: Request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7,
       sameSite: 'lax',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     });
 
     return response;
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Login failed' }, { status: 500 });
+    return NextResponse.json(
+      { code: 'LOGIN_FAILED', error: 'Login failed' },
+      { status: 500 }
+    );
   }
 }

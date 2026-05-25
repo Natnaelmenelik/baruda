@@ -1,66 +1,20 @@
-cat > make-language-button-fancier.sh <<'EOF'
-#!/bin/bash
+python3 - <<'PY'
+from pathlib import Path
+import re
 
-FILE="components/LanguageButtons.tsx"
-BACKUP_DIR="backups-fancy-language-button-$(date +%Y%m%d-%H%M%S)"
+p = Path("app/(protected)/dashboard/page.tsx")
+text = p.read_text()
 
-if [ ! -f "$FILE" ]; then
-  echo "Error: $FILE not found."
-  exit 1
-fi
+text = re.sub(
+    r"\n\s*const announcementPoll = window\.setInterval\(\(\) => \{\n\s*if \(document\.visibilityState === \"visible\"\) \{\n\s*void refreshAnnouncementsTogether\(\);\n\s*\}\n\s*\}, 3000\);\n",
+    "\n",
+    text,
+)
 
-mkdir -p "$BACKUP_DIR"
-cp "$FILE" "$BACKUP_DIR/LanguageButtons.tsx.bak"
+text = text.replace("      window.clearInterval(announcementPoll);\n", "")
 
-cat > "$FILE" <<'TSX'
-'use client';
+p.write_text(text)
+print("Removed announcement polling")
+PY
 
-import type { Lang } from '@/lib/i18n/translations';
-
-type Props = {
-  lang: Lang;
-  setLang: (lang: Lang) => void;
-  size?: 'sm' | 'md';
-};
-
-export default function LanguageButtons({ lang, setLang, size = 'md' }: Props) {
-  const nextLang: Lang =
-    lang === 'am' ? 'en' : lang === 'en' ? 'om' : 'am';
-
-  const label =
-    lang === 'am' ? 'English' : lang === 'en' ? 'Oromifa' : 'Amharic';
-
-  const currentLabel =
-    lang === 'am' ? 'AM' : lang === 'en' ? 'EN' : 'OM';
-
-  const padding = size === 'sm' ? 'px-3 py-2 text-sm' : 'px-4 py-2 text-sm';
-
-  return (
-    <button
-      type="button"
-      onClick={() => setLang(nextLang)}
-      title={`Switch to ${label}`}
-      className={`group inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/90 ${padding} font-bold text-slate-800 shadow-lg shadow-black/10 backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl active:translate-y-0 dark:border-slate-700 dark:bg-slate-900/90 dark:text-white dark:hover:bg-slate-800`}
-    >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 text-xs font-black text-white shadow-sm">
-        {currentLabel}
-      </span>
-
-      <span className="leading-none">
-        {label}
-      </span>
-
-      <span className="text-base leading-none text-blue-600 transition-transform duration-200 group-hover:translate-x-0.5 dark:text-blue-300">
-        →
-      </span>
-    </button>
-  );
-}
-TSX
-
-echo "Done. Backup saved in: $BACKUP_DIR"
 npm run build
-EOF
-
-chmod +x make-language-button-fancier.sh
-./make-language-button-fancier.sh

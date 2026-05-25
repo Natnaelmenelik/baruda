@@ -1,6 +1,5 @@
 "use client";
-
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import NumberGrid from "@/components/NumberGrid";
@@ -10,53 +9,441 @@ import MyPurchasesModal from "@/components/MyPurchasesModal";
 import { useMySubmissions } from "@/hooks/useLottery";
 import { useLang } from "@/hooks/useLang";
 import { tm } from "@/lib/i18n/toastMessages";
-import { clearClientSession } from "@/lib/auth/client";
+import { logoutClientSession } from "@/lib/auth/client";
 import LanguageButtons from "@/components/LanguageButtons";
+import NumberStatusLegend from "@/components/NumberStatusLegend";
+import NumberAmountsModal from "@/components/NumberAmountsModal";
+import { translations } from "@/lib/i18n/translations";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+
+type DashboardMessage = {
+  id: string;
+  text: string;
+  createdAt?: string | null;
+  expiresAt?: string | null;
+};
+
+type WinnerAnnouncementData = {
+  id: string;
+  first_number: number;
+  second_number: number;
+  third_number: number;
+  expires_at: string;
+  created_at: string;
+};
+
+function getCurrentUser() {
+  if (typeof window === "undefined") return {} as any;
+
+  try {
+    return JSON.parse(localStorage.getItem("user") || "{}");
+  } catch {
+    return {} as any;
+  }
+}
+
+function getCurrentUserId() {
+  const user = getCurrentUser();
+  return user?.id ? String(user.id) : null;
+}
+
+function dashboardMessageDismissKey(id: string) {
+  return `dashboard-message-dismissed:${id}`;
+}
+
+function isDashboardMessageDismissed(id: string) {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(dashboardMessageDismissKey(id)) === "1";
+}
+
+function normalizeDashboardMessageFromValue(
+  value: any,
+): DashboardMessage | null {
+  if (!value) return null;
+
+  // Admin panel may save dashboard_message as plain text.
+  // Older code expected JSON with { message, expiresAt }, which made realtime message updates disappear.
+  if (typeof value === "string") {
+    const raw = value.trim();
+
+    if (!raw) return null;
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        const text = String(parsed.message || parsed.text || "").trim();
+        const expiresAt = String(
+          parsed.expiresAt || parsed.expires_at || "",
+        ).trim();
+
+        if (!text) return null;
+
+        if (expiresAt) {
+          const expiresMs = new Date(expiresAt).getTime();
+          if (Number.isFinite(expiresMs) && expiresMs <= Date.now())
+            return null;
+        }
+
+        return {
+          id: String(parsed.id || expiresAt || text),
+          text,
+          createdAt: parsed.createdAt || parsed.created_at || null,
+          expiresAt: expiresAt || null,
+        };
+      }
+    } catch {
+      // Plain string message.
+      return {
+        id: `dashboard-message:${raw}`,
+        text: raw,
+        createdAt: null,
+        expiresAt: null,
+      };
+    }
+
+    return {
+      id: `dashboard-message:${raw}`,
+      text: raw,
+      createdAt: null,
+      expiresAt: null,
+    };
+  }
+
+  const text = String(value.message || value.text || "").trim();
+  if (!text) return null;
+
+  const expiresAt = String(value.expiresAt || value.expires_at || "").trim();
+
+  if (expiresAt) {
+    const expiresMs = new Date(expiresAt).getTime();
+    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) return null;
+  }
+
+  return {
+    id: String(value.id || expiresAt || text),
+    text,
+    createdAt: value.createdAt || value.created_at || null,
+    expiresAt: expiresAt || null,
+  };
+}
+
+function normalizeDashboardMessage(message: any): DashboardMessage | null {
+  if (!message) return null;
+
+  const text = String(message.text || message.message || "").trim();
+  if (!text) return null;
+
+  if (message.expiresAt) {
+    const expiresMs = new Date(message.expiresAt).getTime();
+    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) return null;
+  }
+
+  return {
+    id: String(message.id || message.expiresAt || Date.now()),
+    text,
+    createdAt: message.createdAt || null,
+    expiresAt: message.expiresAt || null,
+  };
+}
+
+function normalizeWinnerAnnouncement(row: any): WinnerAnnouncementData | null {
+  if (!row?.id) return null;
+
+  if (row.expires_at) {
+    const expiresMs = new Date(row.expires_at).getTime();
+    if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) return null;
+  }
+
+  return {
+    id: String(row.id),
+    first_number: Number(row.first_number),
+    second_number: Number(row.second_number),
+    third_number: Number(row.third_number),
+    expires_at: String(row.expires_at || ""),
+    created_at: String(row.created_at || ""),
+  };
+}
 
 export default function DashboardPage() {
+  const didLoadAnnouncementsRef = useRef(false);
+
   const router = useRouter();
   const { data: subs = [] } = useMySubmissions();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [showPurchasesModal, setShowPurchasesModal] = useState(false);
   const { t, lang, setLang } = useLang();
+  const txt: any = translations[lang] || translations.en;
+  const [approvalNotifications, setApprovalNotifications] = useState<any[]>([]);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [showNumberAmounts, setShowNumberAmounts] = useState(false);
+  const [showPurchasesModal, setShowPurchasesModal] = useState(false);
+  const [dashboardMessage, setDashboardMessage] =
+    useState<DashboardMessage | null>(null);
+  const [winnerAnnouncement, setWinnerAnnouncement] =
+    useState<WinnerAnnouncementData | null>(null);
 
-  let user: any = {};
+  const label = (key: string, fallback: string) => {
+    const value = (txt as any)?.[key];
+    return typeof value === "string" && value.trim() ? value : fallback;
+  };
 
-  if (typeof window !== "undefined") {
+  const user = getCurrentUser();
+  const displayName = user?.name || user?.full_name || "User";
+
+  function applyDashboardMessage(message: any) {
+    const next = normalizeDashboardMessage(message);
+    if (!next?.id) {
+      setDashboardMessage(null);
+      return;
+    }
+
+    if (isDashboardMessageDismissed(String(next.id))) {
+      setDashboardMessage(null);
+      return;
+    }
+
+    setDashboardMessage(next);
+  }
+
+  function closeDashboardMessage() {
+    if (dashboardMessage?.id && typeof window !== "undefined") {
+      localStorage.setItem(
+        dashboardMessageDismissKey(String(dashboardMessage.id)),
+        "1",
+      );
+    }
+    setDashboardMessage(null);
+  }
+
+  function formatApprovedNumbers(item: any) {
+    if (Array.isArray(item?.numbers) && item.numbers.length) {
+      return item.numbers.join(", ");
+    }
+    if (item?.number_amounts && typeof item.number_amounts === "object") {
+      return Object.keys(item.number_amounts).join(", ");
+    }
+    return item?.number ? String(item.number) : "-";
+  }
+
+  function normalizeApprovedNotificationFromSubmission(row: any) {
+    if (!row) return null;
+
+    const numberAmounts =
+      row.number_amounts && typeof row.number_amounts === "object"
+        ? row.number_amounts
+        : {};
+
+    const numbers =
+      Array.isArray(row.numbers) && row.numbers.length
+        ? row.numbers
+            .map((n: any) => Number(n))
+            .filter((n: number) => Number.isFinite(n))
+        : Object.keys(numberAmounts).length
+          ? Object.keys(numberAmounts)
+              .map((n) => Number(n))
+              .filter((n) => Number.isFinite(n))
+          : row.number
+            ? [Number(row.number)]
+            : [];
+
+    return {
+      ...row,
+      id: row.id,
+      submission_group_id: row.submission_group_id,
+      status: row.status,
+      numbers,
+      number_amounts: numberAmounts,
+      total_amount: row.total_amount || row.ticket_price || 0,
+      approved_at: row.approved_at,
+      created_at: row.created_at,
+      message: "Your selected number has been approved.",
+    };
+  }
+
+  async function refreshApprovedNotificationFallback() {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
     try {
-      user = JSON.parse(localStorage.getItem("user") || "{}");
+      const res = await fetch("/api/dashboard/announcements", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-store",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+
+      if (Array.isArray(data?.approvedNumberMessages)) {
+        setApprovalNotifications(data.approvedNumberMessages);
+      } else if (data?.approvedNumberMessage) {
+        setApprovalNotifications([data.approvedNumberMessage]);
+      }
+
+      if (data?.dashboardMessage) {
+        applyDashboardMessage(data.dashboardMessage);
+      }
+
+      if (data?.winnerAnnouncement) {
+        setWinnerAnnouncement(
+          normalizeWinnerAnnouncement(data.winnerAnnouncement),
+        );
+      }
     } catch {
-      user = {};
+      // Realtime already delivered the important status; fallback details are optional.
     }
   }
 
-  const displayName = user?.name || "User";
+  async function loadDashboardAnnouncementsOnce() {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-  const getSubmissionNumbers = (sub: any) => {
-    if (Array.isArray(sub.numbers) && sub.numbers.length > 0) {
-      return sub.numbers;
+    try {
+      const res = await fetch("/api/dashboard/announcements", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-store",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+
+      applyDashboardMessage(data?.dashboardMessage || null);
+      setWinnerAnnouncement(
+        normalizeWinnerAnnouncement(data?.winnerAnnouncement),
+      );
+      if (Array.isArray(data?.approvedNumberMessages)) {
+        setApprovalNotifications(data.approvedNumberMessages);
+      } else {
+        setApprovalNotifications(
+          data?.approvedNumberMessage ? [data.approvedNumberMessage] : [],
+        );
+      }
+    } catch {
+      // The dashboard still works without optional announcement data.
     }
+  }
 
-    if (sub.number) {
-      return [sub.number];
+
+  async function refreshAnnouncementsTogether() {
+    await loadDashboardAnnouncementsOnce();
+  }
+
+  async function markApprovalNotificationsRead() {
+    const ids = approvalNotifications.map((item) => item.id).filter(Boolean);
+    const previous = approvalNotifications;
+    setApprovalNotifications([]);
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    try {
+      const res = await fetch("/api/user/notifications/read", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ids }),
+      });
+      if (!res.ok) {
+        setApprovalNotifications(previous);
+      }
+    } catch {
+      setApprovalNotifications(previous);
     }
+  }
 
-    return [];
-  };
+  useEffect(() => {
+    if (didLoadAnnouncementsRef.current) return;
+    didLoadAnnouncementsRef.current = true;
+
+    void loadDashboardAnnouncementsOnce();
+
+    const supabase = getSupabaseBrowserClient();
+    const userId = getCurrentUserId();
+
+    const globalChannel = supabase
+      .channel("dashboard-announcements-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "settings",
+          filter: "key=eq.dashboard_message",
+        },
+        () => {
+          void refreshAnnouncementsTogether();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "winner_announcements",
+        },
+        () => {
+          void refreshAnnouncementsTogether();
+        },
+      )
+      .subscribe((status) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn(
+            "Dashboard realtime is not connected. Falling back to focus refresh.",
+          );
+        }
+      });
+
+    const userChannel = userId
+      ? supabase
+          .channel(`dashboard-submissions-user-${userId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "submissions",
+              filter: `user_id=eq.${userId}`,
+            },
+            () => {
+              void refreshApprovedNotificationFallback();
+            },
+          )
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.warn(
+                "User notification realtime is not connected. Falling back to focus refresh.",
+              );
+            }
+          })
+      : null;
+
+    const refreshOnFocus = () => {
+      if (document.visibilityState === "visible") {
+        void loadDashboardAnnouncementsOnce();
+      }
+    };
+
+    window.addEventListener("focus", refreshOnFocus);
+    document.addEventListener("visibilitychange", refreshOnFocus);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnFocus);
+      document.removeEventListener("visibilitychange", refreshOnFocus);
+      supabase.removeChannel(globalChannel);
+      if (userChannel) supabase.removeChannel(userChannel);
+    };
+  }, []);
 
   function logout() {
-    clearClientSession();
-    toast.success(tm(lang, "logoutSuccess"));
-
-    setTimeout(() => {
-      router.push("/login");
-      router.refresh();
-    }, 400);
+    logoutClientSession("/login");
   }
 
   return (
     <div className="min-h-screen p-4 pb-20 sm:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="max-w-6xl mx-auto space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold">{t.dashboard}</h1>
@@ -68,89 +455,153 @@ export default function DashboardPage() {
                   : `Welcome, ${displayName} 👋`}
             </p>
           </div>
-
-          <div className="flex flex-wrap items-center w-full gap-2 sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <LanguageButtons lang={lang} setLang={setLang} />
-
-            <ThemeToggle />
-
             <button
+              type="button"
+              onClick={() => setShowNumberAmounts(true)}
+              className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50"
+            >
+              {label("numberAmounts", "Number Amounts")}
+            </button>
+            <button
+              type="button"
               onClick={() => setShowPurchasesModal(true)}
-              className="flex-1 px-3 py-2 text-white bg-blue-600 rounded-xl sm:flex-none"
+              className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50"
             >
               {t.myPurchases}
             </button>
-
+            <ThemeToggle />
             <button
+              type="button"
               onClick={() => setShowLogoutModal(true)}
-              className="flex-1 px-3 py-2 text-white bg-red-600 rounded-xl sm:flex-none"
+              className="px-4 py-2 text-sm font-semibold text-white transition bg-red-600 shadow-sm rounded-xl hover:bg-red-700"
             >
               {t.logout}
             </button>
           </div>
         </div>
 
-        <WinnerAnnouncement />
+        {dashboardMessage && (
+          <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 p-[1px] shadow-xl shadow-blue-900/10">
+            <div className="p-4 rounded-3xl bg-white/95 backdrop-blur md:p-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex gap-3">
+                  <div className="flex items-center justify-center text-xl text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-600 to-sky-500 shadow-blue-900/20">
+                    ✦
+                  </div>
+                  <div>
+                    <div className="text-xs font-black uppercase tracking-[0.25em] text-indigo-600">
+                      {label("dashboardMessageTitle", "Announcement")}
+                    </div>
+                    <p className="mt-2 text-xl font-semibold leading-7 text-gray-800 whitespace-pre-wrap md:text-2xl">
+                      {dashboardMessage.text}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDashboardMessage}
+                  className="self-end px-4 py-2 text-xs font-black text-indigo-700 transition border border-indigo-100 rounded-full bg-indigo-50 hover:bg-indigo-100 md:self-start"
+                >
+                  {label("close", "Close")}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
 
-        {/* <section className="overflow-hidden border border-blue-100 shadow bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl">
-          <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
-            <div className="flex items-center justify-center md:justify-start">
+        <WinnerAnnouncement announcement={winnerAnnouncement} />
+
+        {approvalNotifications.length > 0 && (
+          <section className="p-4 border shadow-md rounded-2xl border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-100">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <div className="px-6 py-4 shadow-inner rounded-2xl bg-white/80 ring-1 ring-emerald-100">
+                <div className="text-3xl font-black text-emerald-700 md:text-4xl">
+                  {label("approvalGoodLuck", "Good luck!")}
+                </div>
+              </div>
+              <div className="grid w-full max-w-2xl gap-2">
+                {approvalNotifications.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 text-left border shadow-sm rounded-xl border-emerald-100 bg-white/90"
+                  >
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <span className="text-sm font-black text-emerald-950">
+                        {label("numbers", "Numbers")}
+                      </span>
+                      <span className="px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-700">
+                        {label("approved", "Approved")}
+                      </span>
+                    </div>
+                    <div className="text-lg font-black text-gray-950">
+                      {formatApprovedNumbers(item)}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between rounded-lg bg-emerald-50 px-3 py-1.5 text-xs">
+                      <span className="font-bold text-emerald-800">
+                        {label("amount", "Amount")}
+                      </span>
+                      <span className="font-extrabold text-emerald-950">
+                        {Number(
+                          item.total_amount || item.ticket_price || 0,
+                        ).toLocaleString()}{" "}
+                        {label("birr", "Birr")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={markApprovalNotificationsRead}
+                className="px-5 py-2 text-xs font-black text-white transition shadow-md rounded-xl bg-emerald-600 shadow-emerald-700/20 hover:bg-emerald-700"
+              >
+                {label("gotIt", "Got it")}
+              </button>
+            </div>
+          </section>
+        )}
+
+        <section className="overflow-hidden border border-pink-100 shadow-xl rounded-3xl bg-gradient-to-b from-white via-pink-50 to-rose-50">
+          <div className="flex flex-col gap-3 p-3 sm:p-4 md:p-4 lg:p-5">
+            <div className="flex items-center justify-center">
               <img
-                src="/images/jetour_dashboard.png"
+                src="/images/bardua-dashboard.png"
                 alt={t.prizeCar}
-                className="mx-auto max-h-[420px] w-full max-w-xl object-contain drop-shadow-2xl"
+                className="mx-auto w-full max-w-5xl object-contain drop-shadow-xl max-h-[220px] sm:max-h-[260px] md:max-h-[320px] lg:max-h-[420px]"
               />
             </div>
-
-            <div>
-              <h2 className="mb-4 text-2xl font-extrabold text-blue-800">
-                {t.gameRules}
-              </h2>
-
-              <ul className="space-y-3 text-base font-medium text-blue-700 sm:text-lg">
-                <>
-                  <li>• {t.chooseNumbersRule}</li>
-                  <li>• {t.uploadReceiptRule}</li>
-                  <li>• {t.waitApprovalRule}</li>
-                  <li>• {t.winnerRandomRule}</li>
-                  <li>• {t.unapprovedNotCountedRule}</li>
-                </>
-              </ul>
-            </div>
-          </div>
-        </section> */}
-
-        <section className="overflow-hidden border border-blue-100 shadow bg-gradient-to-r from-blue-50 to-sky-50 rounded-2xl">
-          <div className="grid gap-5 p-4 md:grid-cols-[1fr_1fr] md:items-center">
-            <div className="flex items-center justify-center md:justify-start">
-              <img
-                src="/images/jetour_dashboard.png"
-                alt={t.prizeCar}
-                className="mx-auto max-h-[420px] w-full max-w-xl object-contain drop-shadow-2xl"
-              />
-            </div>
-
-            <div className="text-center md:text-left">
-              <h2 className="mb-4 text-2xl font-extrabold text-blue-800">
-                {t.gameRules}
-              </h2>
-
-              <ul className="max-w-md mx-auto space-y-3 text-base font-medium text-center text-blue-700 sm:text-lg md:mx-0 md:text-left">
-                <li>• {t.chooseNumbersRule}</li>
-                <li>• {t.uploadReceiptRule}</li>
-                <li>• {t.waitApprovalRule}</li>
-                <li>• {t.winnerRandomRule}</li>
-                <li>• {t.unapprovedNotCountedRule}</li>
-              </ul>
+            <div className="w-full max-w-5xl p-3 mx-auto text-center border border-pink-100 shadow-md rounded-3xl bg-white/90 shadow-pink-900/5 backdrop-blur sm:p-4 md:p-4 lg:p-5">
+              <p className="max-w-4xl mx-auto text-lg font-black leading-snug tracking-tight text-rose-700 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
+                የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ
+              </p>
+              <p className="max-w-4xl mx-auto my-3 text-lg font-black leading-snug tracking-tight text-blue-700 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
+                560,000 ብር
+              </p>
+              <a
+                href="https://t.me/barudaloto"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open Barudalo Telegram group"
+                className="mt-2 inline-flex items-center justify-center rounded-full bg-rose-100 px-4 py-1.5 text-base font-black text-rose-800 shadow-sm transition hover:bg-rose-200 hover:text-rose-900 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-rose-200 sm:text-lg md:mt-3 md:px-5 md:py-2 md:text-xl lg:text-2xl"
+              >
+                @Barudalo
+              </a>
             </div>
           </div>
         </section>
 
         <section>
-          <NumberGrid />
+          <NumberStatusLegend lang={lang} /> <NumberGrid />
         </section>
       </div>
 
+      <NumberAmountsModal
+        open={showNumberAmounts}
+        onClose={() => setShowNumberAmounts(false)}
+        lang={lang}
+      />
       <MyPurchasesModal
         open={showPurchasesModal}
         onClose={() => setShowPurchasesModal(false)}
@@ -171,11 +622,9 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold text-gray-900">
               {t.logoutConfirmTitle}
             </h2>
-
             <p className="mt-2 text-sm text-gray-600">
               {t.userLogoutConfirmMessage}
             </p>
-
             <div className="flex gap-3 mt-6">
               <button
                 type="button"
@@ -184,7 +633,6 @@ export default function DashboardPage() {
               >
                 {t.cancel}
               </button>
-
               <button
                 type="button"
                 onClick={logout}

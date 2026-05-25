@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "./providers/QueryProvider";
 import AppToaster from "@/components/AppToaster";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://oddda.vercel.app"),
@@ -40,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="am">
+    <html lang="am" suppressHydrationWarning>
       <head>
         <script
           id="theme-init-script"
@@ -60,7 +57,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={inter.className}>
+      <body>
         <QueryProvider>
           {children}
           <AppToaster />

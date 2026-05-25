@@ -1,17 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { translations, Lang } from '@/lib/i18n/translations';
+import { useEffect, useMemo, useState } from 'react';
+import { translations } from '@/lib/i18n/translations';
+
+export type Lang = 'en' | 'am' | 'om';
 
 const LANG_KEY = 'lang';
 const LANG_EVENT = 'app-language-change';
 
+type TranslationDict = Record<string, string>;
+
+function normalizeLang(value: unknown): Lang {
+  return value === 'am' || value === 'en' || value === 'om' ? value : 'am';
+}
+
 function getSavedLang(): Lang {
   if (typeof window === 'undefined') return 'am';
 
-  const saved = localStorage.getItem(LANG_KEY);
+  try {
+    return normalizeLang(localStorage.getItem(LANG_KEY));
+  } catch {
+    return 'am';
+  }
+}
 
-  return saved === 'am' || saved === 'en' || saved === 'om' ? saved : 'am';
+function getTranslations(lang: Lang): TranslationDict {
+  return (translations[lang] || translations.am || translations.en || {}) as unknown as TranslationDict;
 }
 
 export function useLang() {
@@ -33,16 +47,29 @@ export function useLang() {
     };
   }, []);
 
-  const changeLang = (nextLang: Lang) => {
-    localStorage.setItem(LANG_KEY, nextLang);
-    setLangState(nextLang);
+  const setLang = (nextLang: Lang) => {
+    const normalized = normalizeLang(nextLang);
 
-    window.dispatchEvent(new Event(LANG_EVENT));
+    try {
+      localStorage.setItem(LANG_KEY, normalized);
+    } catch {
+      // ignore storage errors
+    }
+
+    setLangState(normalized);
+
+    try {
+      window.dispatchEvent(new Event(LANG_EVENT));
+    } catch {
+      // ignore event errors
+    }
   };
+
+  const t = useMemo(() => getTranslations(lang), [lang]);
 
   return {
     lang,
-    setLang: changeLang,
-    t: translations[lang],
+    setLang,
+    t,
   };
 }

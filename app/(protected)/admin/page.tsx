@@ -4,7 +4,7 @@ import PickWinnerModal from "@/components/PickWinnerModal";
 
 import ThemeToggle from "@/components/ThemeToggle";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -18,9 +18,11 @@ import {
 import { fetchReceipt, fetchWinners } from "@/lib/api/admin";
 import { useLang } from "@/hooks/useLang";
 import { tm } from "@/lib/i18n/toastMessages";
-import { clearClientSession } from "@/lib/auth/client";
+import { logoutClientSession } from "@/lib/auth/client";
 import AdminSettingsPanel from "@/components/AdminSettingsPanel";
+import AdminNumbersPanel from "@/components/AdminNumbersPanel";
 import LanguageButtons from "@/components/LanguageButtons";
+import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -47,22 +49,79 @@ export default function AdminPage() {
     "approve" | "reject" | null
   >(null);
   const [showClearModal, setShowClearModal] = useState(false);
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(
+    null,
+  );
   const [showWinnersModal, setShowWinnersModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showPickWinnerModal, setShowPickWinnerModal] = useState(false);
   const [winners, setWinners] = useState<any[]>([]);
   const [winnersLoading, setWinnersLoading] = useState(false);
 
-  const { data: submissions = [], isLoading: submissionsLoading } =
-    useSubmissions();
-  const { data: stats = {}, isLoading: statsLoading } = useStats();
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<
+    "all" | "pending" | "approved" | "rejected"
+  >("pending");
+  const [submissionSearchInput, setSubmissionSearchInput] = useState("");
+  const [submissionSearch, setSubmissionSearch] = useState("");
+  const [submissionPage, setSubmissionPage] = useState(1);
+  const submissionLimit = 20;
+
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSubmissionSearch(submissionSearchInput.trim());
+      setSubmissionPage(1);
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [submissionSearchInput]);
+  const {
+    data: submissionsResponse = {
+      submissions: [],
+      page: 1,
+      limit: submissionLimit,
+      total: 0,
+      totalPages: 1,
+      status: submissionStatusFilter,
+      search: submissionSearch,
+    },
+    isLoading: submissionsLoading,
+    refetch: refetchSubmissions,
+  } = useSubmissions({
+    page: submissionPage,
+    limit: submissionLimit,
+    status: submissionStatusFilter,
+    search: submissionSearch,
+  });
+  const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useStats();
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();
 
   const getSubmissionNumbers = (sub: any) => {
+    const itemSource =
+      Array.isArray(sub.items) && sub.items.length > 0
+        ? sub.items
+        : Array.isArray(sub.submission_items) && sub.submission_items.length > 0
+          ? sub.submission_items
+          : [];
+
+    if (itemSource.length > 0) {
+      return itemSource
+        .map((item: any) => Number(item.number))
+        .filter((n: number) => Number.isFinite(n) && n > 0);
+    }
+
     if (Array.isArray(sub.numbers) && sub.numbers.length > 0) {
-      return sub.numbers.map(Number).filter(Boolean);
+      return sub.numbers
+        .map(Number)
+        .filter((n: number) => Number.isFinite(n) && n > 0);
+    }
+
+    if (sub.number_amounts && typeof sub.number_amounts === "object") {
+      return Object.keys(sub.number_amounts)
+        .map(Number)
+        .filter((n: number) => Number.isFinite(n) && n > 0);
     }
 
     if (sub.number) {
@@ -146,8 +205,18 @@ export default function AdminPage() {
     return Array.from(grouped.values());
   };
 
-  const safeSubmissions = groupAdminSubmissions(
-    Array.isArray(submissions) ? submissions : [],
+  const submissions = Array.isArray((submissionsResponse as any)?.submissions)
+    ? (submissionsResponse as any).submissions
+    : Array.isArray(submissionsResponse)
+      ? submissionsResponse
+      : [];
+
+  const safeSubmissions = groupAdminSubmissions(submissions);
+  const submissionTotal = Number((submissionsResponse as any)?.total || safeSubmissions.length || 0);
+  const submissionTotalPages = Math.max(1, Number((submissionsResponse as any)?.totalPages || 1));
+  const currentSubmissionPage = Math.min(
+    submissionPage,
+    submissionTotalPages,
   );
 
   const statusLabel = (status: string) =>
@@ -157,10 +226,15 @@ export default function AdminPage() {
         ? txt.rejected
         : txt.pending;
 
+  async function refreshAdminDataAfterClear() {
+    await Promise.allSettled([
+      refetchStats?.(),
+      refetchSubmissions?.(),
+    ]);
+  }
+
   const handleLogout = () => {
-    clearClientSession();
-    toast.success(tm(lang, "logoutSuccess"));
-    setTimeout(() => router.push("/login"), 400);
+    logoutClientSession("/login");
   };
 
   const handleApprove = (id: string) => {
@@ -169,10 +243,11 @@ export default function AdminPage() {
     approve(id, {
       onSuccess: () => toast.success(tm(lang, "approveSuccess")),
       onError: (err: any) =>
-        toast.error(err.message || tm(lang, "approveFailed")),
+        toast.error(translateApiError(err, lang) || tm(lang, "approveFailed")),
       onSettled: () => {
         setProcessingSubmissionId(null);
-        setProcessingType(null);
+        
+      setProcessingType(null);
       },
     });
   };
@@ -183,10 +258,11 @@ export default function AdminPage() {
     reject(id, {
       onSuccess: () => toast.success(tm(lang, "rejectSuccess")),
       onError: (err: any) =>
-        toast.error(err.message || tm(lang, "rejectFailed")),
+        toast.error(translateApiError(err, lang) || tm(lang, "rejectFailed")),
       onSettled: () => {
         setProcessingSubmissionId(null);
-        setProcessingType(null);
+        
+      setProcessingType(null);
       },
     });
   };
@@ -194,14 +270,20 @@ export default function AdminPage() {
   const handleViewReceipt = async (sub: any) => {
     try {
       setReceiptLoadingId(sub.id);
-      if (sub.receipt_url) {
-        setSelectedImage(sub.receipt_url);
+
+      // Always ask the backend for a fresh signed URL.
+      // Do not open sub.receipt_url directly because it may be an expired Supabase signed URL.
+      const data = await fetchReceipt(sub.id);
+      const freshUrl = data?.receiptUrl || data?.signedUrl || data?.url || sub?.receipt_url || "";
+
+      if (!freshUrl) {
+        toast.error(tm(lang, "receiptLoadFailed"));
         return;
       }
-      const data = await fetchReceipt(sub.id);
-      setSelectedImage(data.receiptUrl);
+
+      setSelectedImage(freshUrl);
     } catch (err: any) {
-      toast.error(err.message || tm(lang, "receiptLoadFailed"));
+      toast.error(translateApiError(err, lang) || tm(lang, "receiptLoadFailed"));
     } finally {
       setReceiptLoadingId(null);
     }
@@ -209,12 +291,14 @@ export default function AdminPage() {
 
   const handleOpenWinners = async () => {
     try {
+      // Refetch winners every time the Previous Winners modal is opened.
       setShowWinnersModal(true);
+      setWinners([]);
       setWinnersLoading(true);
       const data = await fetchWinners();
       setWinners(Array.isArray(data) ? data : []);
     } catch (err: any) {
-      toast.error(err.message || txt.failedToLoadWinners);
+      toast.error(translateApiError(err, lang) || txt.failedToLoadWinners);
     } finally {
       setWinnersLoading(false);
     }
@@ -222,12 +306,16 @@ export default function AdminPage() {
 
   const confirmClearAll = () => {
     clearAll(undefined, {
-      onSuccess: () => {
+      onSuccess: async () => {
         setShowClearModal(false);
+        await refreshAdminDataAfterClear();
         toast.success(tm(lang, "clearSuccess"));
+      
+        
+
       },
       onError: (err: any) =>
-        toast.error(err.message || tm(lang, "clearFailed")),
+        toast.error(translateApiError(err, lang) || tm(lang, "clearFailed")),
     });
   };
 
@@ -235,39 +323,48 @@ export default function AdminPage() {
     return <div className="p-8 text-center">{txt.loading}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-screen p-4 bg-gray-100 md:p-6">
+      <div className="flex flex-col gap-4 mb-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">{txt.adminPanel}</h1>
           <p className="mt-1 text-sm text-slate-500">
             {txt.welcome}, {displayName} 👋
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-center w-full gap-2 md:w-auto md:justify-end">
           <LanguageButtons lang={lang} setLang={setLang} />
           <ThemeToggle />
           <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("open-dashboard-message-modal"))}
+            className="px-4 py-2 font-semibold text-amber-900 transition rounded bg-gradient-to-r from-amber-100 to-orange-100 hover:from-amber-200 hover:to-orange-200"
+          >
+            {((txt as any).writeDashboardMessage || "Write a Message")}
+          </button>
+          <button
             onClick={() => setShowPickWinnerModal(true)}
-            className="rounded bg-purple-600 px-4 py-2 text-white disabled:opacity-50"
+            className="px-4 py-2 text-white bg-purple-600 rounded disabled:opacity-50"
           >
             {txt.pickWinner}
           </button>
+          {/* Previous Winners button hidden/commented out by request
           <button
             onClick={handleOpenWinners}
-            className="rounded bg-blue-600 px-4 py-2 text-white"
+            className="px-4 py-2 text-white bg-blue-600 rounded"
           >
             {txt.previousWinners}
           </button>
+          */}
           <button
             onClick={() => setShowClearModal(true)}
             disabled={clearing}
-            className="rounded bg-red-600 px-4 py-2 text-white disabled:opacity-50"
+            className="px-4 py-2 text-white bg-red-600 rounded disabled:opacity-50"
           >
             {txt.clearAll}
           </button>
           <button
             onClick={() => setShowLogoutModal(true)}
-            className="rounded bg-gray-700 px-4 py-2 text-white"
+            className="px-4 py-2 text-white bg-gray-700 rounded"
           >
             {txt.logout}
           </button>
@@ -275,11 +372,12 @@ export default function AdminPage() {
       </div>
 
       <AdminSettingsPanel />
+<AdminNumbersPanel />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 mb-6 md:grid-cols-5">
         <StatCard title={txt.users} value={stats.totalUsers || 0} />
         <StatCard title={txt.sold} value={stats.numbersSold || 0} />
-        <StatCard title={txt.pending} value={stats.pendingApprovals || 0} />
+        <StatCard title={txt.pending} value={stats.pendingNumbers ?? stats.pendingApprovals ?? 0} />
         <StatCard
           title={txt.revenue}
           value={`${Number(stats.revenue || 0).toLocaleString()} Birr`}
@@ -287,12 +385,45 @@ export default function AdminPage() {
         <StatCard title={txt.left} value={stats.numbersLeft || 0} />
       </div>
 
-      <div className="overflow-hidden rounded-xl bg-white shadow">
-        <div className="flex justify-between border-b p-4">
-          <h2 className="font-bold">{txt.submissions}</h2>
-          <span className="text-sm text-gray-500">
-            {txt.total}: {safeSubmissions.length}
-          </span>
+      <div className="overflow-hidden bg-white shadow rounded-xl">
+        <div className="flex flex-col gap-4 p-4 border-b lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="font-bold">{txt.submissions}</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              {txt.total}: {submissionTotal}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-wrap gap-2">
+              {(["pending", "all", "approved", "rejected"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => {
+                    setSubmissionStatusFilter(status);
+                    setSubmissionPage(1);
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition ${
+                    submissionStatusFilter === status
+                      ? "bg-blue-600 text-white shadow"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  {status === "all"
+                    ? txt.all
+                    : statusLabel(status)}
+                </button>
+              ))}
+            </div>
+
+            <input
+              value={submissionSearchInput}
+              onChange={(e) => setSubmissionSearchInput(e.target.value)}
+              placeholder={(txt as any).searchSubmissions || "Search name, phone, number..."}
+              className="w-full rounded-xl border px-3 py-2 text-sm outline-none focus:border-blue-500 sm:w-64"
+            />
+          </div>
         </div>
 
         {safeSubmissions.length === 0 ? (
@@ -320,16 +451,20 @@ export default function AdminPage() {
                     ? sub.numbers
                     : [sub.number].filter(Boolean);
                   return (
-                    <tr key={sub.id} className="border-b hover:bg-gray-50">
+                    <tr
+                      key={sub.id}
+                      onClick={() => setSelectedSubmission(sub)}
+                      className="border-b cursor-pointer hover:bg-gray-50"
+                    >
                       <td className="p-3">{sub.user_name || txt.unknown}</td>
                       <td className="p-3">
                         {sub.user_phone || sub.contact_phone || "-"}
                       </td>
                       <td className="p-3">
-                        <div className="flex max-w-sm flex-wrap gap-1">
-                          {nums.map((n: any) => (
+                        <div className="flex flex-wrap max-w-sm gap-1">
+                          {nums.map((n: any, index: number) => (
                             <span
-                              key={n}
+                              key={`${n}-${index}`}
                               className={`rounded-full px-2 py-1 text-xs font-bold ${sub.status === "approved" ? "bg-green-100 text-green-700" : sub.status === "pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-red-700"}`}
                             >
                               {n}
@@ -352,9 +487,12 @@ export default function AdminPage() {
                       <td className="p-3">
                         {sub.has_receipt || sub.receipt_url ? (
                           <button
-                            onClick={() => handleViewReceipt(sub)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewReceipt(sub);
+                            }}
                             disabled={receiptLoadingId === sub.id}
-                            className="rounded bg-blue-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                            className="px-3 py-1 text-sm text-white bg-blue-600 rounded disabled:opacity-50"
                           >
                             {receiptLoadingId === sub.id
                               ? txt.loading
@@ -380,11 +518,14 @@ export default function AdminPage() {
                       </td>
                       <td className="p-3">
                         {sub.status === "pending" ? (
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap justify-center w-full gap-2 md:w-auto md:justify-end">
                             <button
-                              onClick={() => handleApprove(sub.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleApprove(sub.id);
+                              }}
                               disabled={processingSubmissionId === sub.id}
-                              className="rounded bg-green-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                              className="px-3 py-1 text-sm text-white bg-green-600 rounded disabled:opacity-50"
                             >
                               {processingSubmissionId === sub.id &&
                               processingType === "approve"
@@ -392,9 +533,12 @@ export default function AdminPage() {
                                 : txt.approve}
                             </button>
                             <button
-                              onClick={() => handleReject(sub.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReject(sub.id);
+                              }}
                               disabled={processingSubmissionId === sub.id}
-                              className="rounded bg-red-600 px-3 py-1 text-sm text-white disabled:opacity-50"
+                              className="px-3 py-1 text-sm text-white bg-red-600 rounded disabled:opacity-50"
                             >
                               {processingSubmissionId === sub.id &&
                               processingType === "reject"
@@ -415,7 +559,208 @@ export default function AdminPage() {
             </table>
           </div>
         )}
+
+        <div className="flex flex-col gap-3 border-t p-4 text-sm text-gray-600 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {((txt as any).page || "Page")} {currentSubmissionPage} / {submissionTotalPages}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSubmissionPage((p) => Math.max(1, p - 1))}
+              disabled={currentSubmissionPage <= 1}
+              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {((txt as any).previous || "Previous")}
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setSubmissionPage((p) => Math.min(submissionTotalPages, p + 1))
+              }
+              disabled={currentSubmissionPage >= submissionTotalPages}
+              className="rounded-lg border px-3 py-2 font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {((txt as any).next || "Next")}
+            </button>
+          </div>
+        </div>
       </div>
+
+            {selectedSubmission && (
+        <Modal onClose={() => setSelectedSubmission(null)} wide>
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {txt.submissionDetails || "Submission Details"}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-slate-300">
+                {txt.clickRowDetails ||
+                  "Review receipt, user information, and contribution breakdown."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 rounded-xl bg-gray-50 p-4 text-sm dark:bg-slate-800 md:grid-cols-2">
+              <div className="space-y-2">
+                <InfoLine
+                  label={txt.user}
+                  value={
+                    selectedSubmission.user_name ||
+                    selectedSubmission.user ||
+                    txt.unknown ||
+                    "-"
+                  }
+                />
+                <InfoLine
+                  label={txt.phone}
+                  value={
+                    selectedSubmission.user_phone ||
+                    selectedSubmission.contact_phone ||
+                    "-"
+                  }
+                />
+                <InfoLine
+                  label={txt.status}
+                  value={
+                    statusLabel
+                      ? statusLabel(selectedSubmission.status)
+                      : selectedSubmission.status
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <InfoLine
+                  label={txt.submitted}
+                  value={
+                    selectedSubmission.submitted_at
+                      ? new Date(selectedSubmission.submitted_at).toLocaleString(
+                          lang === "am" ? "am-ET" : "en-US",
+                        )
+                      : "-"
+                  }
+                />
+                <InfoLine
+                  label={txt.amount}
+                  value={`${Number(
+                    selectedSubmission.total_amount || 0,
+                  ).toLocaleString()} ${txt.birr}`}
+                />
+                <InfoLine
+                  label={txt.receipt}
+                  value={
+                    selectedSubmission.receipt_url
+                      ? txt.available || "Available"
+                      : txt.noReceipt || "-"
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-4 dark:border-slate-700">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="font-bold text-gray-900 dark:text-white">
+                  {txt.contributionBreakdown || txt.numbers}
+                </h3>
+                <span className="text-xs font-semibold text-gray-400">
+                  {txt.total}: {Number(selectedSubmission.total_amount || 0).toLocaleString()} {txt.birr}
+                </span>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(Array.isArray(selectedSubmission.items) &&
+                selectedSubmission.items.length
+                  ? selectedSubmission.items
+                  : Array.isArray(selectedSubmission.submission_items) &&
+                      selectedSubmission.submission_items.length
+                    ? selectedSubmission.submission_items
+                    : Array.isArray(selectedSubmission.numbers)
+                      ? selectedSubmission.numbers.map((n: any) => ({
+                          number: n,
+                          amount:
+                            selectedSubmission.number_amounts?.[n] ||
+                            selectedSubmission.ticket_price ||
+                            0,
+                        }))
+                      : selectedSubmission.number
+                        ? [
+                            {
+                              number: selectedSubmission.number,
+                              amount:
+                                selectedSubmission.total_amount ||
+                                selectedSubmission.ticket_price ||
+                                0,
+                            },
+                          ]
+                        : []
+                ).map((item: any, index: number) => (
+                  <div
+                    key={`${item.number}-${index}`}
+                    className="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-sm dark:bg-blue-950/50"
+                  >
+                    <span className="font-bold text-blue-700 dark:text-blue-200">
+                      {item.number}
+                    </span>
+                    <span className="font-semibold text-gray-800 dark:text-slate-100">
+                      {Number(item.amount || 0).toLocaleString()} {txt.birr}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedSubmission(null)}
+                className="rounded-xl border px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {txt.close}
+              </button>
+
+              {selectedSubmission.receipt_url && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleViewReceipt(selectedSubmission);
+                  }}
+                  className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
+                >
+                  {txt.viewReceipt}
+                </button>
+              )}
+
+              {selectedSubmission.status === "pending" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReject(selectedSubmission.id);
+                      setSelectedSubmission(null);
+                    }}
+                    className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+                  >
+                    {txt.reject}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleApprove(selectedSubmission.id);
+                      setSelectedSubmission(null);
+                    }}
+                    className="rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700"
+                  >
+                    {txt.approve}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {showLogoutModal && (
         <Modal onClose={() => setShowLogoutModal(false)}>
@@ -425,16 +770,16 @@ export default function AdminPage() {
           <p className="mt-2 text-sm text-gray-600">
             {txt.adminLogoutConfirmMessage}
           </p>
-          <div className="mt-6 flex gap-3">
+          <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowLogoutModal(false)}
-              className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl"
             >
               {txt.cancel}
             </button>
             <button
               onClick={handleLogout}
-              className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white"
+              className="flex-1 px-4 py-3 font-semibold text-white bg-red-600 rounded-xl"
             >
               {txt.logout}
             </button>
@@ -449,18 +794,18 @@ export default function AdminPage() {
           <p className="mt-3 text-sm text-gray-600">
             {txt.clearAllSubmissionsMessage}
           </p>
-          <div className="mt-6 flex gap-3">
+          <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowClearModal(false)}
               disabled={clearing}
-              className="flex-1 rounded-xl border px-4 py-3 font-semibold text-gray-700 disabled:opacity-50"
+              className="flex-1 px-4 py-3 font-semibold text-gray-700 border rounded-xl disabled:opacity-50"
             >
               {txt.cancel}
             </button>
             <button
               onClick={confirmClearAll}
               disabled={clearing}
-              className="flex-1 rounded-xl bg-red-600 px-4 py-3 font-semibold text-white disabled:opacity-50"
+              className="flex-1 px-4 py-3 font-semibold text-white bg-red-600 rounded-xl disabled:opacity-50"
             >
               {clearing ? txt.clearing : txt.yesClearAll}
             </button>
@@ -470,11 +815,11 @@ export default function AdminPage() {
 
       {showWinnersModal && (
         <Modal onClose={() => setShowWinnersModal(false)} wide>
-          <div className="mb-4 flex items-center justify-between border-b pb-3">
+          <div className="flex items-center justify-between pb-3 mb-4 border-b">
             <h2 className="text-xl font-bold">{txt.previousWinners}</h2>
             <button
               onClick={() => setShowWinnersModal(false)}
-              className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-semibold"
+              className="px-3 py-1 text-sm font-semibold bg-gray-200 rounded-lg"
             >
               ×
             </button>
@@ -530,16 +875,16 @@ export default function AdminPage() {
           onClick={() => setSelectedImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between border-b pb-3">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b">
               <h2 className="text-xl font-bold text-gray-900">
                 {txt.paymentReceipt}
               </h2>
               <button
                 onClick={() => setSelectedImage(null)}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg"
               >
                 {txt.close}
               </button>
@@ -560,6 +905,15 @@ export default function AdminPage() {
         onPicked={() => {}}
         lang={lang}
       />
+    </div>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-1.5 last:border-b-0 dark:border-slate-700">
+      <span className="text-gray-500 dark:text-slate-400">{label}</span>
+      <b className="text-right text-gray-900 dark:text-white">{value}</b>
     </div>
   );
 }
@@ -590,7 +944,7 @@ function Modal({
 
 function StatCard({ title, value }: { title: string; value: any }) {
   return (
-    <div className="rounded-xl bg-white p-5 text-center shadow">
+    <div className="p-5 text-center bg-white shadow rounded-xl">
       <div className="text-3xl font-extrabold text-gray-950">{value}</div>
       <div className="mt-1 text-base font-medium text-gray-500">{title}</div>
     </div>

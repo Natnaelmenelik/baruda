@@ -1,68 +1,71 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useLang } from '@/hooks/useLang';
+import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
+import { useLang } from "@/hooks/useLang";
+import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 
 export default function AdminSettingsPanel() {
   const { lang } = useLang();
 
   const text = {
     en: {
-      title: 'Lottery Settings',
-      description: 'Set ticket price and numbers grid size from the admin panel.',
-      loading: 'Loading settings...',
-      ticketPrice: 'Ticket Price',
-      gridSize: 'Numbers Grid Size',
-      save: 'Save Settings',
-      saving: 'Saving...',
-      invalidPrice: 'Ticket price must be a positive number',
-      invalidGrid: 'Grid size must be between 1 and 20000',
-      loadError: 'Failed to load settings',
-      saveError: 'Failed to save settings',
-      saved: 'Lottery settings updated successfully',
+      title: "Lottery Settings",
+      description:
+        "Set ticket price and numbers grid size from the admin panel.",
+      loading: "Loading settings...",
+      ticketPrice: "Ticket Price",
+      gridSize: "Numbers Grid Size",
+      save: "Save Settings",
+      saving: "Saving...",
+      invalidPrice: "Ticket price must be a positive number",
+      invalidGrid: "Grid size must be between 1 and 20000",
+      loadError: "Failed to load settings",
+      saveError: "Failed to save settings",
+      saved: "Lottery settings updated successfully",
     },
     am: {
-      title: 'የሎተሪ ቅንብሮች',
-      description: 'የቲኬት ዋጋን እና የቁጥሮች መጠንን ከአድሚን ፓነል ያስተካክሉ።',
-      loading: 'ቅንብሮች በመጫን ላይ...',
-      ticketPrice: 'የቲኬት ዋጋ',
-      gridSize: 'የቁጥሮች መጠን',
-      save: 'ቅንብሮችን አስቀምጥ',
-      saving: 'በማስቀመጥ ላይ...',
-      invalidPrice: 'የቲኬት ዋጋ ከ0 በላይ መሆን አለበት',
-      invalidGrid: 'የቁጥሮች መጠን ከ1 እስከ 20000 መሆን አለበት',
-      loadError: 'ቅንብሮችን መጫን አልተቻለም',
-      saveError: 'ቅንብሮችን ማስቀመጥ አልተቻለም',
-      saved: 'የሎተሪ ቅንብሮች ተሻሽለዋል',
+      title: "የሎተሪ ቅንብሮች",
+      description: "የቲኬት ዋጋን እና የቁጥሮች መጠንን ከአድሚን ፓነል ያስተካክሉ።",
+      loading: "ቅንብሮች በመጫን ላይ...",
+      ticketPrice: "የቲኬት ዋጋ",
+      gridSize: "የቁጥሮች መጠን",
+      save: "ቅንብሮችን አስቀምጥ",
+      saving: "በማስቀመጥ ላይ...",
+      invalidPrice: "የቲኬት ዋጋ ከ0 በላይ መሆን አለበት",
+      invalidGrid: "የቁጥሮች መጠን ከ1 እስከ 20000 መሆን አለበት",
+      loadError: "ቅንብሮችን መጫን አልተቻለም",
+      saveError: "ቅንብሮችን ማስቀመጥ አልተቻለም",
+      saved: "የሎተሪ ቅንብሮች ተሻሽለዋል",
     },
     om: {
-      title: 'Sajataa Loatarii',
-      description: 'Gatii tikkeetii fi hamma lakkoofsotaa paaneelii bulchiinsaa irraa sirreessi.',
+      title: "Sajataa Loatarii",
+      description:
+        "Gatii tikkeetii fi hamma lakkoofsotaa paaneelii bulchiinsaa irraa sirreessi.",
       loading: "Sajataa fe'aa jira...",
-      ticketPrice: 'Gatii Tikkeetii',
-      gridSize: 'Hamma Lakkoofsotaa',
-      save: 'Sajataa Oolchi',
-      saving: 'Oolchaa jira...',
+      ticketPrice: "Gatii Tikkeetii",
+      gridSize: "Hamma Lakkoofsotaa",
+      save: "Sajataa Oolchi",
+      saving: "Oolchaa jira...",
       invalidPrice: "Gatiin tikkeetii lakkoofsa lakkii ta'uu qaba",
-      invalidGrid: 'Hammi lakkoofsaa 1 hanga 20000 gidduu ta’uu qaba',
+      invalidGrid: "Hammi lakkoofsaa 1 hanga 20000 gidduu ta’uu qaba",
       loadError: "Sajataa fe'uun hin danda'amne",
-      saveError: 'Sajataa oolchuun hin danda’amne',
-      saved: 'Sajataan loatarii milkiidhaan fooyya’eera',
+      saveError: "Sajataa oolchuun hin danda’amne",
+      saved: "Sajataan loatarii milkiidhaan fooyya’eera",
     },
   } as const;
 
   const t = text[lang];
 
-  const [ticketPrice, setTicketPrice] = useState('');
-  const [gridSize, setGridSize] = useState('');
+  const [ticketPrice, setTicketPrice] = useState("");
+  const [gridSize, setGridSize] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   async function loadSettings() {
     try {
-      const res = await fetch('/api/admin/settings', {
-        cache: 'no-store',
+      const res = await fetch("/api/admin/settings", {
+        cache: "no-store",
       });
 
       const data = await res.json();
@@ -74,7 +77,7 @@ export default function AdminSettingsPanel() {
       setTicketPrice(String(data.ticketPrice ?? 300));
       setGridSize(String(data.gridSize ?? 2000));
     } catch (error: any) {
-      toast.error(error.message || t.loadError);
+      toast.error(translateApiError(error, lang) || t.loadError);
     } finally {
       setLoading(false);
     }
@@ -99,10 +102,10 @@ export default function AdminSettingsPanel() {
     setSaving(true);
 
     try {
-      const res = await fetch('/api/admin/settings', {
-        method: 'POST',
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           ticketPrice: price,
@@ -119,7 +122,7 @@ export default function AdminSettingsPanel() {
       toast.success(t.saved);
       await loadSettings();
     } catch (error: any) {
-      toast.error(error.message || t.saveError);
+      toast.error(translateApiError(error, lang) || t.saveError);
     } finally {
       setSaving(false);
     }
@@ -131,7 +134,7 @@ export default function AdminSettingsPanel() {
   }, []);
 
   return (
-    <div className="mb-6 rounded-xl bg-white p-5 shadow">
+    <div className="p-5 mb-6 bg-white shadow rounded-xl">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-gray-900">{t.title}</h2>
         <p className="text-sm text-gray-500">{t.description}</p>
@@ -142,7 +145,7 @@ export default function AdminSettingsPanel() {
       ) : (
         <form onSubmit={saveSettings} className="grid gap-4 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-700">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">
               {t.ticketPrice}
             </label>
             <input
@@ -150,13 +153,13 @@ export default function AdminSettingsPanel() {
               min="1"
               value={ticketPrice}
               onChange={(e) => setTicketPrice(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
               placeholder="300"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-semibold text-gray-700">
+            <label className="block mb-1 text-sm font-semibold text-gray-700">
               {t.gridSize}
             </label>
             <input
@@ -165,7 +168,7 @@ export default function AdminSettingsPanel() {
               max="20000"
               value={gridSize}
               onChange={(e) => setGridSize(e.target.value)}
-              className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
               placeholder="2000"
             />
           </div>
@@ -174,7 +177,7 @@ export default function AdminSettingsPanel() {
             <button
               type="submit"
               disabled={saving}
-              className="w-full rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              className="w-full px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-60"
             >
               {saving ? t.saving : t.save}
             </button>

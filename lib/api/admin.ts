@@ -12,12 +12,47 @@ async function readJson(res: Response) {
   return data;
 }
 
-export async function fetchSubmissions() {
-  const res = await apiFetch(`/api/admin/submissions?t=${Date.now()}`);
+export type AdminSubmissionStatusFilter = 'all' | 'pending' | 'approved' | 'rejected';
+
+export type FetchSubmissionsParams = {
+  page?: number;
+  limit?: number;
+  status?: AdminSubmissionStatusFilter;
+  search?: string;
+};
+
+export async function fetchSubmissions(params: FetchSubmissionsParams = {}) {
+  const query = new URLSearchParams();
+  query.set('t', String(Date.now()));
+  query.set('page', String(params.page || 1));
+  query.set('limit', String(params.limit || 20));
+  query.set('status', params.status || 'pending');
+  if (params.search?.trim()) query.set('search', params.search.trim());
+
+  const res = await apiFetch(`/api/admin/submissions?${query.toString()}`);
   const data = await readJson(res);
 
-  if (Array.isArray(data)) return data;
-  return data.submissions || [];
+  if (Array.isArray(data)) {
+    return {
+      submissions: data,
+      page: 1,
+      limit: data.length,
+      total: data.length,
+      totalPages: 1,
+      status: params.status || 'pending',
+      search: params.search || '',
+    };
+  }
+
+  return {
+    submissions: data.submissions || [],
+    page: Number(data.page || params.page || 1),
+    limit: Number(data.limit || params.limit || 20),
+    total: Number(data.total || 0),
+    totalPages: Number(data.totalPages || 1),
+    status: data.status || params.status || 'pending',
+    search: data.search || params.search || '',
+  };
 }
 
 export async function fetchStats() {

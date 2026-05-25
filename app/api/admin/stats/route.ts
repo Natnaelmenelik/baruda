@@ -1,15 +1,15 @@
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import { NextResponse } from 'next/server';
 import { sql } from '@/lib/db/sql';
 import { requireAdmin } from '@/lib/auth/server';
 
-async function getSettingNumber(key: string, fallback: number) {
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+async function getNumericSetting(key: string, fallback: number) {
   try {
     const rows = await sql`
       SELECT value
-      FROM settings
+      FROM public.settings
       WHERE key = ${key}
       LIMIT 1
     `;
@@ -25,71 +25,112 @@ export async function GET(req: Request) {
   try {
     await requireAdmin(req);
 
-    const gridSize = await getSettingNumber('grid_size', 2000);
-
-    const [usersRows, soldRows, pendingRows, revenueRows] = await Promise.all([
+    const [gridSize, ticketPrice, rows] = await Promise.all([
+      getNumericSetting('grid_size', 2000),
+      getNumericSetting('ticket_price', 300),
       sql`
-        SELECT COUNT(*)::int AS count
-        FROM users
-      `,
-
-      sql`
-        SELECT COUNT(DISTINCT number)::int AS count
-        FROM submissions
-        WHERE status = 'approved'
-      `,
-
-      sql`
-        SELECT COUNT(DISTINCT number)::int AS count
-        FROM submissions
-        WHERE status = 'pending'
-      `,
-
-      sql`
-        SELECT COALESCE(SUM(group_total), 0)::int AS revenue
-        FROM (
-          SELECT
-            COALESCE(submission_group_id::text, id::text) AS group_key,
-            MAX(COALESCE(total_amount, ticket_price, 0))::int AS group_total
-          FROM submissions
-          WHERE status = 'approved'
-          GROUP BY COALESCE(submission_group_id::text, id::text)
-        ) grouped
+        SELECT
+          total_users,
+          total_submissions,
+          pending_submissions,
+          approved_submissions,
+          rejected_submissions,
+          total_revenue,
+          pending_amount,
+          total_numbers,
+          sold_numbers,
+          open_numbers,
+          pending_numbers,
+          updated_at
+        FROM public.admin_stats_summary
+        WHERE id = 1
+        LIMIT 1
       `,
     ]);
 
-    const totalUsers = Number(usersRows?.[0]?.count || 0);
-    const numbersSold = Number(soldRows?.[0]?.count || 0);
-    const pendingApprovals = Number(pendingRows?.[0]?.count || 0);
-    const revenue = Number(revenueRows?.[0]?.revenue || 0);
+    const stats = rows?.[0] || {
+      total_users: 0,
+      total_submissions: 0,
+      pending_submissions: 0,
+      approved_submissions: 0,
+      rejected_submissions: 0,
+      total_revenue: 0,
+      pending_amount: 0,
+      total_numbers: gridSize,
+      sold_numbers: 0,
+      open_numbers: gridSize,
+      pending_numbers: 0,
+      updated_at: null,
+    };
+
+    const totalUsers = Number(stats.total_users || 0);
+    const totalSubmissions = Number(stats.total_submissions || 0);
+    const pendingSubmissions = Number(stats.pending_submissions || 0);
+    const approvedSubmissions = Number(stats.approved_submissions || 0);
+    const rejectedSubmissions = Number(stats.rejected_submissions || 0);
+
+    const revenue = Number(stats.total_revenue || 0);
+    const pendingAmount = Number(stats.pending_amount || 0);
+
+    const totalNumbers = Number(stats.total_numbers || 0) || gridSize;
+    const numbersSold = Number(stats.sold_numbers || 0);
+    const numbersLeft = Number(stats.open_numbers || 0);
+    const pendingNumbers = Number(stats.pending_numbers || 0);
 
     return NextResponse.json(
       {
+        // Admin card fields
         totalUsers,
         numbersSold,
-        pendingApprovals,
+        pendingApprovals: pendingNumbers,
+        pendingNumbers,
         revenue,
-        numbersLeft: Math.max(gridSize - numbersSold - pendingApprovals, 0),
+        numbersLeft,
+
+        // Clear extra fields
+        pendingSubmissions,
+        totalSubmissions,
+        approvedSubmissions,
+        rejectedSubmissions,
+        totalNumbers,
+        gridSize,
+        ticketPrice,
+        pendingRevenue: pendingAmount,
+        updatedAt: stats.updated_at,
+
+        // Snake case compatibility
+        total_users: totalUsers,
+        sold_numbers: numbersSold,
+        pending_numbers: pendingNumbers,
+        pending_submissions: pendingSubmissions,
+        total_revenue: revenue,
+        open_numbers: numbersLeft,
+        total_numbers: totalNumbers,
+        total_submissions: totalSubmissions,
+        approved_submissions: approvedSubmissions,
+        rejected_submissions: rejectedSubmissions,
+        pending_amount: pendingAmount,
+        updated_at: stats.updated_at,
       },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
         },
-      }
+      },
     );
-  } catch (err: any) {
-    console.error('Stats error:', err);
+  } catch (error: any) {
+    console.error('Admin stats error:', error);
 
     return NextResponse.json(
-      { error: err.message || 'Failed to load stats' },
+      { error: error.message || 'Failed to load stats' },
       {
         status:
-          err.message === 'Forbidden'
+          error.message === 'Forbidden'
             ? 403
-            : err.message === 'Unauthorized'
+            : error.message === 'Unauthorized'
               ? 401
               : 500,
-      }
+      },
     );
   }
 }

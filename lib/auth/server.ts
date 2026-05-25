@@ -1,16 +1,25 @@
 import jwt from 'jsonwebtoken';
 
-const SECRET = process.env.JWT_SECRET || 'change-this-secret';
-
 export type AuthUser = {
   userId: string;
   id?: string;
   name?: string;
   phone?: string;
+  email?: string | null;
   role?: string;
   isAdmin?: boolean;
   is_admin?: boolean;
 };
+
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret || secret.trim().length < 16) {
+    throw new Error('JWT_SECRET is missing or too short. Set a strong JWT_SECRET in .env.local.');
+  }
+
+  return secret;
+}
 
 export function isAdminUser(user: any) {
   return Boolean(
@@ -30,13 +39,14 @@ export function getTokenFromRequest(req: Request) {
       ? authHeader.replace('Bearer ', '').trim()
       : '';
 
-  const cookieToken = req.headers
+  const rawCookieToken = req.headers
     .get('cookie')
     ?.split(';')
     .map((c) => c.trim())
     .find((c) => c.startsWith('token='))
     ?.replace('token=', '');
 
+  const cookieToken = rawCookieToken ? decodeURIComponent(rawCookieToken) : '';
   const token = bearerToken || cookieToken || '';
 
   if (!token || token === 'null' || token === 'undefined') {
@@ -48,17 +58,23 @@ export function getTokenFromRequest(req: Request) {
 
 export function signUser(payload: AuthUser) {
   const admin = isAdminUser(payload);
+  const id = payload.userId || payload.id;
+
+  if (!id) {
+    throw new Error('Cannot sign user without id');
+  }
 
   return jwt.sign(
     {
-      userId: payload.userId || payload.id,
-      id: payload.userId || payload.id,
+      userId: id,
+      id,
       name: payload.name || '',
       phone: payload.phone || '',
+      email: payload.email || null,
       role: admin ? 'admin' : payload.role || 'user',
       isAdmin: admin,
     },
-    SECRET,
+    getJwtSecret(),
     { expiresIn: '7d' }
   );
 }
@@ -71,7 +87,7 @@ export function verifyRequest(req: Request): AuthUser {
   }
 
   try {
-    return jwt.verify(token, SECRET) as AuthUser;
+    return jwt.verify(token, getJwtSecret()) as AuthUser;
   } catch {
     throw new Error('Unauthorized');
   }

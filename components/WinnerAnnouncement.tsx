@@ -1,140 +1,137 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useLang } from '@/hooks/useLang';
+import { useState } from "react";
+import { useLang } from "@/hooks/useLang";
+import { translations } from "@/lib/i18n/translations";
 
-function maskName(name?: string) {
-  if (!name) return 'N******* ******K';
+type WinnerAnnouncementData = {
+  id: string;
+  first_number: number;
+  second_number: number;
+  third_number: number;
+  expires_at: string;
+  created_at: string;
+};
 
-  const parts = name.trim().split(/\s+/);
+type WinnerItem = {
+  title: string;
+  number: number;
+};
 
-  if (parts.length === 1) {
-    const first = parts[0][0] || 'N';
-    const last = parts[0][parts[0].length - 1] || 'K';
-    return `${first}*******${last}`;
-  }
+type Props = {
+  announcement?: WinnerAnnouncementData | null;
+};
 
-  const first = parts[0][0] || 'N';
-  const lastWord = parts[parts.length - 1];
-  const last = lastWord[lastWord.length - 1] || 'K';
-
-  return `${first}******* ******${last}`;
-}
-
-function maskPhone(phone?: string) {
-  if (!phone) return '+251*******98';
-
-  const cleaned = String(phone).replace(/\s+/g, '');
-
-  if (cleaned.startsWith('+251')) {
-    return `+251*******${cleaned.slice(-2)}`;
-  }
-
-  if (cleaned.startsWith('0')) {
-    return `+251*******${cleaned.slice(-2)}`;
-  }
-
-  return `+251*******${cleaned.slice(-2) || '98'}`;
-}
-
-const copy = {
-  en: {
-    closeWinnerAnnouncement: 'Close winner announcement',
-    winnerAnnounced: '🎉 Winner Announced',
-  },
-  am: {
-    closeWinnerAnnouncement: 'የአሸናፊ ማሳወቂያን ዝጋ',
-    winnerAnnounced: '🎉 አሸናፊ ተገልጿል',
-  },
-  om: {
-    closeWinnerAnnouncement: "Beeksisa mo'ataa cufi",
-    winnerAnnounced: "🎉 Mo'ataan beekameera",
-  },
-} as const;
-
-export default function WinnerAnnouncement() {
+export default function WinnerAnnouncement({ announcement }: Props) {
   const { lang } = useLang();
-  const txt = copy[lang];
+  const txt = translations[lang] || translations.en;
 
-  const [winner, setWinner] = useState<any>(null);
-  const [hidden, setHidden] = useState(false);
+  const [hiddenAnnouncementId, setHiddenAnnouncementId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("hidden_winner_announcement_id");
+  });
 
-  useEffect(() => {
-    async function loadWinner() {
-      try {
-        const res = await fetch('/api/winners/latest?t=' + Date.now(), {
-          cache: 'no-store',
-        });
-
-        const data = await res.json();
-        const latest = data.winner || null;
-
-        if (!latest) {
-          setWinner(null);
-          return;
-        }
-
-        const dismissedId = localStorage.getItem('dismissed_winner_id');
-
-        if (dismissedId === latest.id) {
-          setHidden(true);
-          return;
-        }
-
-        setWinner(latest);
-      } catch {
-        setWinner(null);
-      }
-    }
-
-    loadWinner();
-  }, []);
-
-  if (!winner || hidden) return null;
-
-  const closeBanner = () => {
-    localStorage.setItem('dismissed_winner_id', winner.id);
-    setHidden(true);
+  const label = (key: string, fallback: string) => {
+    const value = (txt as any)?.[key];
+    return typeof value === "string" && value.trim() ? value : fallback;
   };
 
+  if (!announcement) return null;
+  if (hiddenAnnouncementId === String(announcement.id)) return null;
+
+  const winners: WinnerItem[] = [
+    { title: label("firstWinner", "1st Winner"), number: announcement.first_number },
+    { title: label("secondWinner", "2nd Winner"), number: announcement.second_number },
+    { title: label("thirdWinner", "3rd Winner"), number: announcement.third_number },
+  ];
+
+  function hideAnnouncement() {
+    if (!announcement) return;
+    localStorage.setItem("hidden_winner_announcement_id", String(announcement.id));
+    setHiddenAnnouncementId(String(announcement.id));
+  }
+
+  const winnerSizeClasses = [
+    {
+      card: "max-w-[280px] md:max-w-[300px]",
+      brand: "text-5xl md:text-6xl",
+      number: "text-[7rem] md:text-[8rem]",
+      label: "text-base",
+    },
+    {
+      card: "max-w-[230px] md:max-w-[250px]",
+      brand: "text-4xl md:text-5xl",
+      number: "text-[5.7rem] md:text-[6.5rem]",
+      label: "text-sm",
+    },
+    {
+      card: "max-w-[200px] md:max-w-[215px]",
+      brand: "text-3xl md:text-4xl",
+      number: "text-[4.8rem] md:text-[5.6rem]",
+      label: "text-xs",
+    },
+  ];
+
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-yellow-300 bg-gradient-to-br from-yellow-50 via-orange-100 to-amber-50 p-6 shadow-2xl ring-1 ring-yellow-200 dark:border-yellow-700 dark:from-yellow-950 dark:via-slate-900 dark:to-orange-950">
-      <div className="absolute -left-10 -top-10 h-32 w-32 rounded-full bg-yellow-300/40 blur-2xl" />
-      <div className="absolute -bottom-12 -right-10 h-36 w-36 rounded-full bg-orange-400/40 blur-2xl" />
+    <section className="relative z-20 mb-6 overflow-hidden rounded-[2rem] border border-white/70 bg-white/35 p-4 shadow-xl shadow-blue-950/10 ring-1 ring-blue-100/70 backdrop-blur-xl md:p-6">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-blue-200/40 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-blue-100/60 blur-3xl" />
 
-      <button
-        type="button"
-        onClick={closeBanner}
-        className="absolute right-4 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-lg font-bold text-gray-700 shadow hover:bg-white dark:bg-slate-800 dark:text-white"
-        aria-label={txt.closeWinnerAnnouncement}
-      >
-        ×
-      </button>
+      <div className="relative mb-5 flex flex-row items-start justify-between gap-3">
+        <div>
+          <div className="inline-flex rounded-full bg-blue-100 px-4 py-1.5 text-xs font-black uppercase tracking-wide text-blue-700">
+            {label("winnerAnnouncement", "Winner Announcement")}
+          </div>
 
-      <div className="relative text-center">
-        <p className="text-sm font-extrabold uppercase tracking-widest text-yellow-700 dark:text-yellow-300">
-          {txt.winnerAnnounced}
-        </p>
+          <h2 className="mt-2 text-2xl font-black text-blue-950 md:text-3xl">
+            {label("winnersForToday", "Today’s Winners")}
+          </h2>
 
-        <h2 className="mt-4 inline-block rounded-3xl bg-gradient-to-r from-orange-500 to-yellow-400 px-8 py-4 text-7xl font-black tracking-tight text-white shadow-2xl ring-4 ring-yellow-200 dark:ring-yellow-700 sm:text-8xl">
-          {winner.number}
-        </h2>
-
-        <div className="mt-5 text-lg font-bold text-gray-800 dark:text-slate-100 sm:text-xl">
-          {maskName(winner.user_name)}
+          <p className="mt-1 text-sm font-semibold text-blue-700">
+            {label("winnerShownFor24Hours", "These winner numbers will be shown for 24 hours.")}
+          </p>
         </div>
 
-        <div className="mt-1 text-base font-semibold text-gray-700 dark:text-slate-300 sm:text-lg">
-          {maskPhone(winner.user_phone)}
-        </div>
+        <button
+          type="button"
+          onClick={hideAnnouncement}
+          className="shrink-0 rounded-full bg-white/80 px-3 py-2 text-xs font-black text-blue-700 shadow-sm ring-1 ring-blue-100 backdrop-blur-md transition hover:bg-blue-50 md:px-4 md:text-sm"
+        >
+          {label("close", "Close")}
+        </button>
+      </div>
 
-        <p className="mt-3 text-sm font-medium text-gray-600 dark:text-slate-400">
-          {winner.drawn_at
-            ? new Date(winner.drawn_at).toLocaleString(
-                lang === 'am' ? 'am-ET' : 'en-US',
-              )
-            : ''}
-        </p>
+      <div className="relative grid gap-5 md:grid-cols-3">
+        {winners.map((winner, index) => {
+          const size = winnerSizeClasses[index] || winnerSizeClasses[2];
+
+          return (
+            <div key={winner.title} className="text-center">
+              <div className={`mb-2 font-black uppercase tracking-wide text-blue-700 ${size.label}`}>
+                {winner.title}
+              </div>
+
+              <div className={`group relative mx-auto aspect-square w-full overflow-hidden rounded-[1.8rem] border border-white/75 bg-white/25 p-4 shadow-[0_22px_55px_rgba(30,64,175,0.14)] ring-1 ring-white/70 backdrop-blur-2xl ${size.card}`}>
+                <div className="pointer-events-none absolute inset-0 rounded-[1.8rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.82)_0%,rgba(255,255,255,0.12)_30%,rgba(219,234,254,0.32)_58%,rgba(147,197,253,0.12)_100%)]" />
+                <div className="pointer-events-none absolute inset-[7px] rounded-[1.45rem] border border-white/60 shadow-[inset_0_4px_18px_rgba(255,255,255,0.72),inset_0_-14px_30px_rgba(30,64,175,0.08)]" />
+                <div className="pointer-events-none absolute -left-10 top-4 h-20 w-44 rotate-[-25deg] bg-white/35 blur-xl" />
+                <div className="pointer-events-none absolute right-3 top-3 h-12 w-12 rounded-full bg-white/45 blur-sm" />
+                <div className="pointer-events-none absolute bottom-2 left-4 right-4 h-4 rounded-full bg-blue-200/20 blur-md" />
+                <div className="pointer-events-none absolute inset-0 opacity-[0.16] [background-image:radial-gradient(circle_at_1px_1px,rgba(29,78,216,0.28)_1px,transparent_0)] [background-size:10px_10px]" />
+
+                <div className="relative flex h-full flex-col items-center justify-center">
+                  <div className={`mb-3 select-none font-black leading-none text-blue-700 drop-shadow-[0_2px_0_rgba(255,255,255,0.9)] [text-shadow:_0_2px_0_rgba(255,255,255,0.9),_0_4px_10px_rgba(29,78,216,0.25)] ${size.brand}`}>
+                    ባሩዳ
+                  </div>
+
+                  <div className={`select-none font-black leading-none text-blue-700 drop-shadow-[0_3px_0_rgba(255,255,255,0.9)] [text-shadow:_0_3px_0_rgba(255,255,255,0.95),_0_8px_16px_rgba(29,78,216,0.28)] ${size.number}`}>
+                    {winner.number}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

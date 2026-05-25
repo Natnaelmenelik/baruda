@@ -1,7 +1,75 @@
-'use client';
+// 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/lib/auth/client';
+// import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+// import { apiFetch } from '@/lib/auth/client';
+
+// async function readJson(res: Response) {
+//   const data = await res.json().catch(() => ({}));
+
+//   if (!res.ok) {
+//     throw new Error(data.error || `Request failed: ${res.status}`);
+//   }
+
+//   return data;
+// }
+
+// export function useMySubmissions() {
+//   return useQuery({
+//     queryKey: ['user', 'submissions'],
+//     queryFn: async () => {
+//       const res = await apiFetch(`/api/user/submissions?t=${Date.now()}`);
+//       return readJson(res);
+//     },
+//     refetchInterval: false,
+//     refetchOnWindowFocus: false,
+//   });
+// }
+
+// export function useNumbers() {
+//   return useQuery({
+//     queryKey: ['numbers'],
+//     queryFn: async () => {
+//       const res = await fetch(`/api/numbers?t=${Date.now()}`, {
+//         cache: 'no-store',
+//       });
+
+//       return readJson(res);
+//     },
+//     refetchInterval: false,
+//     refetchOnWindowFocus: false,
+//   });
+// }
+
+// export function useSubmitNumber() {
+//   const queryClient = useQueryClient();
+
+//   return useMutation({
+//     mutationFn: async ({
+//       number,
+//       receiptUrl,
+//     }: {
+//       number: number;
+//       receiptUrl: string;
+//     }) => {
+//       const res = await apiFetch('/api/submit', {
+//         method: 'POST',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({ number, receiptUrl }),
+//       });
+
+//       return readJson(res);
+//     },
+//     onSuccess: () => {
+// //       queryClient.invalidateQueries({ queryKey: ['user', 'submissions'], exact: true });
+//     },
+//   });
+// }
+"use client";
+
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/auth/client";
 
 async function readJson(res: Response) {
   const data = await res.json().catch(() => ({}));
@@ -15,28 +83,30 @@ async function readJson(res: Response) {
 
 export function useMySubmissions() {
   return useQuery({
-    queryKey: ['user', 'submissions'],
+    queryKey: ["user", "submissions"],
     queryFn: async () => {
-      const res = await apiFetch(`/api/user/submissions?t=${Date.now()}`);
+      const res = await apiFetch("/api/user/submissions");
       return readJson(res);
     },
-    refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 }
 
 export function useNumbers() {
   return useQuery({
-    queryKey: ['numbers'],
+    queryKey: ["numbers"],
     queryFn: async () => {
-      const res = await fetch(`/api/numbers?t=${Date.now()}`, {
-        cache: 'no-store',
+      const res = await fetch("/api/numbers", {
+        cache: "no-store",
       });
 
       return readJson(res);
     },
-    refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    staleTime: Infinity,
   });
 }
 
@@ -51,10 +121,10 @@ export function useSubmitNumber() {
       number: number;
       receiptUrl: string;
     }) => {
-      const res = await apiFetch('/api/submit', {
-        method: 'POST',
+      const res = await apiFetch("/api/submit", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ number, receiptUrl }),
       });
@@ -62,8 +132,7 @@ export function useSubmitNumber() {
       return readJson(res);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
+      queryClient.invalidateQueries({ queryKey: ["user", "submissions"], exact: true });
     },
   });
 }

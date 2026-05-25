@@ -1,14 +1,4 @@
 'use client';
-
-import {
-  generateUploadButton,
-  generateUploadDropzone,
-  generateReactHelpers,
-} from '@uploadthing/react';
-
-import type { OurFileRouter } from '@/app/api/uploadthing/core';
-
-export const UploadButton = generateUploadButton<OurFileRouter>();
-export const UploadDropzone = generateUploadDropzone<OurFileRouter>();
-
-export const { useUploadThing } = generateReactHelpers<OurFileRouter>();
+export function useUploadThing() { throw new Error('UploadThing disabled. Use Supabase Storage.'); }
+export const UploadButton = () => null;
+export const UploadDropzone = () => null;

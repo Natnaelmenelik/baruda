@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchSubmissions,
@@ -15,9 +16,8 @@ import {
 export const useMinsamSubmissions = () => {
   return useQuery({
     queryKey: ['minsam', 'submissions'],
-    queryFn: fetchSubmissions,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    queryFn: () => fetchSubmissions(),
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 };
@@ -25,9 +25,8 @@ export const useMinsamSubmissions = () => {
 export const useMinsamStats = () => {
   return useQuery({
     queryKey: ['minsam', 'stats'],
-    queryFn: fetchStats,
-    refetchInterval: 3000,
-    refetchOnWindowFocus: true,
+    queryFn: () => fetchStats(),
+    refetchOnWindowFocus: false,
     retry: 1,
   });
 };
@@ -42,8 +41,6 @@ export const useMinsamApproveSubmission = () => {
       queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
     },
   });
 };
@@ -58,8 +55,6 @@ export const useMinsamRejectSubmission = () => {
       queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
     },
   });
 };
@@ -74,8 +69,6 @@ export const useMinsamClearAllSubmissions = () => {
       queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'winners'] });
     },
   });
@@ -107,8 +100,6 @@ export const useMinsamReturnApprovedToPendingSubmission = () => {
       queryClient.invalidateQueries({ queryKey: ['minsam', 'stats'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'submissions'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
-      queryClient.invalidateQueries({ queryKey: ['numbers'] });
-      queryClient.invalidateQueries({ queryKey: ['user', 'submissions'] });
     },
   });
 };

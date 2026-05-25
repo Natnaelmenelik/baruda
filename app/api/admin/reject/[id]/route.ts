@@ -1,66 +1,368 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-import { NextResponse } from 'next/server';
-import { sql } from '@/lib/db/sql';
-import { requireAdmin } from '@/lib/auth/server';
+import { NextResponse } from "next/server";
+import { pool } from "@/lib/db/pool";
+import { requireAdmin } from "@/lib/auth/server";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+type RouteContext = {
+  params?:
+    | { id?: string }
+    | Promise<{ id?: string }>;
+};
+
+type ContributionItem = {
+  submissionId: number;
+  number: number;
+  amount: number;
+};
+
+async function getSubmissionId(req: Request, context: RouteContext) {
+  const resolvedParams = await Promise.resolve(context?.params || {});
+  const url = new URL(req.url);
+
+  const paramsId = String(resolvedParams?.id || "").trim();
+  const queryId = String(
+    url.searchParams.get("id") || url.searchParams.get("submissionId") || "",
+  ).trim();
+
+  const pathParts = url.pathname.split("/").filter(Boolean);
+  const pathId = decodeURIComponent(String(pathParts[pathParts.length - 1] || "")).trim();
+
+  const id = paramsId || queryId || pathId;
+
+  if (!id || id === "reject") return "";
+  return id;
+}
+
+function normalizeFallbackItems(submission: any): ContributionItem[] {
+  const submissionId = Number(submission?.id);
+  if (!Number.isInteger(submissionId) || submissionId <= 0) return [];
+
+  if (submission?.number_amounts && typeof submission.number_amounts === "object") {
+    return Object.entries(submission.number_amounts)
+      .map(([number, amount]) => ({
+        submissionId,
+        number: Number(number),
+        amount: Number(amount),
+      }))
+      .filter(
+        (item) =>
+          Number.isInteger(item.number) &&
+          item.number > 0 &&
+          Number.isFinite(item.amount) &&
+          item.amount > 0,
+      );
+  }
+
+  if (Array.isArray(submission?.numbers) && submission.numbers.length) {
+    const numbers = submission.numbers
+      .map((value: any) => Number(value))
+      .filter((value: number) => Number.isInteger(value) && value > 0);
+
+    if (!numbers.length) return [];
+
+    const totalAmount = Number(submission.total_amount || 0);
+    const perNumber =
+      totalAmount > 0
+        ? Math.floor(totalAmount / numbers.length)
+        : Number(submission.ticket_price || 0);
+
+    return numbers
+      .map((number: number) => ({
+        submissionId,
+        number,
+        amount: perNumber,
+      }))
+      .filter((item: { number: number; amount: number }) => item.amount > 0);
+  }
+
+  if (submission?.number) {
+    const amount = Number(submission.total_amount || submission.ticket_price || 0);
+
+    if (Number.isFinite(amount) && amount > 0) {
+      return [
+        {
+          submissionId,
+          number: Number(submission.number),
+          amount,
+        },
+      ];
+    }
+  }
+
+  return [];
+}
+
+function apiStatusFromError(message: string) {
+  if (message === "Unauthorized") return 401;
+  if (message === "Forbidden") return 403;
+  if (message.toLowerCase().includes("not found")) return 404;
+
+  if (
+    message.includes("approved") ||
+    message.includes("rejected") ||
+    message.includes("pending") ||
+    message.includes("Missing submission id") ||
+    message.includes("No valid contribution")
+  ) {
+    return 400;
+  }
+
+  return 500;
+}
+
+export async function POST(req: Request, context: RouteContext) {
+  let client: Awaited<ReturnType<typeof pool.connect>> | null = null;
+
   try {
     await requireAdmin(req);
 
-    const id = params.id;
+    const id = await getSubmissionId(req, context);
 
-    const target = await sql`
-      SELECT id, user_id, submission_type, submission_group_id, receipt_key, receipt_url
-      FROM submissions
-      WHERE id::text = ${id}
-         OR submission_group_id::text = ${id}
-      LIMIT 1
-    `;
-
-    if (!target.length) {
-      return NextResponse.json({ error: 'Submission not found' }, { status: 404 });
+    if (!id) {
+      return NextResponse.json({ error: "Missing submission id" }, { status: 400 });
     }
 
-    const sub = target[0];
+    client = await pool.connect();
+    await client.query("BEGIN");
 
-    const updated = await sql`
-      UPDATE submissions
-      SET status = 'rejected',
+    const numericId = /^\d+$/.test(id) ? Number(id) : null;
+
+    const submissionsResult =
+      numericId !== null
+        ? await client.query(
+            `
+              SELECT *
+              FROM submissions
+              WHERE id = $1
+              LIMIT 1
+              FOR UPDATE
+            `,
+            [numericId],
+          )
+        : await client.query(
+            `
+              SELECT *
+              FROM submissions
+              WHERE submission_group_id = $1
+              ORDER BY created_at ASC NULLS LAST, id ASC
+              FOR UPDATE
+            `,
+            [id],
+          );
+
+    if (submissionsResult.rowCount === 0) {
+      throw new Error("Submission not found");
+    }
+
+    const submissions = submissionsResult.rows;
+    const submissionIds = submissions.map((row: any) => Number(row.id));
+
+    const approvedRows = submissions.filter((row: any) => row.status === "approved");
+    if (approvedRows.length) {
+      throw new Error(
+        "Approved submissions cannot be rejected directly. Return them to pending first if needed.",
+      );
+    }
+
+    const alreadyRejected = submissions.every((row: any) => row.status === "rejected");
+    if (alreadyRejected) {
+      await client.query("COMMIT");
+
+      return NextResponse.json({
+        success: true,
+        message: "Already rejected",
+        updated: 0,
+        submissionRef: id,
+        newStatus: "rejected",
+        affectedNumbers: [],
+      });
+    }
+
+    const invalidRows = submissions.filter((row: any) => row.status !== "pending");
+    if (invalidRows.length) {
+      throw new Error(`Submission is already ${invalidRows[0].status}`);
+    }
+
+    const itemResult = await client.query(
+      `
+        SELECT submission_id, number, amount
+        FROM submission_items
+        WHERE submission_id = ANY($1::int[])
+        ORDER BY number ASC
+      `,
+      [submissionIds],
+    );
+
+    let items: ContributionItem[] = itemResult.rows
+      .map((item: any) => ({
+        submissionId: Number(item.submission_id),
+        number: Number(item.number),
+        amount: Number(item.amount),
+      }))
+      .filter(
+        (item: ContributionItem) =>
+          Number.isInteger(item.submissionId) &&
+          item.submissionId > 0 &&
+          Number.isInteger(item.number) &&
+          item.number > 0 &&
+          Number.isFinite(item.amount) &&
+          item.amount > 0,
+      );
+
+    if (!items.length) {
+      items = submissions.flatMap(normalizeFallbackItems);
+    }
+
+    if (!items.length) {
+      throw new Error("No valid contribution items found");
+    }
+
+    const amountByNumber = new Map<number, number>();
+
+    for (const item of items) {
+      amountByNumber.set(item.number, (amountByNumber.get(item.number) || 0) + item.amount);
+    }
+
+    const affectedNumbers = Array.from(amountByNumber.keys()).sort((a, b) => a - b);
+
+    await client.query(
+      `
+        INSERT INTO number_status_summary_cache (
+          number,
+          target_amount,
+          approved_amount,
+          pending_amount,
+          hold_amount,
+          sold_amount,
+          remaining_amount,
+          status,
+          updated_at
+        )
+        SELECT
+          np.number,
+          np.target_amount,
+          np.current_amount,
+          0,
+          0,
+          np.current_amount,
+          GREATEST(np.target_amount - np.current_amount, 0),
+          CASE
+            WHEN np.current_amount >= np.target_amount THEN 'sold'
+            ELSE np.status::text
+          END,
+          NOW()
+        FROM number_pools np
+        WHERE np.number = ANY($1::int[])
+        ON CONFLICT (number) DO NOTHING
+      `,
+      [affectedNumbers],
+    );
+
+    await client.query(
+      `
+        SELECT number
+        FROM number_status_summary_cache
+        WHERE number = ANY($1::int[])
+        ORDER BY number ASC
+        FOR UPDATE
+      `,
+      [affectedNumbers],
+    );
+
+    const updateResult = await client.query(
+      `
+        UPDATE submissions
+        SET
+          status = 'rejected',
           rejected_at = NOW(),
-          approved_at = NULL
-      WHERE
-        id = ${sub.id}
-        OR (
-          ${sub.submission_group_id}::uuid IS NOT NULL
-          AND submission_group_id = ${sub.submission_group_id}
+          approved_at = NULL,
+          is_seen_by_user = FALSE,
+          updated_at = NOW()
+        WHERE id = ANY($1::int[])
+          AND status = 'pending'
+        RETURNING id
+      `,
+      [submissionIds],
+    );
+
+    const values: any[] = [];
+    const placeholders: string[] = [];
+
+    affectedNumbers.forEach((number, index) => {
+      const base = index * 2 + 1;
+      placeholders.push(`($${base}::int, $${base + 1}::int)`);
+      values.push(number, amountByNumber.get(number) || 0);
+    });
+
+    /*
+      Affected numbers only:
+      release pending amount.
+      No full number recalculation.
+    */
+    await client.query(
+      `
+        WITH item_updates(number, amount) AS (
+          VALUES ${placeholders.join(", ")}
         )
-        OR (
-          user_id = ${sub.user_id}
-          AND ${sub.receipt_key}::text IS NOT NULL
-          AND ${sub.receipt_key}::text <> ''
-          AND receipt_key = ${sub.receipt_key}
-        )
-        OR (
-          user_id = ${sub.user_id}
-          AND ${sub.receipt_url}::text IS NOT NULL
-          AND ${sub.receipt_url}::text <> ''
-          AND receipt_url = ${sub.receipt_url}
-        )
-      RETURNING id, number, status
-    `;
+        UPDATE number_status_summary_cache cache
+        SET
+          pending_amount = GREATEST(cache.pending_amount - item_updates.amount, 0),
+          remaining_amount = GREATEST(
+            cache.target_amount
+              - cache.approved_amount
+              - GREATEST(cache.pending_amount - item_updates.amount, 0)
+              - cache.hold_amount,
+            0
+          ),
+          status = CASE
+            WHEN cache.approved_amount >= cache.target_amount THEN 'sold'
+            WHEN GREATEST(cache.pending_amount - item_updates.amount, 0) > 0 OR cache.hold_amount > 0 THEN 'pending'
+            ELSE 'open'
+          END,
+          updated_at = NOW()
+        FROM item_updates
+        WHERE cache.number = item_updates.number
+      `,
+      values,
+    );
+
+    const totalAmount = Array.from(amountByNumber.values()).reduce(
+      (sum, amount) => sum + Number(amount || 0),
+      0,
+    );
+
+    await client.query("COMMIT");
 
     return NextResponse.json({
       success: true,
-      numbers: updated.map((row: any) => row.number),
-      submissions: updated,
+      updated: updateResult.rowCount,
+      rejectedSubmissionIds: updateResult.rows.map((row: any) => Number(row.id)),
+      submissionRef: id,
+      newStatus: "rejected",
+      totalAmount,
+      soldDelta: 0,
+      leftDelta: 0,
+      affectedNumbers,
     });
-  } catch (error: any) {
-    console.error('Reject error:', error);
+  } catch (err: any) {
+    if (client) {
+      try {
+        await client.query("ROLLBACK");
+      } catch (rollbackError) {
+        console.error("Reject rollback error:", rollbackError);
+      }
+    }
+
+    console.error("Reject error:", err);
+    const message = err?.message || "Failed to reject";
+
     return NextResponse.json(
-      { error: error.message || 'Reject failed' },
-      { status: error.message === 'Unauthorized' ? 401 : error.message === 'Forbidden' ? 403 : 500 }
+      { error: message },
+      { status: apiStatusFromError(message) },
     );
+  } finally {
+    if (client) client.release();
   }
 }
