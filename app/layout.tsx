@@ -4,7 +4,7 @@ import QueryProvider from "./providers/QueryProvider";
 import AppToaster from "@/components/AppToaster";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://bardua.vercel.app"),
+  metadataBase: new URL("https://baruda.vercel.app"),
   title: "ባሩዳ ዶት ኮም",
   description: "የአንጋፋውና ስመ ጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
   openGraph: {
