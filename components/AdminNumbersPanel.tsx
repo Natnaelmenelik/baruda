@@ -51,24 +51,40 @@ export default function AdminNumbersPanel() {
 
   const [numbers, setNumbers] = useState<NumberPoolRow[]>([]);
   const [selections, setSelections] = useState<NumberSubmissionRow[]>([]);
-  const [approvedUsers, setApprovedUsers] = useState<ApprovedUserNumbersRow[]>([]);
+  const [approvedUsers, setApprovedUsers] = useState<ApprovedUserNumbersRow[]>(
+    [],
+  );
   const [showApprovedUsers, setShowApprovedUsers] = useState(false);
   const [approvedNumberFilter, setApprovedNumberFilter] = useState("");
   const [approvedUsersPage, setApprovedUsersPage] = useState(1);
   const [approvedUsersTotal, setApprovedUsersTotal] = useState(0);
   const [approvedUsersTotalPages, setApprovedUsersTotalPages] = useState(1);
   const approvedUsersPageSize = 20;
-  const [numberSubmissions, setNumberSubmissions] = useState<NumberSubmissionRow[]>([]);
-  const [selectedNumber, setSelectedNumber] = useState<NumberPoolRow | null>(null);
+  const [numberSubmissions, setNumberSubmissions] = useState<
+    NumberSubmissionRow[]
+  >([]);
+  const [selectedNumber, setSelectedNumber] = useState<NumberPoolRow | null>(
+    null,
+  );
   const [targetInput, setTargetInput] = useState("");
   const [globalTargetInput, setGlobalTargetInput] = useState("");
   const [showGlobalTargetConfirm, setShowGlobalTargetConfirm] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [dashboardMessageText, setDashboardMessageText] = useState("");
-  const [selectionReceiptImage, setSelectionReceiptImage] = useState<string | null>(null);
+  const [selectionReceiptImage, setSelectionReceiptImage] = useState<
+    string | null
+  >(null);
 
   const [loadingType, setLoadingType] = useState<
-    "manage" | "selections" | "approvedUsers" | "view" | "close" | "target" | "copyAmounts" | "message" | null
+    | "manage"
+    | "selections"
+    | "approvedUsers"
+    | "view"
+    | "close"
+    | "target"
+    | "copyAmounts"
+    | "message"
+    | null
   >(null);
 
   const label = (key: string, fallback: string) => {
@@ -78,10 +94,16 @@ export default function AdminNumbersPanel() {
 
   useEffect(() => {
     const openDashboardMessageModal = () => setShowMessageModal(true);
-    window.addEventListener("open-dashboard-message-modal", openDashboardMessageModal);
+    window.addEventListener(
+      "open-dashboard-message-modal",
+      openDashboardMessageModal,
+    );
 
     return () => {
-      window.removeEventListener("open-dashboard-message-modal", openDashboardMessageModal);
+      window.removeEventListener(
+        "open-dashboard-message-modal",
+        openDashboardMessageModal,
+      );
     };
   }, []);
 
@@ -101,8 +123,10 @@ export default function AdminNumbersPanel() {
     return new Date(value).toLocaleString(lang === "am" ? "am-ET" : "en-US");
   };
 
-  const getTarget = (row: NumberPoolRow) => Number(row.target_amount ?? row.target ?? 0);
-  const getCurrent = (row: NumberPoolRow) => Number(row.current_amount ?? row.current ?? 0);
+  const getTarget = (row: NumberPoolRow) =>
+    Number(row.target_amount ?? row.target ?? 0);
+  const getCurrent = (row: NumberPoolRow) =>
+    Number(row.current_amount ?? row.current ?? 0);
   const getRemaining = (row: NumberPoolRow) => {
     const target = getTarget(row);
     const current = getCurrent(row);
@@ -115,10 +139,10 @@ export default function AdminNumbersPanel() {
 
   async function readJson(res: Response) {
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.error || `Request failed: ${res.status}`);
+    if (!res.ok)
+      throw new Error(data?.error || `Request failed: ${res.status}`);
     return data;
   }
-
 
   async function loadNumbers() {
     try {
@@ -134,16 +158,114 @@ export default function AdminNumbersPanel() {
       const data = await readJson(res);
       const loadedNumbers = Array.isArray(data) ? data : data?.numbers || [];
       setNumbers(loadedNumbers);
-      setGlobalTargetInput(String(loadedNumbers?.[0]?.target_amount || loadedNumbers?.[0]?.target || ""));
+      setGlobalTargetInput(
+        String(
+          loadedNumbers?.[0]?.target_amount || loadedNumbers?.[0]?.target || "",
+        ),
+      );
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || label("failedToLoadNumbers", "Failed to load numbers"));
+      toast.error(
+        translateApiError(err, lang) ||
+          label("failedToLoadNumbers", "Failed to load numbers"),
+      );
       setShowManage(false);
     } finally {
       setLoadingType(null);
     }
   }
 
+  // async function copyApprovedNumberAmountsForTelegram() {
+  //   try {
+  //     setLoadingType("copyAmounts");
 
+  //     const res = await fetch("/api/admin/numbers?t=" + Date.now(), {
+  //       cache: "no-store",
+  //       headers: { "Cache-Control": "no-store" },
+  //     });
+
+  //     const data = await readJson(res);
+  //     const rows = Array.isArray(data) ? data : data?.numbers || [];
+  //     setNumbers(rows);
+
+  //     const remainingRows = rows
+  //       .map((row: any) => {
+  //         const number = Number(row.number);
+  //         const remaining = getRemaining(row);
+
+  //         return { number, remaining };
+  //       })
+  //       .filter((row: any) => Number.isFinite(row.number) && row.remaining > 0)
+  //       .sort((a: any, b: any) => a.number - b.number);
+
+  //     if (!remainingRows.length) {
+  //       toast.error(label("noRemainingNumbersToCopy", "No numbers with remaining balance to copy"));
+  //       return;
+  //     }
+
+  //     const lines = remainingRows.map((row: any) => {
+  //       const number = String(row.number).padEnd(10, " ");
+  //       const remaining = row.remaining.toLocaleString();
+
+  //       return `${number}${remaining}`;
+  //     });
+
+  //     const message = [
+  //       "የቀረ የቁጥር መጠን",
+  //       "",
+  //       "ቁጥር      የቀረ መጠን",
+  //       ...lines,
+  //       "",
+  //       "",
+  //       "የክፍያ መረጃ",
+  //       "",
+  //       "CBE (ንግድ ባንክ) - 1000743554101",
+  //       "Abyssinia (አቢሲኒያ ባንክ) - 249579432",
+  //       "Telebirr (ቴሌብር) - 0935021863",
+  //       "Awash (አዋሽ ባንክ) - 013201731060100",
+  //     ].join("\n");
+
+  //     await navigator.clipboard.writeText(message);
+
+  //     toast.success(label("copiedForTelegram", "Copied for Telegram"));
+  //   } catch (err: any) {
+  //     toast.error(err.message || label("failedToCopy", "Failed to copy"));
+  //   } finally {
+  //     setLoadingType(null);
+  //   }
+  // }
+
+  async function copyTextToClipboard(message: string) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(message);
+        return true;
+      }
+    } catch {
+      // Use fallback below.
+    }
+
+    try {
+      const textarea = document.createElement("textarea");
+      textarea.value = message;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.top = "0";
+      textarea.style.left = "-9999px";
+      textarea.style.opacity = "0";
+
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textarea);
+
+      return copied;
+    } catch {
+      return false;
+    }
+  }
 
   async function copyApprovedNumberAmountsForTelegram() {
     try {
@@ -169,7 +291,12 @@ export default function AdminNumbersPanel() {
         .sort((a: any, b: any) => a.number - b.number);
 
       if (!remainingRows.length) {
-        toast.error(label("noRemainingNumbersToCopy", "No numbers with remaining balance to copy"));
+        toast.error(
+          label(
+            "noRemainingNumbersToCopy",
+            "No numbers with remaining balance to copy",
+          ),
+        );
         return;
       }
 
@@ -195,16 +322,25 @@ export default function AdminNumbersPanel() {
         "Awash (አዋሽ ባንክ) - 013201731060100",
       ].join("\n");
 
-      await navigator.clipboard.writeText(message);
+      const copied = await copyTextToClipboard(message);
 
-      toast.success(label("copiedForTelegram", "Copied for Telegram"));
+      if (copied) {
+        toast.success(label("copiedForTelegram", "Copied for Telegram"));
+      } else {
+        toast.error(
+          label("failedToCopy", "Copy failed. Please copy manually."),
+        );
+      }
     } catch (err: any) {
-      toast.error(err.message || label("failedToCopy", "Failed to copy"));
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("failedToCopy", "Failed to copy"),
+      );
     } finally {
       setLoadingType(null);
     }
   }
-
 
   async function loadSelections() {
     try {
@@ -220,16 +356,21 @@ export default function AdminNumbersPanel() {
       const data = await readJson(res);
       setSelections(Array.isArray(data) ? data : data?.selections || []);
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || label("failedToLoadSelections", "Failed to load selections"));
+      toast.error(
+        translateApiError(err, lang) ||
+          label("failedToLoadSelections", "Failed to load selections"),
+      );
       setShowSelections(false);
     } finally {
       setLoadingType(null);
     }
   }
 
-
-
-  async function loadApprovedUsers(page = 1, filterValue = approvedNumberFilter, openModal = true) {
+  async function loadApprovedUsers(
+    page = 1,
+    filterValue = approvedNumberFilter,
+    openModal = true,
+  ) {
     try {
       setLoadingType("approvedUsers");
 
@@ -244,10 +385,13 @@ export default function AdminNumbersPanel() {
         params.set("number", cleanFilter);
       }
 
-      const res = await fetch(`/api/admin/numbers/approved-users?${params.toString()}`, {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-store" },
-      });
+      const res = await fetch(
+        `/api/admin/numbers/approved-users?${params.toString()}`,
+        {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-store" },
+        },
+      );
       const data = await readJson(res);
       const users = Array.isArray(data) ? data : data?.users || [];
 
@@ -260,7 +404,11 @@ export default function AdminNumbersPanel() {
         setShowApprovedUsers(true);
       }
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || err.message || label("failedToLoadApprovedUsers", "Failed to load approved users"));
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("failedToLoadApprovedUsers", "Failed to load approved users"),
+      );
     } finally {
       setLoadingType(null);
     }
@@ -280,14 +428,22 @@ export default function AdminNumbersPanel() {
       setShowNumberSubmissions(true);
       setLoadingType("view");
 
-      const res = await fetch(`/api/admin/numbers/${row.number}/submissions?t=${Date.now()}`, {
-        cache: "no-store",
-        headers: { "Cache-Control": "no-store" },
-      });
+      const res = await fetch(
+        `/api/admin/numbers/${row.number}/submissions?t=${Date.now()}`,
+        {
+          cache: "no-store",
+          headers: { "Cache-Control": "no-store" },
+        },
+      );
       const data = await readJson(res);
-      setNumberSubmissions(Array.isArray(data) ? data : data?.submissions || []);
+      setNumberSubmissions(
+        Array.isArray(data) ? data : data?.submissions || [],
+      );
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || label("failedToLoadSubmissions", "Failed to load submissions"));
+      toast.error(
+        translateApiError(err, lang) ||
+          label("failedToLoadSubmissions", "Failed to load submissions"),
+      );
       setShowNumberSubmissions(false);
     } finally {
       setLoadingType(null);
@@ -311,17 +467,26 @@ export default function AdminNumbersPanel() {
 
     try {
       setLoadingType("target");
-      const res = await fetch(`/api/admin/numbers/${selectedNumber.number}/target`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetAmount: nextTarget, target_amount: nextTarget }),
-      });
+      const res = await fetch(
+        `/api/admin/numbers/${selectedNumber.number}/target`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetAmount: nextTarget,
+            target_amount: nextTarget,
+          }),
+        },
+      );
       await readJson(res);
       toast.success(label("numberTargetUpdated", "Number target updated"));
       setShowEditTarget(false);
       await loadNumbers();
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || label("failedToUpdateTarget", "Failed to update target"));
+      toast.error(
+        translateApiError(err, lang) ||
+          label("failedToUpdateTarget", "Failed to update target"),
+      );
     } finally {
       setLoadingType(null);
     }
@@ -339,13 +504,15 @@ export default function AdminNumbersPanel() {
       setShowCloseConfirm(false);
       setSelectedNumber(null);
       await loadNumbers();
-          } catch (err: any) {
-      toast.error(translateApiError(err, lang) || label("failedToCloseNumber", "Failed to close number"));
+    } catch (err: any) {
+      toast.error(
+        translateApiError(err, lang) ||
+          label("failedToCloseNumber", "Failed to close number"),
+      );
     } finally {
       setLoadingType(null);
     }
   }
-
 
   async function saveGlobalTarget() {
     const nextTarget = Number(globalTargetInput);
@@ -367,33 +534,57 @@ export default function AdminNumbersPanel() {
 
       if (!res.ok) {
         if (Array.isArray(data.blocked) && data.blocked.length > 0) {
-          throw new Error(label("targetBelowApprovedWarning", "Some numbers already have approved contributions above this target."));
+          throw new Error(
+            label(
+              "targetBelowApprovedWarning",
+              "Some numbers already have approved contributions above this target.",
+            ),
+          );
         }
-        throw new Error(data.error || label("failedToUpdateGlobalTarget", "Failed to update global target amount"));
+        throw new Error(
+          data.error ||
+            label(
+              "failedToUpdateGlobalTarget",
+              "Failed to update global target amount",
+            ),
+        );
       }
 
-      toast.success(label("globalTargetUpdated", "Global target amount updated"));
+      toast.success(
+        label("globalTargetUpdated", "Global target amount updated"),
+      );
       setShowGlobalTargetConfirm(false);
       await loadNumbers();
     } catch (err: any) {
-      toast.error(err.message || label("failedToUpdateGlobalTarget", "Failed to update global target amount"));
+      toast.error(
+        err.message ||
+          label(
+            "failedToUpdateGlobalTarget",
+            "Failed to update global target amount",
+          ),
+      );
     } finally {
       setLoadingType(null);
     }
   }
 
-
-
   async function sendDashboardMessage() {
     const message = dashboardMessageText.trim();
 
     if (!message) {
-      toast.error(label("dashboardMessageRequired", "Please write a message first"));
+      toast.error(
+        label("dashboardMessageRequired", "Please write a message first"),
+      );
       return;
     }
 
     if (message.length > 600) {
-      toast.error(label("dashboardMessageTooLong", "Message must be 600 characters or less"));
+      toast.error(
+        label(
+          "dashboardMessageTooLong",
+          "Message must be 600 characters or less",
+        ),
+      );
       return;
     }
 
@@ -410,7 +601,11 @@ export default function AdminNumbersPanel() {
       setDashboardMessageText("");
       setShowMessageModal(false);
     } catch (err: any) {
-      toast.error(translateApiError(err, lang) || err.message || label("failedToSendDashboardMessage", "Failed to send message"));
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("failedToSendDashboardMessage", "Failed to send message"),
+      );
     } finally {
       setLoadingType(null);
     }
@@ -432,12 +627,12 @@ export default function AdminNumbersPanel() {
 
   return (
     <>
-      <div className="mb-6 flex w-full flex-wrap items-center justify-center gap-3 md:justify-end">
+      <div className="flex flex-wrap items-center justify-center w-full gap-3 mb-6 md:justify-end">
         <button
           type="button"
           onClick={loadSelections}
           disabled={loadingType !== null}
-          className="rounded-xl border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 disabled:opacity-50"
         >
           {loadingType === "selections"
             ? label("loading", "Loading...")
@@ -448,7 +643,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={openApprovedUsers}
           disabled={loadingType !== null}
-          className="rounded-xl border border-green-200 bg-white px-4 py-2 text-sm font-semibold text-green-700 shadow-sm transition hover:bg-green-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50 disabled:opacity-50"
         >
           {loadingType === "approvedUsers"
             ? label("loading", "Loading...")
@@ -462,7 +657,7 @@ export default function AdminNumbersPanel() {
             copyApprovedNumberAmountsForTelegram();
           }}
           disabled={loadingType !== null}
-          className="rounded-xl border border-purple-200 bg-white px-4 py-2 text-sm font-semibold text-purple-700 shadow-sm transition hover:bg-purple-50 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50"
         >
           {loadingType === "copyAmounts"
             ? label("copying", "Copying...")
@@ -473,7 +668,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={loadNumbers}
           disabled={loadingType !== null}
-          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-white transition bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700 disabled:opacity-50"
         >
           {loadingType === "manage"
             ? label("loading", "Loading...")
@@ -487,12 +682,18 @@ export default function AdminNumbersPanel() {
           title={label("writeDashboardMessage", "Write a Message")}
         >
           <div className="space-y-4">
-            <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 text-sm text-amber-900 shadow-inner">
+            <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 bg-gradient-to-br from-amber-50 via-white to-orange-50 text-amber-900">
               <div className="font-extrabold">
-                {label("messageVisibleFor24Hours", "This message will be visible on every user dashboard for 24 hours.")}
+                {label(
+                  "messageVisibleFor24Hours",
+                  "This message will be visible on every user dashboard for 24 hours.",
+                )}
               </div>
               <div className="mt-1 text-xs font-semibold text-amber-700">
-                {label("usersCanDismissMessage", "If a user closes it, it will stay hidden for that user after reload.")}
+                {label(
+                  "usersCanDismissMessage",
+                  "If a user closes it, it will stay hidden for that user after reload.",
+                )}
               </div>
             </div>
 
@@ -505,12 +706,17 @@ export default function AdminNumbersPanel() {
               onChange={(e) => setDashboardMessageText(e.target.value)}
               rows={6}
               maxLength={600}
-              placeholder={label("dashboardMessagePlaceholder", "Write the announcement or instruction users should see...")}
-              className="w-full resize-none rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none transition focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
+              placeholder={label(
+                "dashboardMessagePlaceholder",
+                "Write the announcement or instruction users should see...",
+              )}
+              className="w-full px-4 py-3 text-sm font-semibold text-gray-900 transition bg-white border outline-none resize-none rounded-2xl border-amber-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
             />
 
             <div className="flex items-center justify-between text-xs font-bold text-gray-500">
-              <span>{label("messageCharacterLimit", "Maximum 600 characters")}</span>
+              <span>
+                {label("messageCharacterLimit", "Maximum 600 characters")}
+              </span>
               <span>{dashboardMessageText.length}/600</span>
             </div>
 
@@ -518,7 +724,7 @@ export default function AdminNumbersPanel() {
               <button
                 type="button"
                 onClick={() => setShowMessageModal(false)}
-                className="rounded-xl border border-gray-200 px-4 py-3 font-semibold text-gray-700 transition hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 transition border border-gray-200 rounded-xl hover:bg-gray-50"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -527,9 +733,11 @@ export default function AdminNumbersPanel() {
                 type="button"
                 onClick={sendDashboardMessage}
                 disabled={loadingType === "message"}
-                className="rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 px-4 py-3 font-extrabold text-white shadow-lg shadow-orange-900/20 transition hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
+                className="px-4 py-3 font-extrabold text-white transition shadow-lg rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 shadow-orange-900/20 hover:from-amber-600 hover:to-orange-700 disabled:opacity-50"
               >
-                {loadingType === "message" ? label("sending", "Sending...") : label("sendMessage", "Send Message")}
+                {loadingType === "message"
+                  ? label("sending", "Sending...")
+                  : label("sendMessage", "Send Message")}
               </button>
             </div>
           </div>
@@ -547,7 +755,7 @@ export default function AdminNumbersPanel() {
               <div className="mb-1">
                 {label("approvedOnly", "Approved only")}
               </div>
-              <label className="mb-1 block text-xs font-bold text-green-900">
+              <label className="block mb-1 text-xs font-bold text-green-900">
                 {label("filterByNumber", "Filter by Number")}
               </label>
               <input
@@ -556,7 +764,7 @@ export default function AdminNumbersPanel() {
                 value={approvedNumberFilter}
                 onChange={(e) => setApprovedNumberFilter(e.target.value)}
                 placeholder={label("showAllNumbers", "Show all numbers")}
-                className="w-full rounded-xl border border-green-200 bg-white px-4 py-2 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full px-4 py-2 text-sm font-semibold text-gray-900 bg-white border border-green-200 outline-none rounded-xl focus:ring-2 focus:ring-green-500"
               />
             </div>
 
@@ -566,7 +774,7 @@ export default function AdminNumbersPanel() {
                 setApprovedNumberFilter("");
                 setApprovedUsersPage(1);
               }}
-              className="rounded-xl border border-green-200 bg-white px-4 py-2 text-sm font-bold text-green-700 hover:bg-green-100"
+              className="px-4 py-2 text-sm font-bold text-green-700 bg-white border border-green-200 rounded-xl hover:bg-green-100"
             >
               {label("clearFilter", "Clear Filter")}
             </button>
@@ -582,9 +790,20 @@ export default function AdminNumbersPanel() {
                 <tr>
                   <th className="p-3 text-left">{label("user", "User")}</th>
                   <th className="p-3 text-left">{label("phone", "Phone")}</th>
-                  <th className="p-3 text-left">{label("selectedNumbers", "Selected Numbers")}</th>
-                  <th className="p-3 text-right">{approvedNumberFilter.trim() ? label("paidForFilteredNumber", "Paid for filtered number") : label("totalApprovedAmount", "Total Approved Amount")}</th>
-                  <th className="p-3 text-center">{label("submissionCount", "Submissions")}</th>
+                  <th className="p-3 text-left">
+                    {label("selectedNumbers", "Selected Numbers")}
+                  </th>
+                  <th className="p-3 text-right">
+                    {approvedNumberFilter.trim()
+                      ? label(
+                          "paidForFilteredNumber",
+                          "Paid for filtered number",
+                        )
+                      : label("totalApprovedAmount", "Total Approved Amount")}
+                  </th>
+                  <th className="p-3 text-center">
+                    {label("submissionCount", "Submissions")}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -596,7 +815,10 @@ export default function AdminNumbersPanel() {
                   </tr>
                 ) : (
                   filteredApprovedUsers.map((user, index) => (
-                    <tr key={`${user.user_phone || user.user_name || index}`} className="border-b hover:bg-gray-50">
+                    <tr
+                      key={`${user.user_phone || user.user_name || index}`}
+                      className="border-b hover:bg-gray-50"
+                    >
                       <td className="p-3 font-semibold text-gray-900">
                         {user.user_name || "-"}
                       </td>
@@ -609,7 +831,8 @@ export default function AdminNumbersPanel() {
                             <span
                               key={`${num}-${i}`}
                               className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                                approvedNumberFilter.trim() && String(num) === approvedNumberFilter.trim()
+                                approvedNumberFilter.trim() &&
+                                String(num) === approvedNumberFilter.trim()
                                   ? "bg-blue-600 text-white"
                                   : "bg-green-100 text-green-700"
                               }`}
@@ -619,8 +842,11 @@ export default function AdminNumbersPanel() {
                           ))}
                         </div>
                       </td>
-                      <td className="p-3 text-right font-semibold">
-                        {Number(getApprovedFilteredAmount(user) || 0).toLocaleString()} {label("birr", "Birr")}
+                      <td className="p-3 font-semibold text-right">
+                        {Number(
+                          getApprovedFilteredAmount(user) || 0,
+                        ).toLocaleString()}{" "}
+                        {label("birr", "Birr")}
                       </td>
                       <td className="p-3 text-center">
                         {Number(user.submission_count || 0)}
@@ -632,27 +858,44 @@ export default function AdminNumbersPanel() {
             </table>
           </div>
 
-
-          <div className="mt-4 flex flex-col gap-3 rounded-xl bg-gray-50 p-3 text-sm font-semibold text-gray-700 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-semibold text-gray-700 rounded-xl bg-gray-50 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              {label("page", "Page")} {approvedUsersPage} {label("of", "of")} {approvedUsersTotalPages}
+              {label("page", "Page")} {approvedUsersPage} {label("of", "of")}{" "}
+              {approvedUsersTotalPages}
             </div>
 
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => loadApprovedUsers(Math.max(approvedUsersPage - 1, 1), approvedNumberFilter, false)}
-                disabled={loadingType === "approvedUsers" || approvedUsersPage <= 1}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 font-bold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+                onClick={() =>
+                  loadApprovedUsers(
+                    Math.max(approvedUsersPage - 1, 1),
+                    approvedNumberFilter,
+                    false,
+                  )
+                }
+                disabled={
+                  loadingType === "approvedUsers" || approvedUsersPage <= 1
+                }
+                className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
               >
                 {label("previous", "Previous")}
               </button>
 
               <button
                 type="button"
-                onClick={() => loadApprovedUsers(Math.min(approvedUsersPage + 1, approvedUsersTotalPages), approvedNumberFilter, false)}
-                disabled={loadingType === "approvedUsers" || approvedUsersPage >= approvedUsersTotalPages}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 font-bold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
+                onClick={() =>
+                  loadApprovedUsers(
+                    Math.min(approvedUsersPage + 1, approvedUsersTotalPages),
+                    approvedNumberFilter,
+                    false,
+                  )
+                }
+                disabled={
+                  loadingType === "approvedUsers" ||
+                  approvedUsersPage >= approvedUsersTotalPages
+                }
+                className="px-4 py-2 font-bold text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50"
               >
                 {label("next", "Next")}
               </button>
@@ -661,18 +904,16 @@ export default function AdminNumbersPanel() {
         </Modal>
       )}
 
-
       {showManage && (
         <Modal
           onClose={() => setShowManage(false)}
           title={label("manageNumbers", "Manage Numbers")}
           wide
         >
-
-          <div className="mb-4 rounded-2xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+          <div className="p-4 mb-4 border border-blue-100 rounded-2xl bg-blue-50 dark:border-blue-900 dark:bg-blue-950/30">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="flex-1">
-                <label className="mb-1 block text-sm font-bold text-gray-900 dark:text-white">
+                <label className="block mb-1 text-sm font-bold text-gray-900 dark:text-white">
                   {label("globalTargetAmount", "Global Target Amount")}
                 </label>
                 <input
@@ -680,7 +921,7 @@ export default function AdminNumbersPanel() {
                   min={1}
                   value={globalTargetInput}
                   onChange={(e) => setGlobalTargetInput(e.target.value)}
-                  className="w-full rounded-xl border border-blue-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                  className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-blue-200 outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 />
               </div>
 
@@ -688,33 +929,63 @@ export default function AdminNumbersPanel() {
                 type="button"
                 onClick={() => setShowGlobalTargetConfirm(true)}
                 disabled={loadingType !== null}
-                className="rounded-xl bg-green-600 px-5 py-3 text-sm font-bold text-white shadow-sm hover:bg-green-700 disabled:opacity-50"
+                className="px-5 py-3 text-sm font-bold text-white bg-green-600 shadow-sm rounded-xl hover:bg-green-700 disabled:opacity-50"
               >
                 {label("applyToAll", "Apply to All")}
               </button>
             </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <SummaryCard label={label("totalSubmissions", "Total")} value={numbers.length} />
-            <SummaryCard label={label("available", "Available")} value={numbers.filter((n) => !isClosed(n)).length} />
-            <SummaryCard label={label("taken", "Taken")} value={numbers.filter((n) => isClosed(n)).length} />
-            <SummaryCard label={label("poolSummary", "Pool Summary")} value={numbers.reduce((sum, n) => sum + getCurrent(n), 0).toLocaleString()} />
+          <div className="grid grid-cols-2 gap-3 mb-4 md:grid-cols-4">
+            <SummaryCard
+              label={label("totalSubmissions", "Total")}
+              value={numbers.length}
+            />
+            <SummaryCard
+              label={label("available", "Available")}
+              value={numbers.filter((n) => !isClosed(n)).length}
+            />
+            <SummaryCard
+              label={label("taken", "Taken")}
+              value={numbers.filter((n) => isClosed(n)).length}
+            />
+            <SummaryCard
+              label={label("poolSummary", "Pool Summary")}
+              value={numbers
+                .reduce((sum, n) => sum + getCurrent(n), 0)
+                .toLocaleString()}
+            />
           </div>
 
-          <div className="overflow-hidden rounded-xl border">
+          <div className="overflow-hidden border rounded-xl">
             <div className="max-h-[58vh] overflow-auto">
               <table className="w-full min-w-[980px] text-sm">
                 <thead className="sticky top-0 z-10 border-b bg-gray-50">
                   <tr>
-                    <th className="p-3 text-left">{label("number", "Number")}</th>
-                    <th className="p-3 text-right">{label("targetAmount", "Target")}</th>
-                    <th className="p-3 text-right">{label("currentAmount", "Current")}</th>
-                    <th className="p-3 text-right">{label("remainingAmount", "Remaining")}</th>
-                    <th className="p-3 text-center">{label("totalSubmissions", "Submissions")}</th>
-                    <th className="p-3 text-center">{label("approvedContributions", "Approved")}</th>
-                    <th className="p-3 text-center">{label("status", "Status")}</th>
-                    <th className="p-3 text-right">{label("actions", "Actions")}</th>
+                    <th className="p-3 text-left">
+                      {label("number", "Number")}
+                    </th>
+                    <th className="p-3 text-right">
+                      {label("targetAmount", "Target")}
+                    </th>
+                    <th className="p-3 text-right">
+                      {label("currentAmount", "Current")}
+                    </th>
+                    <th className="p-3 text-right">
+                      {label("remainingAmount", "Remaining")}
+                    </th>
+                    <th className="p-3 text-center">
+                      {label("totalSubmissions", "Submissions")}
+                    </th>
+                    <th className="p-3 text-center">
+                      {label("approvedContributions", "Approved")}
+                    </th>
+                    <th className="p-3 text-center">
+                      {label("status", "Status")}
+                    </th>
+                    <th className="p-3 text-right">
+                      {label("actions", "Actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -730,35 +1001,68 @@ export default function AdminNumbersPanel() {
                       const current = getCurrent(n);
                       const remaining = getRemaining(n);
                       const closed = isClosed(n);
-                      const percent = target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0;
+                      const percent =
+                        target > 0
+                          ? Math.min(Math.round((current / target) * 100), 100)
+                          : 0;
 
                       return (
-                        <tr key={n.number} className="border-b hover:bg-gray-50">
+                        <tr
+                          key={n.number}
+                          className="border-b hover:bg-gray-50"
+                        >
                           <td className="p-3 font-bold">{n.number}</td>
-                          <td className="p-3 text-right">{target.toLocaleString()}</td>
                           <td className="p-3 text-right">
-                            <div className="font-semibold">{current.toLocaleString()}</div>
+                            {target.toLocaleString()}
+                          </td>
+                          <td className="p-3 text-right">
+                            <div className="font-semibold">
+                              {current.toLocaleString()}
+                            </div>
                             <div className="mt-1 h-1.5 rounded-full bg-gray-100">
-                              <div className="h-1.5 rounded-full bg-blue-600" style={{ width: `${percent}%` }} />
+                              <div
+                                className="h-1.5 rounded-full bg-blue-600"
+                                style={{ width: `${percent}%` }}
+                              />
                             </div>
                           </td>
-                          <td className="p-3 text-right">{remaining.toLocaleString()}</td>
-                          <td className="p-3 text-center">{Number(n.submission_count ?? n.total_submissions ?? 0)}</td>
-                          <td className="p-3 text-center">{Number(n.approved_count || 0)}</td>
+                          <td className="p-3 text-right">
+                            {remaining.toLocaleString()}
+                          </td>
                           <td className="p-3 text-center">
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 text-green-700" : "bg-blue-50 text-blue-700"}`}>
-                              {closed ? label("taken", "Taken") : label("available", "Available")}
+                            {Number(
+                              n.submission_count ?? n.total_submissions ?? 0,
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            {Number(n.approved_count || 0)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span
+                              className={`rounded-full px-3 py-1 text-xs font-semibold ${closed ? "bg-green-100 text-green-700" : "bg-blue-50 text-blue-700"}`}
+                            >
+                              {closed
+                                ? label("taken", "Taken")
+                                : label("available", "Available")}
                             </span>
                           </td>
                           <td className="p-3">
                             <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                              <button type="button" onClick={() => viewNumber(n)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
+                              <button
+                                type="button"
+                                onClick={() => viewNumber(n)}
+                                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                              >
                                 {label("view", "View")}
                               </button>
 
                               {!closed && (
                                 <>
-                                  <button type="button" onClick={() => openEditTarget(n)} className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700">
+                                  <button
+                                    type="button"
+                                    onClick={() => openEditTarget(n)}
+                                    className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                                  >
                                     {label("editTarget", "Edit Target")}
                                   </button>
 
@@ -788,34 +1092,54 @@ export default function AdminNumbersPanel() {
       )}
 
       {showSelections && (
-        <Modal onClose={() => setShowSelections(false)} title={label("viewSelections", "View Selections")} wide>
+        <Modal
+          onClose={() => setShowSelections(false)}
+          title={label("viewSelections", "View Selections")}
+          wide
+        >
           {loadingType === "selections" ? (
-            <div className="p-8 text-center text-sm font-semibold text-gray-500">
+            <div className="p-8 text-sm font-semibold text-center text-gray-500">
               {label("loading", "Loading...")}
             </div>
           ) : (
-            <SelectionsTable rows={selections} label={label} formatDate={formatDate} onViewReceipt={setSelectionReceiptImage} />
+            <SelectionsTable
+              rows={selections}
+              label={label}
+              formatDate={formatDate}
+              onViewReceipt={setSelectionReceiptImage}
+            />
           )}
         </Modal>
       )}
 
       {showNumberSubmissions && (
-        <Modal onClose={() => setShowNumberSubmissions(false)} title={`${label("number", "Number")} ${selectedNumber?.number || ""} - ${label("submissions", "Submissions")}`} wide>
+        <Modal
+          onClose={() => setShowNumberSubmissions(false)}
+          title={`${label("number", "Number")} ${selectedNumber?.number || ""} - ${label("submissions", "Submissions")}`}
+          wide
+        >
           {loadingType === "view" ? (
-            <div className="p-8 text-center text-sm font-semibold text-gray-500">
+            <div className="p-8 text-sm font-semibold text-center text-gray-500">
               {label("loading", "Loading...")}
             </div>
           ) : (
-            <SelectionsTable rows={numberSubmissions} label={label} formatDate={formatDate} onViewReceipt={setSelectionReceiptImage} />
+            <SelectionsTable
+              rows={numberSubmissions}
+              label={label}
+              formatDate={formatDate}
+              onViewReceipt={setSelectionReceiptImage}
+            />
           )}
         </Modal>
       )}
 
-
       {showGlobalTargetConfirm && (
         <Modal
           onClose={() => setShowGlobalTargetConfirm(false)}
-          title={label("confirmGlobalTargetTitle", "Apply target to all numbers?")}
+          title={label(
+            "confirmGlobalTargetTitle",
+            "Apply target to all numbers?",
+          )}
         >
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
@@ -825,12 +1149,13 @@ export default function AdminNumbersPanel() {
               )}
             </p>
 
-            <div className="rounded-xl bg-blue-50 p-4 text-center text-blue-900">
+            <div className="p-4 text-center text-blue-900 rounded-xl bg-blue-50">
               <div className="text-sm font-semibold">
                 {label("globalTargetAmount", "Global Target Amount")}
               </div>
               <div className="mt-1 text-2xl font-extrabold">
-                {Number(globalTargetInput || 0).toLocaleString()} {label("birr", "Birr")}
+                {Number(globalTargetInput || 0).toLocaleString()}{" "}
+                {label("birr", "Birr")}
               </div>
             </div>
 
@@ -838,7 +1163,7 @@ export default function AdminNumbersPanel() {
               <button
                 type="button"
                 onClick={() => setShowGlobalTargetConfirm(false)}
-                className="rounded-xl border px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -847,9 +1172,11 @@ export default function AdminNumbersPanel() {
                 type="button"
                 onClick={saveGlobalTarget}
                 disabled={loadingType === "target"}
-                className="rounded-xl bg-green-600 px-4 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+                className="px-4 py-3 font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 disabled:opacity-50"
               >
-                {loadingType === "target" ? label("loading", "Loading...") : label("applyToAll", "Apply to All")}
+                {loadingType === "target"
+                  ? label("loading", "Loading...")
+                  : label("applyToAll", "Apply to All")}
               </button>
             </div>
           </div>
@@ -865,9 +1192,12 @@ export default function AdminNumbersPanel() {
           title={`${label("closeNumber", "Close Number")} - ${label("number", "Number")} ${selectedNumber.number}`}
         >
           <div className="space-y-5">
-            <div className="rounded-2xl border border-red-100 bg-red-50 p-4 text-red-900">
+            <div className="p-4 text-red-900 border border-red-100 rounded-2xl bg-red-50">
               <div className="text-lg font-extrabold">
-                {label("confirmCloseNumberTitle", "Are you sure you want to close this number?")}
+                {label(
+                  "confirmCloseNumberTitle",
+                  "Are you sure you want to close this number?",
+                )}
               </div>
               <p className="mt-2 text-sm leading-6 text-red-800">
                 {label(
@@ -877,7 +1207,7 @@ export default function AdminNumbersPanel() {
               </p>
             </div>
 
-            <div className="rounded-2xl bg-gray-50 p-4 text-center">
+            <div className="p-4 text-center rounded-2xl bg-gray-50">
               <div className="text-sm font-semibold text-gray-500">
                 {label("number", "Number")}
               </div>
@@ -885,7 +1215,9 @@ export default function AdminNumbersPanel() {
                 {selectedNumber.number}
               </div>
               <div className="mt-2 text-sm font-semibold text-gray-600">
-                {label("remainingAmount", "Remaining Amount")}: {getRemaining(selectedNumber).toLocaleString()} {label("birr", "Birr")}
+                {label("remainingAmount", "Remaining Amount")}:{" "}
+                {getRemaining(selectedNumber).toLocaleString()}{" "}
+                {label("birr", "Birr")}
               </div>
             </div>
 
@@ -896,7 +1228,7 @@ export default function AdminNumbersPanel() {
                   setShowCloseConfirm(false);
                   setSelectedNumber(null);
                 }}
-                className="rounded-xl border px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50"
+                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
               >
                 {label("cancel", "Cancel")}
               </button>
@@ -905,15 +1237,16 @@ export default function AdminNumbersPanel() {
                 type="button"
                 onClick={() => closeNumber(selectedNumber)}
                 disabled={loadingType === "close"}
-                className="rounded-xl bg-red-600 px-4 py-3 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-3 font-semibold text-white bg-red-600 rounded-xl hover:bg-red-700 disabled:opacity-50"
               >
-                {loadingType === "close" ? label("loading", "Loading...") : label("closeNumber", "Close Number")}
+                {loadingType === "close"
+                  ? label("loading", "Loading...")
+                  : label("closeNumber", "Close Number")}
               </button>
             </div>
           </div>
         </Modal>
       )}
-
 
       {selectionReceiptImage && (
         <div
@@ -921,17 +1254,17 @@ export default function AdminNumbersPanel() {
           onClick={() => setSelectionReceiptImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl rounded-2xl bg-white p-5 shadow-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-4 flex items-center justify-between border-b pb-3">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b">
               <h2 className="text-xl font-bold text-gray-900">
                 {label("paymentReceipt", "Payment Receipt")}
               </h2>
               <button
                 type="button"
                 onClick={() => setSelectionReceiptImage(null)}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                className="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700"
               >
                 {label("close", "Close")}
               </button>
@@ -949,23 +1282,39 @@ export default function AdminNumbersPanel() {
       )}
 
       {showEditTarget && selectedNumber && (
-        <Modal onClose={() => setShowEditTarget(false)} title={`${label("editTarget", "Edit Target")} - ${label("number", "Number")} ${selectedNumber.number}`}>
+        <Modal
+          onClose={() => setShowEditTarget(false)}
+          title={`${label("editTarget", "Edit Target")} - ${label("number", "Number")} ${selectedNumber.number}`}
+        >
           <div className="space-y-4">
-            <label className="block text-sm font-semibold text-gray-700">{label("targetAmount", "Target Amount")}</label>
+            <label className="block text-sm font-semibold text-gray-700">
+              {label("targetAmount", "Target Amount")}
+            </label>
             <input
               type="number"
               min={1}
               value={targetInput}
               onChange={(e) => setTargetInput(e.target.value)}
-              className="w-full rounded-xl border px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 border outline-none rounded-xl focus:ring-2 focus:ring-blue-500"
             />
 
             <div className="grid grid-cols-2 gap-3">
-              <button type="button" onClick={() => setShowEditTarget(false)} className="rounded-xl border px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50">
+              <button
+                type="button"
+                onClick={() => setShowEditTarget(false)}
+                className="px-4 py-3 font-semibold text-gray-700 border rounded-xl hover:bg-gray-50"
+              >
                 {label("cancel", "Cancel")}
               </button>
-              <button type="button" onClick={saveTarget} disabled={loadingType === "target"} className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
-                {loadingType === "target" ? label("loading", "Loading...") : label("save", "Save")}
+              <button
+                type="button"
+                onClick={saveTarget}
+                disabled={loadingType === "target"}
+                className="px-4 py-3 font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loadingType === "target"
+                  ? label("loading", "Loading...")
+                  : label("save", "Save")}
               </button>
             </div>
           </div>
@@ -977,7 +1326,7 @@ export default function AdminNumbersPanel() {
 
 function SummaryCard({ label, value }: { label: string; value: any }) {
   return (
-    <div className="rounded-xl border bg-gray-50 p-3 text-center">
+    <div className="p-3 text-center border rounded-xl bg-gray-50">
       <div className="text-lg font-extrabold text-gray-950">{value}</div>
       <div className="mt-1 text-xs font-semibold text-gray-500">{label}</div>
     </div>
@@ -996,7 +1345,7 @@ function SelectionsTable({
   onViewReceipt: (url: string) => void;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden border rounded-xl">
       <div className="max-h-[62vh] overflow-auto">
         <table className="w-full min-w-[900px] text-sm">
           <thead className="sticky top-0 z-10 border-b bg-gray-50">
@@ -1006,7 +1355,9 @@ function SelectionsTable({
               <th className="p-3 text-left">{label("phone", "Phone")}</th>
               <th className="p-3 text-right">{label("amount", "Amount")}</th>
               <th className="p-3 text-center">{label("status", "Status")}</th>
-              <th className="p-3 text-left">{label("submitted", "Submitted")}</th>
+              <th className="p-3 text-left">
+                {label("submitted", "Submitted")}
+              </th>
               <th className="p-3 text-left">{label("receipt", "Receipt")}</th>
             </tr>
           </thead>
@@ -1019,12 +1370,23 @@ function SelectionsTable({
               </tr>
             ) : (
               rows.map((s, index) => (
-                <tr key={`${s.submission_id || s.id || index}-${s.number}-${index}`} className="border-b hover:bg-gray-50">
+                <tr
+                  key={`${s.submission_id || s.id || index}-${s.number}-${index}`}
+                  className="border-b hover:bg-gray-50"
+                >
                   <td className="p-3 font-bold">{s.number || "-"}</td>
                   <td className="p-3">{s.user_name || "-"}</td>
                   <td className="p-3">{s.user_phone || "-"}</td>
-                  <td className="p-3 text-right">{Number(s.amount || 0).toLocaleString()} {label("birr", "Birr")}</td>
-                  <td className="p-3 text-center">{label(String(s?.status || "-").toLowerCase(), String(s?.status || "-"))}</td>
+                  <td className="p-3 text-right">
+                    {Number(s.amount || 0).toLocaleString()}{" "}
+                    {label("birr", "Birr")}
+                  </td>
+                  <td className="p-3 text-center">
+                    {label(
+                      String(s?.status || "-").toLowerCase(),
+                      String(s?.status || "-"),
+                    )}
+                  </td>
                   <td className="p-3">{formatDate(s.submitted_at)}</td>
                   <td className="p-3">
                     {s.receipt_url ? (
@@ -1035,7 +1397,9 @@ function SelectionsTable({
                       >
                         {label("viewReceipt", "View Receipt")}
                       </button>
-                    ) : "-"}
+                    ) : (
+                      "-"
+                    )}
                   </td>
                 </tr>
               ))
@@ -1059,13 +1423,27 @@ function Modal({
   wide?: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 md:p-4" onClick={onClose}>
-      <div className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white shadow-2xl`} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b px-5 py-4">
-          <h2 className="text-lg font-bold text-gray-900 md:text-xl">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded-lg bg-gray-200 px-3 py-1 text-sm font-bold text-gray-700 hover:bg-gray-300">×</button>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-3 md:p-4"
+      onClick={onClose}
+    >
+      <div
+        className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white shadow-2xl`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <h2 className="text-lg font-bold text-gray-900 md:text-xl">
+            {title}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-1 text-sm font-bold text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+          >
+            ×
+          </button>
         </div>
-        <div className="overflow-auto p-5">{children}</div>
+        <div className="p-5 overflow-auto">{children}</div>
       </div>
     </div>
   );
