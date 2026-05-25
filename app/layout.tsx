@@ -10,11 +10,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: "ኦዳ የመኪና እቁብ ሎተሪ",
     description: "ከዕድለኛ ቁጥርዎ ጋር የመኪና እድልዎን ይሞክሩ!",
-    url: "https://oddda.vercel.app",
+    url: "https://baruda.vercel.app",
     siteName: "ኦዳ የመኪና እቁብ ሎተሪ",
     images: [
       {
-        url: "/jetour_dashboard.png",
+        url: "/bardua-dashboard.png",
         width: 1200,
         height: 630,
         alt: "ኦዳ የመኪና እቁብ ሎተሪ",
