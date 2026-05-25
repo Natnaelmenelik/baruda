@@ -67,21 +67,21 @@ export default function WinnerAnnouncement({ announcement }: Props) {
 
   const winnerSizeClasses = [
     {
-      card: "max-w-[105px] sm:max-w-[190px] md:max-w-[300px]",
-      brand: "text-sm sm:text-3xl md:text-6xl",
-      number: "text-[2rem] sm:text-[4.6rem] md:text-[8rem]",
+      card: "h-[92px] max-w-[110px] sm:h-[150px] sm:max-w-[190px] md:h-auto md:max-w-[300px]",
+      brand: "text-base sm:text-3xl md:text-6xl",
+      number: "text-[2.5rem] sm:text-[4.6rem] md:text-[8rem]",
       label: "text-[10px] sm:text-sm md:text-base",
     },
     {
-      card: "max-w-[95px] sm:max-w-[165px] md:max-w-[250px]",
-      brand: "text-xs sm:text-2xl md:text-5xl",
-      number: "text-[1.8rem] sm:text-[3.9rem] md:text-[6.5rem]",
+      card: "h-[86px] max-w-[100px] sm:h-[135px] sm:max-w-[165px] md:h-auto md:max-w-[250px]",
+      brand: "text-sm sm:text-2xl md:text-5xl",
+      number: "text-[2.25rem] sm:text-[3.9rem] md:text-[6.5rem]",
       label: "text-[9px] sm:text-xs md:text-sm",
     },
     {
-      card: "max-w-[85px] sm:max-w-[145px] md:max-w-[215px]",
-      brand: "text-[11px] sm:text-xl md:text-4xl",
-      number: "text-[1.6rem] sm:text-[3.3rem] md:text-[5.6rem]",
+      card: "h-[80px] max-w-[92px] sm:h-[120px] sm:max-w-[145px] md:h-auto md:max-w-[215px]",
+      brand: "text-xs sm:text-xl md:text-4xl",
+      number: "text-[2rem] sm:text-[3.3rem] md:text-[5.6rem]",
       label: "text-[8px] sm:text-[11px] md:text-xs",
     },
   ];
