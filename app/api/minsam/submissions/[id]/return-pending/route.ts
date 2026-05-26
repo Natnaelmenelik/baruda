@@ -132,7 +132,7 @@ export async function POST(
           current_amount = COALESCE(at.approved_amount, 0),
           status = CASE
             WHEN COALESCE(at.approved_amount, 0) >= COALESCE(np.target_amount, 5000)
-            THEN 'closed'
+            THEN 'sold'
             ELSE 'open'
           END,
           updated_at = NOW()

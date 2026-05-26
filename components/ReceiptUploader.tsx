@@ -198,6 +198,58 @@ export default function ReceiptUploader({
   useEffect(() => {
     if (!paymentHold?.expires_at || value) return;
 
+    let releasing = false;
+
+    const releaseExpiredHoldNow = async () => {
+      if (releasing) return;
+      releasing = true;
+
+      const holdId = paymentHold?.id;
+      const fallbackNumbers = Array.isArray(paymentHold?.numbers)
+        ? paymentHold.numbers
+        : holdNumbers;
+
+      let releasedNumbers = fallbackNumbers;
+
+      try {
+        if (holdId) {
+          const res = await fetch(`/api/holds/${holdId}`, { method: 'DELETE' });
+          const data = await res.json().catch(() => ({}));
+
+          if (Array.isArray(data?.numbers) && data.numbers.length) {
+            releasedNumbers = data.numbers;
+          }
+        }
+      } catch {
+        // Even if the request fails, clear the local timer UI.
+        // The server-side queries ignore expired holds using expires_at > NOW().
+      }
+
+      localStorage.removeItem(HOLD_STORAGE_KEY);
+      localStorage.removeItem('baruda_payment_hold_id');
+      setPaymentHold(null);
+
+      dispatchNumbersRefresh({
+        action: 'hold_released',
+        numbers: releasedNumbers,
+        status: 'available',
+        holdId,
+        clientHoldKey,
+      });
+
+      broadcastNumbersUpdate({
+        action: 'hold_released',
+        numbers: releasedNumbers,
+        status: 'available',
+        holdId,
+        clientHoldKey,
+        source: 'receipt-uploader-expired',
+      });
+
+      toast.error(txt.holdExpired);
+      onHoldExpired?.();
+    };
+
     const tick = () => {
       const remaining = Math.max(
         0,
@@ -207,28 +259,7 @@ export default function ReceiptUploader({
       setRemainingSeconds(remaining);
 
       if (remaining <= 0) {
-        localStorage.removeItem(HOLD_STORAGE_KEY);
-        localStorage.removeItem('baruda_payment_hold_id');
-        setPaymentHold(null);
-
-        dispatchNumbersRefresh({
-          action: 'hold_released',
-          numbers: holdNumbers,
-          status: 'available',
-          holdId: paymentHold?.id,
-          clientHoldKey,
-        });
-
-        broadcastNumbersUpdate({
-          action: 'hold_released',
-          numbers: holdNumbers,
-          status: 'available',
-          holdId: paymentHold?.id,
-          clientHoldKey,
-          source: 'receipt-uploader-expired',
-        });
-                toast.error(txt.holdExpired);
-        onHoldExpired?.();
+        void releaseExpiredHoldNow();
       }
     };
 
@@ -236,7 +267,7 @@ export default function ReceiptUploader({
     const interval = window.setInterval(tick, 1000);
 
     return () => window.clearInterval(interval);
-  }, [paymentHold?.expires_at, value, txt.holdExpired, onHoldExpired]);
+  }, [paymentHold?.id, paymentHold?.expires_at, value, txt.holdExpired, onHoldExpired, clientHoldKey, JSON.stringify(holdNumbers)]);
 
   const uploadToSupabaseStorage = async (file: File) => {
     const token = localStorage.getItem('token');

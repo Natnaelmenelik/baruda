@@ -84,7 +84,7 @@ export async function PUT(req: Request) {
         current_amount = COALESCE(at.approved_amount, 0),
         status = CASE
           WHEN COALESCE(at.approved_amount, 0) >= ${targetAmount}
-          THEN 'closed'
+          THEN 'sold'
           ELSE 'open'
         END,
         updated_at = NOW()

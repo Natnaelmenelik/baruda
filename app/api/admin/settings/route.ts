@@ -62,7 +62,7 @@ async function syncNumberPools(gridSize: number, defaultTargetAmount: number) {
       current_amount = COALESCE(at.approved_amount, 0),
       status = CASE
         WHEN COALESCE(at.approved_amount, 0) >= COALESCE(np.target_amount, ${safeTarget})
-        THEN 'closed'
+        THEN 'sold'
         ELSE 'open'
       END,
       updated_at = NOW()
@@ -76,7 +76,7 @@ async function syncNumberPools(gridSize: number, defaultTargetAmount: number) {
     SET
       current_amount = 0,
       status = CASE
-        WHEN np.status = 'closed' THEN 'closed'
+        WHEN np.status = 'sold' THEN 'sold'
         ELSE 'open'
       END,
       updated_at = NOW()

@@ -107,7 +107,7 @@ export async function GET(req: Request) {
           + COALESCE(h.hold_amount, 0)
         )::int AS reserved_amount,
         CASE
-          WHEN np.status = 'closed' THEN 0
+          WHEN np.status = 'sold' THEN 0
           ELSE GREATEST(
             COALESCE(np.target_amount, ${defaultTargetAmount})
             - COALESCE(t.approved_amount, 0)
@@ -117,15 +117,15 @@ export async function GET(req: Request) {
           )
         END::int AS remaining,
         CASE
-          WHEN np.status = 'closed'
+          WHEN np.status = 'sold'
             OR (
               COALESCE(t.approved_amount, 0)
               + COALESCE(t.pending_amount, 0)
               + COALESCE(h.hold_amount, 0)
             ) >= COALESCE(np.target_amount, ${defaultTargetAmount})
-          THEN 'closed'
+          THEN 'sold'
           ELSE 'open'
-        END AS status,
+        END AS db_status,
         COALESCE(t.submission_count, 0)::int AS submission_count,
         COALESCE(t.approved_count, 0)::int AS approved_count
       FROM number_pools np
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
       ORDER BY np.number ASC
     `;
 
-    return NextResponse.json(rows, {
+    return NextResponse.json(rows.map((row: any) => ({ ...row, status: row.db_status === 'sold' ? 'closed' : row.db_status })), {
       headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
     });
   } catch (error: any) {

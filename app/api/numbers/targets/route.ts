@@ -112,7 +112,7 @@ export async function GET() {
           + COALESCE(h.hold_amount, 0)
         )::int AS sold_amount,
         CASE
-          WHEN np.status = 'closed' THEN 0
+          WHEN np.status = 'sold' THEN 0
           ELSE GREATEST(
             COALESCE(np.target_amount, ${defaultTargetAmount})
             - COALESCE(t.approved_amount, 0)
@@ -122,7 +122,7 @@ export async function GET() {
           )
         END::int AS remaining_amount,
         CASE
-          WHEN np.status = 'closed' THEN 0
+          WHEN np.status = 'sold' THEN 0
           ELSE GREATEST(
             COALESCE(np.target_amount, ${defaultTargetAmount})
             - COALESCE(t.approved_amount, 0)
@@ -132,15 +132,15 @@ export async function GET() {
           )
         END::int AS remaining,
         CASE
-          WHEN np.status = 'closed'
+          WHEN np.status = 'sold'
             OR (
               COALESCE(t.approved_amount, 0)
               + COALESCE(t.pending_amount, 0)
               + COALESCE(h.hold_amount, 0)
             ) >= COALESCE(np.target_amount, ${defaultTargetAmount})
-          THEN 'closed'
+          THEN 'sold'
           ELSE 'open'
-        END AS status
+        END AS db_status
       FROM number_pools np
       LEFT JOIN totals t ON t.number = np.number
       LEFT JOIN hold_totals h ON h.number = np.number

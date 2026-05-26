@@ -20,7 +20,7 @@ export async function POST(
 
     const rows = await sql`
       UPDATE number_pools
-      SET status = 'sold', updated_at = NOW()
+      SET status = 'open', updated_at = NOW()
       WHERE number = ${number}
       RETURNING number, status
     `;
@@ -32,11 +32,11 @@ export async function POST(
     await sql`SELECT public.refresh_number_status_summary_cache(${number}::int)`
       .catch(() => null);
 
-    return NextResponse.json({ ok: true, number, status: "closed", dbStatus: "sold" });
+    return NextResponse.json({ ok: true, number, status: "open" });
   } catch (error: any) {
-    console.error("Close number error:", error);
+    console.error("Unclose number error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to close number" },
+      { error: error.message || "Failed to unclose number" },
       { status: error.message === "Unauthorized" ? 401 : error.message === "Forbidden" ? 403 : 500 }
     );
   }

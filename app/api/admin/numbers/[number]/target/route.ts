@@ -33,7 +33,7 @@ export async function PUT(
 
     const currentAmount = Number(rows?.[0]?.current_amount || 0);
 
-    if (rows?.[0]?.status === "closed") {
+    if (rows?.[0]?.status === "sold" || rows?.[0]?.status === "closed") {
       return NextResponse.json(
         { error: "Closed number target cannot be edited" },
         { status: 400 }
@@ -54,7 +54,7 @@ export async function PUT(
       DO UPDATE SET
         target_amount = ${targetAmount},
         status = CASE
-          WHEN number_pools.current_amount >= ${targetAmount} THEN 'closed'
+          WHEN number_pools.current_amount >= ${targetAmount} THEN 'sold'
           ELSE 'open'
         END,
         updated_at = NOW()

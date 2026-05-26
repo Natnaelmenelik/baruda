@@ -121,6 +121,20 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
     }
   }
 
+  async function uncloseNumber(number: number) {
+    try {
+      const res = await fetch(`/api/admin/numbers/${number}/unclose`, {
+        method: "POST",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to reopen number");
+      toast.success(txt.numberUnclosed || "Number reopened");
+      loadNumbers();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to reopen number");
+    }
+  }
+
   async function editTarget(row: PoolRow) {
     const next = window.prompt(
       txt.targetAmount || "Target Amount",
@@ -300,21 +314,28 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
                               >
                                 {txt.viewDetails || "View Details"}
                               </button>
-                              {!closed && (
+                              {!closed ? (
                                 <>
                                   <button
                                     onClick={() => editTarget(row)}
-                                    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                                    className="inline-flex items-center justify-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
                                   >
                                     {txt.editTarget || "Edit Target"}
                                   </button>
                                   <button
                                     onClick={() => closeNumber(row.number)}
-                                    className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-700"
+                                    className="inline-flex items-center justify-center rounded-lg border border-rose-600 bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:border-rose-700 hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-rose-500 dark:bg-rose-600 dark:hover:border-rose-400 dark:hover:bg-rose-500"
                                   >
                                     {txt.closeNumber || "Close"}
                                   </button>
                                 </>
+                              ) : (
+                                <button
+                                  onClick={() => uncloseNumber(row.number)}
+                                  className="inline-flex items-center justify-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 shadow-sm transition hover:border-amber-400 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-amber-700/70 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:border-amber-600 dark:hover:bg-amber-900/60"
+                                >
+                                  {txt.uncloseNumber || "Unclose"}
+                                </button>
                               )}
                             </div>
                           </td>

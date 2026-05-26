@@ -214,6 +214,11 @@ const rawTranslations = {
     open: "Open",
     closed: "Closed",
     closeNumber: "Close Number",
+    confirmUncloseNumberMessage: "This number will be marked as open again and users will be able to submit payment for it.",
+    confirmUncloseNumberTitle: "Reopen this number?",
+    failedToUncloseNumber: "Failed to reopen number",
+    numberUnclosed: "Number reopened",
+    uncloseNumber: "Unclose",
     confirmCloseNumberTitle: "Are you sure you want to close this number?",
     confirmCloseNumberMessage:
       "This number will be marked as taken/closed and users will not be able to submit payment for it.",
@@ -669,6 +674,11 @@ const rawTranslations = {
     open: "ክፍት",
     closed: "ተዘግቷል",
     closeNumber: "ቁጥሩን ዝጋ",
+    confirmUncloseNumberMessage: "ይህ ቁጥር እንደገና ክፍት ይሆናል፣ ተጠቃሚዎችም ለዚህ ቁጥር ክፍያ ማስገባት ይችላሉ።",
+    confirmUncloseNumberTitle: "ይህን ቁጥር እንደገና መክፈት ይፈልጋሉ?",
+    failedToUncloseNumber: "ቁጥሩን እንደገና መክፈት አልተሳካም",
+    numberUnclosed: "ቁጥሩ እንደገና ተከፍቷል",
+    uncloseNumber: "እንደገና ክፈት",
     confirmCloseNumberTitle: "ይህን ቁጥር መዝጋት እርግጠኛ ነዎት?",
     confirmCloseNumberMessage:
       "ይህ ቁጥር እንደተያዘ/ተዘግቷል ተመዝግቦ ተጠቃሚዎች ለዚህ ቁጥር ክፍያ ማስገባት አይችሉም።",
@@ -746,7 +756,7 @@ const rawTranslations = {
     failedToLoadSubmissions: "ማስገቢያዎችን መጫን አልተቻለም",
     invalidTargetAmount: "ትክክለኛ ያልሆነ የታለመ መጠን",
     failedToUpdateTarget: "የታለመውን መጠን ማዘመን አልተቻለም",
-    failedToCloseNumber: "ቁጥሩን መዝጋት አልተቻለም",
+    failedToCloseNumber: "ቁጥሩን መዝጋት አልተሳካም",
 
     minsamPanel: "ሚንሳም ፓነል",
     minsamSubtitle: "ማስገቢያዎችን ይመልከቱ፣ ያፅድቁ፣ ውድቅ ያድርጉ እና ወደ በመጠባበቅ ይመልሱ።",
@@ -1119,6 +1129,11 @@ const rawTranslations = {
     open: "Banaa",
     closed: "Cufame",
     closeNumber: "Lakkoofsa Cufi",
+    confirmUncloseNumberMessage: "Lakkoofsi kun deebi'ee banaa ta'a; fayyadamtoonni lakkoofsa kanaaf kaffaltii galchuu ni danda'u.",
+    confirmUncloseNumberTitle: "Lakkoofsa kana irra deebitee banuu barbaaddaa?",
+    failedToUncloseNumber: "Lakkoofsa irra deebiin banuun hin milkoofne",
+    numberUnclosed: "Lakkoofsi irra deebi'ee banameera",
+    uncloseNumber: "Irra Deebi'i Bani",
     confirmCloseNumberTitle: "Lakkoofsa kana cufuu ni mirkaneeffattaa?",
     confirmCloseNumberMessage:
       "Lakkoofsi kun akka fudhatame/cufameetti mallatteeffama; fayyadamtoonni lakkoofsa kanaaf kaffaltii galchuu hin danda’an.",
@@ -1198,7 +1213,7 @@ const rawTranslations = {
     failedToLoadSubmissions: "Galmeewwan fe'uu hin dandeenye",
     invalidTargetAmount: "Hangi kaayyoo sirrii miti",
     failedToUpdateTarget: "Kaayyoo haaromsuun hin danda'amne",
-    failedToCloseNumber: "Lakkoofsa cufuun hin danda'amne",
+    failedToCloseNumber: "Lakkoofsa cufuun hin milkoofne",
 
     minsamPanel: "Paanaalii Minsam",
     minsamSubtitle:
