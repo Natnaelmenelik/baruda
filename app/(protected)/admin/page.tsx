@@ -95,7 +95,6 @@ export default function AdminPage() {
   const {
     data: stats = {},
     isLoading: statsLoading,
-    refetch: refetchStats,
   } = useStats();
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
@@ -232,7 +231,7 @@ export default function AdminPage() {
         : txt.pending;
 
   async function refreshAdminDataAfterClear() {
-    await Promise.allSettled([refetchStats?.(), refetchSubmissions?.()]);
+    await Promise.allSettled([refetchSubmissions?.()]);
   }
 
   const handleLogout = () => {

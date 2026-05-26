@@ -136,14 +136,13 @@ export async function POST(req: Request) {
 
     const existingHold = existingRows.rows?.[0] || null;
     if (existingHold) {
-      for (const number of numbers) {
-      await client.query('SELECT public.refresh_number_status_summary_cache($1::int)', [number]);
-    }
+      await client.query(
+        'SELECT public.refresh_number_status_summary_cache_many($1::integer[])',
+        [numbers],
+      );
 
-    await client.query('SELECT public.refresh_number_status_summary_cache_many($1::integer[])', [numbers]);
-
-    await client.query("COMMIT");
-      return NextResponse.json(existingHold, {
+      await client.query("COMMIT");
+    return NextResponse.json(existingHold, {
         headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
       });
     }
@@ -212,13 +211,13 @@ export async function POST(req: Request) {
       );
     }
 
-    for (const number of numbers) {
-      await client.query('SELECT public.refresh_number_status_summary_cache($1::int)', [number]);
-    }
+    
 
-    await client.query('SELECT public.refresh_number_status_summary_cache_many($1::integer[])', [numbers]);
-
-    await client.query("COMMIT");
+    await client.query(
+      'SELECT public.refresh_number_status_summary_cache_many($1::integer[])',
+      [numbers],
+    );
+await client.query("COMMIT");
 
     return NextResponse.json(
       { ...hold, number_amounts: amountMap },

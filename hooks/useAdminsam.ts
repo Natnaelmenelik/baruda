@@ -27,7 +27,11 @@ export const useMinsamStats = () => {
     queryKey: ['minsam', 'stats'],
     queryFn: () => fetchStats(),
     refetchOnWindowFocus: false,
-    retry: 1,
+    retry: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 30,
   });
 };
 

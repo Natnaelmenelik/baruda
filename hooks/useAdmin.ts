@@ -12,7 +12,6 @@ import {
   type FetchSubmissionsParams,
 } from '@/lib/api/admin';
 import { useSubmissionsRealtime } from '@/hooks/realtime/useSubmissionsRealtime';
-import { useAdminStatsRealtime } from '@/hooks/realtime/useAdminStatsRealtime';
 
 function getSubmissionIdentity(sub: any) {
   return String(sub?.submission_group_id || sub?.id || '');
@@ -271,44 +270,24 @@ export const useSubmissions = (params: FetchSubmissionsParams = {}) => {
     queryKey: ['admin', 'submissions', params],
     queryFn: () => fetchSubmissions(params),
     refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    staleTime: 0,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    staleTime: Infinity,
     placeholderData: (previousData: any) => previousData,
   });
 };
 
 export const useStats = () => {
-  const queryClient = useQueryClient();
-
-  const refreshStats = useCallback(async () => {
-
-    await queryClient.invalidateQueries({
-      queryKey: ['admin', 'stats'],
-      exact: false,
-      refetchType: 'active',
-    });
-
-    await queryClient.refetchQueries({
-      queryKey: ['admin', 'stats'],
-      exact: false,
-      type: 'active',
-    });
-  }, [queryClient]);
-
-  useAdminStatsRealtime({
-    enabled: true,
-    debounceMs: 0,
-    onChange: refreshStats,
-  });
-
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: fetchStats,
     refetchOnWindowFocus: false,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-    staleTime: 0,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: Infinity,
+    gcTime: 1000 * 60 * 30,
+    retry: false,
   });
 };
 

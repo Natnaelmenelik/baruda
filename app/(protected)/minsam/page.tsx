@@ -95,7 +95,7 @@ export default function MinsamPage() {
     status: submissionStatusFilter,
     search: submissionSearch,
   });
-  const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useStats();
+  const { data: stats = {}, isLoading: statsLoading } = useStats();
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();
@@ -230,7 +230,6 @@ export default function MinsamPage() {
 
   async function refreshAdminDataAfterClear() {
     await Promise.allSettled([
-      refetchStats?.(),
       refetchSubmissions?.(),
     ]);
   }
@@ -355,7 +354,7 @@ export default function MinsamPage() {
       
       setReturnPendingTarget(null);
       setSelectedSubmission(null);
-      await Promise.allSettled([refetchSubmissions?.(), refetchStats?.()]);
+      await Promise.allSettled([refetchSubmissions?.()]);
     } catch (err: any) {
       toast.error(
         err.message ||

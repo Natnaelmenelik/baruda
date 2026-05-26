@@ -15,13 +15,13 @@ export function useNumberStatusRealtime({ enabled = true, onChange }: Options) {
     const supabase = getSupabaseBrowserClient();
 
     const channel = supabase
-      .channel('number-status-summary-realtime')
+      .channel('number-status-summary-cache-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'number_status_summary',
+          table: 'number_status_summary_cache',
         },
         () => {
           onChange();

@@ -270,15 +270,7 @@ export async function POST(req: Request) {
           updated_at = NOW()
     `);
 
-    await client.query(`
-      UPDATE number_status_summary
-      SET approved_amount = 0,
-          pending_amount = 0,
-          hold_amount = 0,
-          remaining_amount = target_amount,
-          status = 'open',
-          updated_at = NOW()
-    `);
+    // number_status_summary is deprecated. number_status_summary_cache is now the source of truth.
 
     await client.query(`
       UPDATE admin_stats_summary

@@ -116,7 +116,7 @@ export async function POST(req: Request) {
         selected_number.number,
         COALESCE(nss.remaining_amount, np.target_amount, 5000)::int AS remaining_amount
       FROM unnest(${numbers}::integer[]) AS selected_number(number)
-      LEFT JOIN number_status_summary nss ON nss.number = selected_number.number
+      LEFT JOIN number_status_summary_cache nss ON nss.number = selected_number.number
       LEFT JOIN number_pools np ON np.number = selected_number.number
     `;
 
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
 
     /*
       The receipt modal creates a payment hold before final submit.
-      That hold reduces number_status_summary.remaining_amount for everyone.
+      That hold reduces number_status_summary_cache.remaining_amount for everyone.
       For this same final submit, add back this request's own active hold amount.
     */
     const ownHoldAmountMap = new Map<number, number>();

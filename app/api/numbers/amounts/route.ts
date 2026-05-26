@@ -36,7 +36,7 @@ function normalizeRow(row: any) {
     approved_amount: approved,
     pending_amount: pending,
     hold_amount: hold,
-    sold_amount: approved + pending + hold,
+    sold_amount: Number(row.sold_amount ?? approved + pending + hold),
     remaining_amount: remaining,
     remaining,
     status: row.status === "sold" ? "closed" : row.status,
@@ -49,9 +49,9 @@ export async function GET() {
     const supabase = getSupabaseReadClient();
 
     const { data, error } = await supabase
-      .from("number_status_summary")
+      .from("number_status_summary_cache")
       .select(
-        "number,target_amount,approved_amount,pending_amount,hold_amount,remaining_amount,status,updated_at",
+        "number,target_amount,approved_amount,pending_amount,hold_amount,sold_amount,remaining_amount,status,updated_at",
       )
       .order("number", { ascending: true });
 

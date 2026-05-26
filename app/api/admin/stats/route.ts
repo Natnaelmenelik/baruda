@@ -1,54 +1,45 @@
-import { NextResponse } from 'next/server';
-import { sql } from '@/lib/db/sql';
-import { requireAdmin } from '@/lib/auth/server';
+import { NextResponse } from "next/server";
+import { sql } from "@/lib/db";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function getNumericSetting(key: string, fallback: number) {
+type AdminStatsRow = {
+  total_users: number;
+  total_submissions: number;
+  pending_submissions: number;
+  approved_submissions: number;
+  rejected_submissions: number;
+  total_revenue: number;
+  pending_amount: number;
+  total_numbers: number;
+  sold_numbers: number;
+  open_numbers: number;
+  pending_numbers: number;
+  updated_at: string;
+};
+
+const toNumber = (value: unknown) => Number(value || 0);
+
+export async function GET() {
   try {
-    const rows = await sql`
-      SELECT value
-      FROM public.settings
-      WHERE key = ${key}
-      LIMIT 1
+    const [row] = await sql<AdminStatsRow[]>`
+      SELECT
+        (SELECT COUNT(*)::int FROM public.users) AS total_users,
+        (SELECT COUNT(*)::int FROM public.submissions) AS total_submissions,
+        (SELECT COUNT(*)::int FROM public.submissions WHERE status = 'pending') AS pending_submissions,
+        (SELECT COUNT(*)::int FROM public.submissions WHERE status = 'approved') AS approved_submissions,
+        (SELECT COUNT(*)::int FROM public.submissions WHERE status = 'rejected') AS rejected_submissions,
+        COALESCE((SELECT SUM(total_amount)::int FROM public.submissions WHERE status = 'approved'), 0) AS total_revenue,
+        COALESCE((SELECT SUM(total_amount)::int FROM public.submissions WHERE status = 'pending'), 0) AS pending_amount,
+        (SELECT COUNT(*)::int FROM public.number_status_summary_cache) AS total_numbers,
+        (SELECT COUNT(*)::int FROM public.number_status_summary_cache WHERE status = 'sold') AS sold_numbers,
+        (SELECT COUNT(*)::int FROM public.number_status_summary_cache WHERE status = 'open') AS open_numbers,
+        (SELECT COUNT(*)::int FROM public.number_status_summary_cache WHERE status = 'pending') AS pending_numbers,
+        NOW()::text AS updated_at
     `;
 
-    const value = Number(rows?.[0]?.value);
-    return Number.isFinite(value) && value > 0 ? value : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-export async function GET(req: Request) {
-  try {
-    await requireAdmin(req);
-
-    const [gridSize, ticketPrice, rows] = await Promise.all([
-      getNumericSetting('grid_size', 2000),
-      getNumericSetting('ticket_price', 300),
-      sql`
-        SELECT
-          total_users,
-          total_submissions,
-          pending_submissions,
-          approved_submissions,
-          rejected_submissions,
-          total_revenue,
-          pending_amount,
-          total_numbers,
-          sold_numbers,
-          open_numbers,
-          pending_numbers,
-          updated_at
-        FROM public.admin_stats_summary
-        WHERE id = 1
-        LIMIT 1
-      `,
-    ]);
-
-    const stats = rows?.[0] || {
+    const stats = row || {
       total_users: 0,
       total_submissions: 0,
       pending_submissions: 0,
@@ -56,81 +47,50 @@ export async function GET(req: Request) {
       rejected_submissions: 0,
       total_revenue: 0,
       pending_amount: 0,
-      total_numbers: gridSize,
+      total_numbers: 0,
       sold_numbers: 0,
-      open_numbers: gridSize,
+      open_numbers: 0,
       pending_numbers: 0,
-      updated_at: null,
+      updated_at: new Date().toISOString(),
     };
-
-    const totalUsers = Number(stats.total_users || 0);
-    const totalSubmissions = Number(stats.total_submissions || 0);
-    const pendingSubmissions = Number(stats.pending_submissions || 0);
-    const approvedSubmissions = Number(stats.approved_submissions || 0);
-    const rejectedSubmissions = Number(stats.rejected_submissions || 0);
-
-    const revenue = Number(stats.total_revenue || 0);
-    const pendingAmount = Number(stats.pending_amount || 0);
-
-    const totalNumbers = Number(stats.total_numbers || 0) || gridSize;
-    const numbersSold = Number(stats.sold_numbers || 0);
-    const numbersLeft = Number(stats.open_numbers || 0);
-    const pendingNumbers = Number(stats.pending_numbers || 0);
 
     return NextResponse.json(
       {
-        // Admin card fields
-        totalUsers,
-        numbersSold,
-        pendingApprovals: pendingNumbers,
-        pendingNumbers,
-        revenue,
-        numbersLeft,
+        // Keep original snake_case response for old code compatibility.
+        ...stats,
 
-        // Clear extra fields
-        pendingSubmissions,
-        totalSubmissions,
-        approvedSubmissions,
-        rejectedSubmissions,
-        totalNumbers,
-        gridSize,
-        ticketPrice,
-        pendingRevenue: pendingAmount,
+        // Add camelCase aliases expected by dashboard components.
+        totalUsers: toNumber(stats.total_users),
+        totalSubmissions: toNumber(stats.total_submissions),
+        pendingSubmissions: toNumber(stats.pending_submissions),
+        approvedSubmissions: toNumber(stats.approved_submissions),
+        rejectedSubmissions: toNumber(stats.rejected_submissions),
+
+        revenue: toNumber(stats.total_revenue),
+        totalRevenue: toNumber(stats.total_revenue),
+        pendingAmount: toNumber(stats.pending_amount),
+
+        totalNumbers: toNumber(stats.total_numbers),
+        numbersSold: toNumber(stats.sold_numbers),
+        soldNumbers: toNumber(stats.sold_numbers),
+        numbersLeft: toNumber(stats.open_numbers),
+        openNumbers: toNumber(stats.open_numbers),
+        pendingNumbers: toNumber(stats.pending_numbers),
+        pendingApprovals: toNumber(stats.pending_submissions),
+
         updatedAt: stats.updated_at,
-
-        // Snake case compatibility
-        total_users: totalUsers,
-        sold_numbers: numbersSold,
-        pending_numbers: pendingNumbers,
-        pending_submissions: pendingSubmissions,
-        total_revenue: revenue,
-        open_numbers: numbersLeft,
-        total_numbers: totalNumbers,
-        total_submissions: totalSubmissions,
-        approved_submissions: approvedSubmissions,
-        rejected_submissions: rejectedSubmissions,
-        pending_amount: pendingAmount,
-        updated_at: stats.updated_at,
       },
       {
         headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          "Cache-Control": "no-store, no-cache, must-revalidate",
         },
       },
     );
   } catch (error: any) {
-    console.error('Admin stats error:', error);
-
+    console.error("Live admin stats error:", error);
     return NextResponse.json(
-      { error: error.message || 'Failed to load stats' },
-      {
-        status:
-          error.message === 'Forbidden'
-            ? 403
-            : error.message === 'Unauthorized'
-              ? 401
-              : 500,
-      },
+      { error: error?.message || "Failed to load admin stats" },
+      { status: 500 },
     );
   }
 }
