@@ -142,7 +142,12 @@ export async function POST(req: Request) {
       );
 
       await client.query("COMMIT");
-    return NextResponse.json(existingHold, {
+    return NextResponse.json(
+      {
+        ...existingHold,
+        server_now: new Date().toISOString(),
+      },
+      {
         headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
       });
     }
@@ -188,7 +193,7 @@ export async function POST(req: Request) {
         number_amounts = '{}'::jsonb,
         total_amount = EXCLUDED.total_amount,
         status = 'active',
-        expires_at = NOW() + INTERVAL '3 minutes',
+        expires_at = payment_holds.expires_at,
         updated_at = NOW()
       RETURNING id, client_hold_key, numbers, total_amount, status, expires_at, created_at, updated_at
       `,
@@ -220,7 +225,11 @@ export async function POST(req: Request) {
 await client.query("COMMIT");
 
     return NextResponse.json(
-      { ...hold, number_amounts: amountMap },
+      {
+        ...hold,
+        number_amounts: amountMap,
+        server_now: new Date().toISOString(),
+      },
       { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } },
     );
   } catch (error: any) {

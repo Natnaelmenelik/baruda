@@ -122,12 +122,85 @@ function normalizePools(
   return out;
 }
 
+
+function readStoredActiveHold() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(HOLD_STORAGE_KEY);
+    if (!raw) return null;
+
+    const hold = JSON.parse(raw);
+
+    if (
+      hold?.id &&
+      hold?.expires_at &&
+      new Date(hold.expires_at).getTime() > Date.now()
+    ) {
+      return hold;
+    }
+  } catch {
+    // ignore invalid stored hold
+  }
+
+  return null;
+}
+
+
+function draftFromActiveHold(hold: any): PaymentDraft | null {
+  if (!hold?.id || !hold?.expires_at) return null;
+  if (new Date(hold.expires_at).getTime() <= Date.now()) return null;
+
+  const numberAmounts = normalizeAmountMap(
+    hold.number_amounts || hold.numberAmounts || hold.amountMap || {},
+  );
+
+  const numbersFromHold = Array.isArray(hold.numbers)
+    ? hold.numbers.map((n: any) => Number(n)).filter((n: number) => Number.isFinite(n))
+    : [];
+
+  const numbersFromAmounts = Object.keys(numberAmounts)
+    .map((n) => Number(n))
+    .filter((n) => Number.isFinite(n));
+
+  const numbers = numbersFromHold.length ? numbersFromHold : numbersFromAmounts;
+
+  const totalFromHold = Number(hold.total_amount || hold.totalAmount || 0);
+  const totalFromAmounts = Object.values(numberAmounts).reduce(
+    (sum: number, amount: any) => sum + Number(amount || 0),
+    0,
+  );
+
+  const totalAmount = totalFromHold > 0 ? totalFromHold : totalFromAmounts;
+
+  if (!numbers.length || totalAmount <= 0) return null;
+
+  return {
+    clientHoldKey: hold.client_hold_key || hold.clientHoldKey || makeClientHoldKey(),
+    numbers,
+    amountMap: numberAmounts,
+    totalAmount,
+    expiresAt: hold.expires_at,
+  };
+}
+
+
 function readPaymentDraft() {
   if (typeof window === "undefined") return null;
 
   try {
+    const storedHold = readStoredActiveHold();
     const raw = localStorage.getItem(PAYMENT_DRAFT_STORAGE_KEY);
-    if (!raw) return null;
+
+    if (!raw) {
+      const restoredDraft = draftFromActiveHold(storedHold);
+      if (restoredDraft) {
+        localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(restoredDraft));
+        return restoredDraft;
+      }
+
+      return null;
+    }
 
     const draft = JSON.parse(raw) as PaymentDraft;
 
@@ -135,10 +208,27 @@ function readPaymentDraft() {
       !draft?.expiresAt ||
       new Date(draft.expiresAt).getTime() <= Date.now()
     ) {
+      if (storedHold?.expires_at && draft?.numbers?.length && draft?.totalAmount) {
+        const restoredDraft = {
+          ...draft,
+          expiresAt: storedHold.expires_at,
+          clientHoldKey: storedHold.client_hold_key || draft.clientHoldKey,
+        };
+
+        localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(restoredDraft));
+        return restoredDraft;
+      }
+
       localStorage.removeItem(PAYMENT_DRAFT_STORAGE_KEY);
       localStorage.removeItem(HOLD_STORAGE_KEY);
       localStorage.removeItem("baruda_payment_hold_id");
       return null;
+    }
+
+    if (storedHold?.expires_at && new Date(storedHold.expires_at).getTime() > Date.now()) {
+      draft.expiresAt = storedHold.expires_at;
+      draft.clientHoldKey = storedHold.client_hold_key || draft.clientHoldKey;
+      localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
     }
 
     if (!draft.numbers?.length || !draft.totalAmount) return null;
@@ -190,25 +280,9 @@ export default function SubmitNumberModal({
   const [savedDraft, setSavedDraft] = useState<PaymentDraft | null>(() =>
     readPaymentDraft(),
   );
-  const [reservationHold, setReservationHold] = useState<any>(() => {
-    if (typeof window === "undefined") return null;
-
-    try {
-      const raw = localStorage.getItem(HOLD_STORAGE_KEY);
-      const hold = raw ? JSON.parse(raw) : null;
-
-      if (
-        hold?.expires_at &&
-        new Date(hold.expires_at).getTime() > Date.now()
-      ) {
-        return hold;
-      }
-    } catch {
-      // ignore invalid stored hold
-    }
-
-    return null;
-  });
+  const [reservationHold, setReservationHold] = useState<any>(() =>
+    readStoredActiveHold(),
+  );
   const [reservingHold, setReservingHold] = useState(false);
   const holdReadyToastShownRef = useRef<string | null>(null);
 
@@ -222,19 +296,35 @@ export default function SubmitNumberModal({
     new Date(savedDraft.expiresAt).getTime() > Date.now(),
   );
 
-  const effectiveOpen = open || draftActive;
+  const holdActive = Boolean(
+    reservationHold?.id &&
+    reservationHold?.expires_at &&
+    new Date(reservationHold.expires_at).getTime() > Date.now(),
+  );
+
+  const effectiveOpen = open || draftActive || holdActive;
 
   const activeNumbers = useMemo(() => {
     if (open && selectedNumbers.length) return selectedNumbers;
     if (draftActive && savedDraft?.numbers?.length) return savedDraft.numbers;
+
+    const restoredDraft = draftFromActiveHold(reservationHold);
+    if (restoredDraft?.numbers?.length) return restoredDraft.numbers;
+
     return selectedNumbers;
-  }, [open, selectedNumbers, draftActive, savedDraft]);
+  }, [open, selectedNumbers, draftActive, savedDraft, reservationHold?.id, reservationHold?.expires_at]);
 
   const activeAmountMap = useMemo(() => {
     if (open) return amountMap;
     if (draftActive && savedDraft?.amountMap) return savedDraft.amountMap;
+
+    const restoredDraft = draftFromActiveHold(reservationHold);
+    if (restoredDraft?.amountMap && Object.keys(restoredDraft.amountMap).length) {
+      return restoredDraft.amountMap;
+    }
+
     return amountMap;
-  }, [open, amountMap, draftActive, savedDraft]);
+  }, [open, amountMap, draftActive, savedDraft, reservationHold?.id, reservationHold?.expires_at]);
 
   const poolMap = useMemo(
     () => normalizePools(numberPools || pools),
@@ -276,11 +366,14 @@ export default function SubmitNumberModal({
     : Number(ticketPrice || 0) * quantity;
 
   const [clientHoldKey, setClientHoldKey] = useState(() => {
+    const storedHold = readStoredActiveHold();
     const draft = readPaymentDraft();
-    return draft?.clientHoldKey || makeClientHoldKey();
+
+    return storedHold?.client_hold_key || draft?.clientHoldKey || makeClientHoldKey();
   });
 
-  const activeClientHoldKey = savedDraft?.clientHoldKey || clientHoldKey;
+  const activeClientHoldKey =
+    reservationHold?.client_hold_key || savedDraft?.clientHoldKey || clientHoldKey;
 
   function showHoldReadyToast(hold: any) {
     const holdId = hold?.id ? String(hold.id) : "";
@@ -307,12 +400,16 @@ export default function SubmitNumberModal({
     }
 
     const current = readPaymentDraft();
-    const expiresAt =
-      current?.expiresAt && new Date(current.expiresAt).getTime() > Date.now()
-        ? current.expiresAt
-        : new Date(Date.now() + 3 * 60 * 1000).toISOString();
+    const storedHold = readStoredActiveHold();
 
-    const key = current?.clientHoldKey || clientHoldKey;
+    const expiresAt =
+      storedHold?.expires_at && new Date(storedHold.expires_at).getTime() > Date.now()
+        ? storedHold.expires_at
+        : current?.expiresAt && new Date(current.expiresAt).getTime() > Date.now()
+          ? current.expiresAt
+          : new Date(Date.now() + 3 * 60 * 1000).toISOString();
+
+    const key = storedHold?.client_hold_key || current?.clientHoldKey || clientHoldKey;
     setClientHoldKey(key);
 
     const draft: PaymentDraft = {
@@ -401,29 +498,21 @@ export default function SubmitNumberModal({
         return;
       if (!activeClientHoldKey) return;
 
-      try {
-        const raw = localStorage.getItem(HOLD_STORAGE_KEY);
-        const storedHold = raw ? JSON.parse(raw) : null;
 
-        if (
-          storedHold?.id &&
-          storedHold?.client_hold_key === activeClientHoldKey &&
-          storedHold?.expires_at &&
-          new Date(storedHold.expires_at).getTime() > Date.now()
-        ) {
-          if (!cancelled) {
-            setReservationHold(storedHold);
-            showHoldReadyToast(storedHold);
-          }
-          return;
-        }
-      } catch {
-        // ignore invalid stored hold
-      }
 
       try {
         setReservingHold(true);
         setError("");
+
+        const existingHold = readStoredActiveHold();
+
+        if (
+          existingHold?.id &&
+          existingHold?.expires_at &&
+          new Date(existingHold.expires_at).getTime() > Date.now()
+        ) {
+          return;
+        }
 
         const res = await fetch("/api/holds", {
           method: "POST",
@@ -629,6 +718,9 @@ export default function SubmitNumberModal({
       localStorage.removeItem("baruda_payment_hold_id");
 
       setSavedDraft(null);
+      setReservationHold(null);
+      holdReadyToastShownRef.current = null;
+      setClientHoldKey(makeClientHoldKey());
 
       dispatchNumbersRefresh({
         action: "submission_created",
@@ -926,8 +1018,7 @@ export default function SubmitNumberModal({
         </div>
 
         <ReceiptUploader
-          key={savedDraft?.clientHoldKey || clientHoldKey}
-          value={receiptUrl}
+                  value={receiptUrl}
           clientHoldKey={activeClientHoldKey}
           initialPaymentHold={reservationHold}
           holdNumbers={activeNumbers}
