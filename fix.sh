@@ -85,3 +85,4 @@ PY
 echo ""
 echo "Now run:"
 echo "npm run build"
+echo "to ensure the changes are applied and the app is rebuilt without stats polling."
