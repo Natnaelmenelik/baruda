@@ -1,88 +1,93 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FILE="hooks/useAdmin.ts"
-
-if [ ! -f "$FILE" ]; then
-  echo "❌ File not found: $FILE"
-  exit 1
-fi
-
 STAMP="$(date +%Y%m%d_%H%M%S)"
-cp "$FILE" "$FILE.backup-no-stats-polling-$STAMP"
+
+for FILE in "components/ReceiptUploader.tsx" "components/SubmitNumberModal.tsx"; do
+  if [ ! -f "$FILE" ]; then
+    echo "❌ File not found: $FILE"
+    exit 1
+  fi
+  cp "$FILE" "$FILE.backup-fire-and-forget-hold-delete-$STAMP"
+done
 
 python3 <<'PY'
 from pathlib import Path
 import re
 
-path = Path("hooks/useAdmin.ts")
-text = path.read_text()
+def patch_file(path_str: str, hold_expr: str, quote: str):
+    path = Path(path_str)
+    text = path.read_text()
+    original = text
 
-original = text
+    # Replace a blocking DELETE call:
+    # const res = await fetch(`/api/holds/${...}`, { method: "DELETE" });
+    # optional if (!res.ok) { ... }
+    pattern = re.compile(
+        rf"""
+        \n\s*const\s+res\s*=\s*await\s+fetch\(
+          \s*`/api/holds/\$\{{{re.escape(hold_expr)}\}}`\s*,\s*
+          \{{\s*method:\s*['"]DELETE['"]\s*\}}\s*
+        \)\s*;\s*
+        (?:\n\s*if\s*\(\s*!res\.ok\s*\)\s*\{{[\s\S]*?\n\s*\}}\s*)?
+        """,
+        re.VERBOSE,
+    )
 
-# Remove/disable any 10-second polling for stats.
-text = re.sub(
-    r"(\s*)refetchInterval\s*:\s*10000\s*,",
-    r"\1refetchInterval: false,",
-    text,
-)
+    replacement = f"""
+        void fetch(`/api/holds/${{{hold_expr}}}`, {{ method: {quote}DELETE{quote} }})
+          .catch((error) => {{
+            console.error({quote}Background hold release failed:{quote}, error);
+          }})
+          .finally(() => {{
+            window.dispatchEvent(new Event({quote}numbers:refresh{quote}));
+            window.dispatchEvent(new CustomEvent({quote}baruda:numbers-refresh{quote}));
+          }});
+"""
 
-# Force React Query stats behavior to no automatic refetch.
-# Replace common active options if present.
-replacements = {
-    r"refetchOnWindowFocus\s*:\s*true\s*,": "refetchOnWindowFocus: false,",
-    r"refetchOnMount\s*:\s*true\s*,": "refetchOnMount: false,",
-    r"refetchOnReconnect\s*:\s*true\s*,": "refetchOnReconnect: false,",
-    r"staleTime\s*:\s*0\s*,": "staleTime: Infinity,",
-}
+    text, count = pattern.subn(replacement, text, count=1)
 
-for pattern, replacement in replacements.items():
-    text = re.sub(pattern, replacement, text)
-
-# If useStats query does not already include the safety options, insert them after queryFn.
-# This targets the useStats block only.
-def patch_use_stats(match):
-    block = match.group(0)
-
-    if "refetchInterval:" not in block:
-        block = re.sub(
-            r"(queryFn\s*:\s*[^,\n]+,)",
-            r"\1\n    refetchInterval: false,",
-            block,
-            count=1,
+    # Also replace direct await fetch without const res if present.
+    if count == 0:
+        pattern2 = re.compile(
+            rf"""
+            \n\s*await\s+fetch\(
+              \s*`/api/holds/\$\{{{re.escape(hold_expr)}\}}`\s*,\s*
+              \{{\s*method:\s*['"]DELETE['"]\s*\}}\s*
+            \)\s*;
+            """,
+            re.VERBOSE,
         )
+        text, count = pattern2.subn(replacement, text, count=1)
 
-    required = [
-        ("refetchOnWindowFocus:", "    refetchOnWindowFocus: false,"),
-        ("refetchOnMount:", "    refetchOnMount: false,"),
-        ("refetchOnReconnect:", "    refetchOnReconnect: false,"),
-        ("staleTime:", "    staleTime: Infinity,"),
-        ("retry:", "    retry: false,"),
-    ]
-
-    insert_after = "refetchInterval: false,"
-    for key, line in required:
-        if key not in block:
-            block = block.replace(insert_after, insert_after + "\n" + line, 1)
-
-    return block
-
-text = re.sub(
-    r"export\s+(?:const|function)\s+useStats[\s\S]*?\n\};",
-    patch_use_stats,
-    text,
-    count=1,
-)
-
-if text == original:
-    print("⚠️ No changes made. The file may already be patched or has a different structure.")
-else:
     path.write_text(text)
-    print("✅ Disabled admin stats polling in hooks/useAdmin.ts")
-    print("✅ Backup created next to the file")
+
+    if count:
+        print(f"✅ Patched {path_str}")
+    else:
+        print(f"⚠️ No blocking DELETE pattern found in {path_str}. It may already be patched.")
+
+patch_file("components/ReceiptUploader.tsx", "holdId", "'")
+patch_file("components/SubmitNumberModal.tsx", "hold.id", '"')
+
+# Add immediate localStorage cleanup to ReceiptUploader expiry handler if possible.
+receipt = Path("components/ReceiptUploader.tsx")
+text = receipt.read_text()
+if "const releaseExpiredHoldNow" in text and "baruda_payment_hold_draft" in text:
+    marker = "const releaseExpiredHoldNow = async () => {"
+    cleanup = """const releaseExpiredHoldNow = async () => {
+      try {
+        localStorage.removeItem('baruda_payment_hold_id');
+        localStorage.removeItem('baruda_payment_hold_draft');
+      } catch {}
+"""
+    if marker in text and "removeItem('baruda_payment_hold_id')" not in text:
+        text = text.replace(marker, cleanup, 1)
+        receipt.write_text(text)
+        print("✅ Added immediate localStorage cleanup in ReceiptUploader.tsx")
 PY
 
 echo ""
+echo "✅ Backups created with suffix: .backup-fire-and-forget-hold-delete-$STAMP"
 echo "Now run:"
 echo "npm run build"
-echo "to ensure the changes are applied and the app is rebuilt without stats polling."

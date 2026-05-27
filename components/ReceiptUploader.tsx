@@ -213,8 +213,15 @@ export default function ReceiptUploader({
 
       try {
         if (holdId) {
-          const res = await fetch(`/api/holds/${holdId}`, { method: 'DELETE' });
-          const data = await res.json().catch(() => ({}));
+        void fetch(`/api/holds/${holdId}`, { method: 'DELETE' })
+          .catch((error) => {
+            console.error('Background hold release failed:', error);
+          })
+          .finally(() => {
+            window.dispatchEvent(new Event('numbers:refresh'));
+            window.dispatchEvent(new CustomEvent('baruda:numbers-refresh'));
+          });
+const data = await res.json().catch(() => ({}));
 
           if (Array.isArray(data?.numbers) && data.numbers.length) {
             releasedNumbers = data.numbers;

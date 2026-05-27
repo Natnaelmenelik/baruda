@@ -335,8 +335,15 @@ export default function SubmitNumberModal({
       const hold = raw ? JSON.parse(raw) : null;
 
       if (hold?.id) {
-        const res = await fetch(`/api/holds/${hold.id}`, { method: "DELETE" });
-        const data = await res.json().catch(() => ({}));
+        void fetch(`/api/holds/${hold.id}`, { method: "DELETE" })
+          .catch((error) => {
+            console.error("Background hold release failed:", error);
+          })
+          .finally(() => {
+            window.dispatchEvent(new Event("numbers:refresh"));
+            window.dispatchEvent(new CustomEvent("baruda:numbers-refresh"));
+          });
+const data = await res.json().catch(() => ({}));
         const releasedNumbers = Array.isArray(data?.numbers)
           ? data.numbers
           : Array.isArray(hold?.numbers)
