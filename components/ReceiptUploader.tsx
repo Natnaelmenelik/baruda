@@ -100,6 +100,7 @@ export default function ReceiptUploader({
   const [remainingSeconds, setRemainingSeconds] = useState(180);
   const [holdLoading, setHoldLoading] = useState(false);
   const holdToastShownRef = useRef<string | null>(null);
+  const holdExpiredHandledRef = useRef(false);
   const { lang } = useLang();
   const txt = copy[lang];
 
@@ -107,6 +108,7 @@ export default function ReceiptUploader({
     if (!initialPaymentHold?.id) return;
 
     setPaymentHold(initialPaymentHold);
+    holdExpiredHandledRef.current = false;
 
     if (initialPaymentHold.expires_at) {
       setRemainingSeconds(
@@ -159,6 +161,7 @@ export default function ReceiptUploader({
         localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
         localStorage.setItem('baruda_payment_hold_id', data.id);
         setPaymentHold(data);
+        holdExpiredHandledRef.current = false;
 
         dispatchNumbersRefresh({
           action: 'hold_created',
@@ -198,60 +201,6 @@ export default function ReceiptUploader({
   useEffect(() => {
     if (!paymentHold?.expires_at || value) return;
 
-    let releasing = false;
-
-    const releaseExpiredHoldNow = async () => {
-      if (releasing) return;
-      releasing = true;
-
-      const holdId = paymentHold?.id;
-      const fallbackNumbers = Array.isArray(paymentHold?.numbers)
-        ? paymentHold.numbers
-        : holdNumbers;
-
-      let releasedNumbers = fallbackNumbers;
-
-      try {
-        if (holdId) {
-          void fetch(`/api/holds/${holdId}`, { method: 'DELETE' })
-            .catch((error) => {
-              console.error('Background hold release failed:', error);
-            })
-            .finally(() => {
-              window.dispatchEvent(new Event('numbers:refresh'));
-              window.dispatchEvent(new CustomEvent('baruda:numbers-refresh'));
-            });
-        }
-      } catch {
-        // Even if the request fails, clear the local timer UI.
-        // The server-side queries ignore expired holds using expires_at > NOW().
-      }
-
-      localStorage.removeItem(HOLD_STORAGE_KEY);
-      localStorage.removeItem('baruda_payment_hold_id');
-      setPaymentHold(null);
-
-      dispatchNumbersRefresh({
-        action: 'hold_released',
-        numbers: releasedNumbers,
-        status: 'available',
-        holdId,
-        clientHoldKey,
-      });
-
-      broadcastNumbersUpdate({
-        action: 'hold_released',
-        numbers: releasedNumbers,
-        status: 'available',
-        holdId,
-        clientHoldKey,
-        source: 'receipt-uploader-expired',
-      });
-
-      toast.error(txt.holdExpired);
-      onHoldExpired?.();
-    };
-
     const tick = () => {
       const remaining = Math.max(
         0,
@@ -260,8 +209,9 @@ export default function ReceiptUploader({
 
       setRemainingSeconds(remaining);
 
-      if (remaining <= 0) {
-        void releaseExpiredHoldNow();
+      if (remaining <= 0 && !holdExpiredHandledRef.current) {
+        holdExpiredHandledRef.current = true;
+        onHoldExpired?.();
       }
     };
 
@@ -269,7 +219,7 @@ export default function ReceiptUploader({
     const interval = window.setInterval(tick, 1000);
 
     return () => window.clearInterval(interval);
-  }, [paymentHold?.id, paymentHold?.expires_at, value, txt.holdExpired, onHoldExpired, clientHoldKey, JSON.stringify(holdNumbers)]);
+  }, [paymentHold?.id, paymentHold?.expires_at, value, onHoldExpired]);
 
   const uploadToSupabaseStorage = async (file: File) => {
     const token = localStorage.getItem('token');
