@@ -343,12 +343,10 @@ export default function SubmitNumberModal({
             window.dispatchEvent(new Event("numbers:refresh"));
             window.dispatchEvent(new CustomEvent("baruda:numbers-refresh"));
           });
-const data = await res.json().catch(() => ({}));
-        const releasedNumbers = Array.isArray(data?.numbers)
-          ? data.numbers
-          : Array.isArray(hold?.numbers)
-            ? hold.numbers
-            : activeNumbers;
+        const releasedNumbers = Array.isArray(hold?.numbers)
+          ? hold.numbers
+          : activeNumbers;
+
 
         dispatchNumbersRefresh({
           action: "hold_released",
