@@ -285,8 +285,10 @@ export default function SubmitNumberModal({
   );
   const [reservingHold, setReservingHold] = useState(false);
   const holdReadyToastShownRef = useRef<string | null>(null);
+  const reservingHoldRef = useRef(false);
 
-  const amountMap = useMemo(() => {
+    const lastReservationSignatureRef = useRef<string>("");
+const amountMap = useMemo(() => {
     const fromProps = normalizeAmountMap(contributionAmounts || amounts);
     return Object.keys(fromProps).length ? fromProps : readStoredAmounts();
   }, [contributionAmounts, amounts, open]);
@@ -392,6 +394,16 @@ export default function SubmitNumberModal({
     [activeNumbers, activeAmountMap, totalAmount],
   );
 
+  const activeNumbersKey = useMemo(
+    () => activeNumbers.join(","),
+    [activeNumbers],
+  );
+
+  const holdAmountMapKey = useMemo(
+    () => JSON.stringify(holdAmountMap),
+    [holdAmountMap],
+  );
+
   useEffect(() => {
     if (!open) return;
 
@@ -407,10 +419,16 @@ export default function SubmitNumberModal({
         ? storedHold.expires_at
         : current?.expiresAt && new Date(current.expiresAt).getTime() > Date.now()
           ? current.expiresAt
-          : new Date(Date.now() + 3 * 60 * 1000).toISOString();
+          : undefined;
 
     const key = storedHold?.client_hold_key || current?.clientHoldKey || clientHoldKey;
     setClientHoldKey(key);
+
+    // Only persist the countdown draft when we have a real absolute expires_at
+    // from an existing backend hold. This prevents refresh from resetting to 3:00.
+    if (!expiresAt) {
+      return;
+    }
 
     const draft: PaymentDraft = {
       clientHoldKey: key,
@@ -467,6 +485,7 @@ export default function SubmitNumberModal({
     setSavedDraft(null);
     setReservationHold(null);
     holdReadyToastShownRef.current = null;
+    lastReservationSignatureRef.current = "";
     setClientHoldKey(makeClientHoldKey());
     setReceiptUrl("");
     setReceiptKey("");
@@ -479,17 +498,13 @@ export default function SubmitNumberModal({
     onClose();
   }
 
-  async function handleHoldExpired() {
-    await releaseActivePaymentHold();
-    setError("");
-    onClose();
-  }
-
   useEffect(() => {
     let cancelled = false;
 
     async function reserveSelectedAmountBeforeUpload() {
       if (!effectiveOpen) return;
+      if (reservingHoldRef.current) return;
+      if (reservationHold?.id && reservationHold?.expires_at && new Date(reservationHold.expires_at).getTime() > Date.now()) return;
       if (
         !activeNumbers.length ||
         totalAmount <= 0 ||
@@ -498,21 +513,27 @@ export default function SubmitNumberModal({
         return;
       if (!activeClientHoldKey) return;
 
+      if (reservingHoldRef.current) return;
 
+      const currentReservationExpiresAt = reservationHold?.expires_at
+        ? new Date(reservationHold.expires_at).getTime()
+        : 0;
 
+      if (
+        reservationHold?.id &&
+        Number.isFinite(currentReservationExpiresAt) &&
+        currentReservationExpiresAt > Date.now()
+      ) {
+        return;
+      }
+
+      reservingHoldRef.current = true;
+
+      reservingHoldRef.current = true;
       try {
         setReservingHold(true);
         setError("");
 
-        const existingHold = readStoredActiveHold();
-
-        if (
-          existingHold?.id &&
-          existingHold?.expires_at &&
-          new Date(existingHold.expires_at).getTime() > Date.now()
-        ) {
-          return;
-        }
 
         const res = await fetch("/api/holds", {
           method: "POST",
@@ -571,10 +592,29 @@ export default function SubmitNumberModal({
         setClientHoldKey(makeClientHoldKey());
         onClose();
       } finally {
+        reservingHoldRef.current = false;
         if (!cancelled) setReservingHold(false);
       }
     }
 
+    const reservationSignature = JSON.stringify({
+      effectiveOpen,
+      activeClientHoldKey,
+      activeNumbersKey,
+      holdAmountMapKey,
+      totalAmount,
+    });
+
+    if (
+      lastReservationSignatureRef.current === reservationSignature &&
+      (reservationHold?.id || reservingHoldRef.current)
+    ) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    lastReservationSignatureRef.current = reservationSignature;
     reserveSelectedAmountBeforeUpload();
 
     return () => {
@@ -583,11 +623,13 @@ export default function SubmitNumberModal({
   }, [
     effectiveOpen,
     activeClientHoldKey,
-    activeNumbers,
-    holdAmountMap,
+    activeNumbersKey,
+    holdAmountMapKey,
     totalAmount,
     lang,
     onClose,
+    reservationHold?.id,
+    reservationHold?.expires_at,
   ]);
 
   async function handleSubmit() {
@@ -1024,7 +1066,7 @@ export default function SubmitNumberModal({
           holdNumbers={activeNumbers}
           holdNumberAmounts={holdAmountMap}
           holdTotalAmount={totalAmount}
-          onHoldExpired={handleHoldExpired}
+          onHoldExpired={closeModal}
           onChange={(url, key, holdId) => {
             setReceiptUrl(url);
             setReceiptKey(key || "");

@@ -27,25 +27,68 @@ async function upsertSetting(key: string, value: string) {
   `;
 }
 
-async function syncNumberPools(gridSize: number, defaultTargetAmount: number) {
+async function applyTicketPriceAsGlobalTarget(
+  gridSize: number,
+  ticketPrice: number,
+  force = false,
+) {
   const safeGridSize = Math.max(1, Number(gridSize || 100));
-  const safeTarget = Math.max(1, Number(defaultTargetAmount || 5000));
+  const safeTicketPrice = Math.max(1, Number(ticketPrice || 100));
 
-  // Create missing rows up to grid size.
+  // Same safety check as Manage Numbers -> Global Target Amount.
+  // If a number already has approved contributions greater than the new ticket price,
+  // block the update unless force=true is explicitly sent.
+  const blocked = await sql`
+    WITH approved_totals AS (
+      SELECT
+        si.number,
+        COALESCE(SUM(si.amount), 0)::int AS approved_amount
+      FROM submission_items si
+      JOIN submissions s ON s.id = si.submission_id
+      WHERE s.status = 'approved'
+        AND si.number BETWEEN 1 AND ${safeGridSize}
+      GROUP BY si.number
+    )
+    SELECT
+      number,
+      approved_amount
+    FROM approved_totals
+    WHERE approved_amount > ${safeTicketPrice}
+    ORDER BY number ASC
+    LIMIT 20
+  `;
+
+  if (blocked.length > 0 && !force) {
+    return {
+      ok: false as const,
+      response: NextResponse.json(
+        {
+          error: "Ticket price is lower than approved contributions for some numbers",
+          blocked,
+        },
+        { status: 400 },
+      ),
+    };
+  }
+
+  // Create missing rows up to grid size with the new ticket price as target_amount.
   await sql`
     INSERT INTO number_pools (number, target_amount, current_amount, status, updated_at)
-    SELECT gs, ${safeTarget}, 0, 'open', NOW()
+    SELECT gs, ${safeTicketPrice}, 0, 'open', NOW()
     FROM generate_series(1, ${safeGridSize}) gs
     ON CONFLICT (number) DO NOTHING
   `;
 
-  // Remove rows above new grid size so Manage Numbers follows the admin setting.
+  // Remove rows above new grid size so the grid follows the admin setting.
   await sql`
     DELETE FROM number_pools
     WHERE number > ${safeGridSize}
   `;
 
-  // Recalculate current_amount from approved contribution items.
+  // EXACT Global Target behavior for Ticket Price:
+  // update every number's target_amount to the ticket price,
+  // recalculate approved current_amount,
+  // and update sold/open status from the new target.
   await sql`
     WITH approved_totals AS (
       SELECT
@@ -59,36 +102,23 @@ async function syncNumberPools(gridSize: number, defaultTargetAmount: number) {
     )
     UPDATE number_pools np
     SET
+      target_amount = ${safeTicketPrice},
       current_amount = COALESCE(at.approved_amount, 0),
       status = CASE
-        WHEN COALESCE(at.approved_amount, 0) >= COALESCE(np.target_amount, ${safeTarget})
+        WHEN COALESCE(at.approved_amount, 0) >= ${safeTicketPrice}
         THEN 'sold'
         ELSE 'open'
       END,
       updated_at = NOW()
-    FROM approved_totals at
-    WHERE np.number = at.number
+    FROM generate_series(1, ${safeGridSize}) AS gs(number)
+    LEFT JOIN approved_totals at ON at.number = gs.number
+    WHERE np.number = gs.number
   `;
 
-  // Reset rows with no approved contribution.
-  await sql`
-    UPDATE number_pools np
-    SET
-      current_amount = 0,
-      status = CASE
-        WHEN np.status = 'sold' THEN 'sold'
-        ELSE 'open'
-      END,
-      updated_at = NOW()
-    WHERE np.number BETWEEN 1 AND ${safeGridSize}
-      AND NOT EXISTS (
-        SELECT 1
-        FROM submission_items si
-        JOIN submissions s ON s.id = si.submission_id
-        WHERE si.number = np.number
-          AND s.status = 'approved'
-      )
-  `;
+  // Keep the number status cache in sync with number_pools.
+  await sql`SELECT public.refresh_all_number_status_summary_cache()`;
+
+  return { ok: true as const };
 }
 
 export async function GET(req: Request) {
@@ -135,14 +165,6 @@ async function saveSettings(req: Request) {
     body.gridSize ?? body.grid_size ?? body.numberGridSize ?? body.numbersGridSize ?? 100,
   );
 
-  const defaultTargetAmount = Number(
-    body.defaultTargetAmount ??
-      body.default_target_amount ??
-      body.targetAmount ??
-      body.target_amount ??
-      5000,
-  );
-
   if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
     return NextResponse.json({ error: "Invalid ticket price" }, { status: 400 });
   }
@@ -151,15 +173,24 @@ async function saveSettings(req: Request) {
     return NextResponse.json({ error: "Invalid grid size" }, { status: 400 });
   }
 
-  if (!Number.isFinite(defaultTargetAmount) || defaultTargetAmount <= 0) {
-    return NextResponse.json({ error: "Invalid target amount" }, { status: 400 });
+  // IMPORTANT:
+  // Do NOT update settings.default_target_amount here.
+  // Ticket Price should behave like Global Target Amount for number_pools/cache,
+  // but it should only save settings.ticket_price and settings.grid_size.
+  const result = await applyTicketPriceAsGlobalTarget(
+    gridSize,
+    ticketPrice,
+    Boolean(body.force),
+  );
+
+  if (!result.ok) {
+    return result.response;
   }
 
   await upsertSetting("ticket_price", String(ticketPrice));
   await upsertSetting("grid_size", String(gridSize));
-  await upsertSetting("default_target_amount", String(defaultTargetAmount));
 
-  await syncNumberPools(gridSize, defaultTargetAmount);
+  const defaultTargetAmount = await getSetting("default_target_amount", "5000");
 
   return NextResponse.json({
     ok: true,
@@ -167,8 +198,8 @@ async function saveSettings(req: Request) {
     ticket_price: ticketPrice,
     gridSize,
     grid_size: gridSize,
-    defaultTargetAmount,
-    default_target_amount: defaultTargetAmount,
+    defaultTargetAmount: Number(defaultTargetAmount),
+    default_target_amount: Number(defaultTargetAmount),
   });
 }
 

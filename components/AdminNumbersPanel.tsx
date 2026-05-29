@@ -71,6 +71,10 @@ export default function AdminNumbersPanel() {
   const [showGlobalTargetConfirm, setShowGlobalTargetConfirm] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
   const [dashboardMessageText, setDashboardMessageText] = useState("");
+  const [dashboardMessageImages, setDashboardMessageImages] = useState<File[]>([]);
+  const [dashboardImagePreviews, setDashboardImagePreviews] = useState<string[]>([]);
+  const [dashboardMessageImageFile, setDashboardMessageImageFile] = useState<File | null>(null);
+  const [dashboardMessageImagePreview, setDashboardMessageImagePreview] = useState("");
   const [selectionReceiptImage, setSelectionReceiptImage] = useState<
     string | null
   >(null);
@@ -585,6 +589,141 @@ export default function AdminNumbersPanel() {
     }
   }
 
+  async function uploadDashboardMessageImageIfNeeded() {
+    if (!dashboardMessageImageFile) return { imageKey: "", imageUrl: "" };
+
+    const formData = new FormData();
+    formData.append("file", dashboardMessageImageFile);
+
+    const res = await fetch("/api/storage/upload-dashboard-message-image", {
+      method: "POST",
+      body: formData,
+    });
+
+    const data = await readJson(res);
+
+    return {
+      imageKey: String(data?.imageKey || data?.key || ""),
+      imageUrl: String(data?.imageUrl || data?.url || data?.signedUrl || ""),
+    };
+  }
+
+
+  async function compressDashboardImage(file: File): Promise<File> {
+    const maxDimension = 1280;
+    const quality = 0.78;
+
+    if (!file.type.startsWith("image/")) {
+      throw new Error("Only image files are allowed");
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Failed to read image"));
+      reader.readAsDataURL(file);
+    });
+
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = dataUrl;
+    });
+
+    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Failed to prepare image compression");
+
+    context.drawImage(image, 0, 0, width, height);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => {
+          if (result) resolve(result);
+          else reject(new Error("Failed to compress image"));
+        },
+        "image/webp",
+        quality,
+      );
+    });
+
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "announcement-image";
+    return new File([blob], `${baseName}.webp`, { type: "image/webp" });
+  }
+
+  function resetDashboardMessageImages() {
+    dashboardImagePreviews.forEach((url) => URL.revokeObjectURL(url));
+    setDashboardMessageImages([]);
+    setDashboardImagePreviews([]);
+  }
+
+  function handleDashboardImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+
+    if (!files.length) return;
+
+    const validFiles = files.filter((file) => file.type.startsWith("image/"));
+
+    if (validFiles.length !== files.length) {
+      toast.error(label("onlyImagesAllowed", "Only image files are allowed"));
+    }
+
+    const remaining = Math.max(0, 3 - dashboardMessageImages.length);
+    const nextFiles = validFiles.slice(0, remaining);
+
+    if (validFiles.length > remaining) {
+      toast.error(label("maxDashboardImages", "You can upload up to 3 images"));
+    }
+
+    const previews = nextFiles.map((file) => URL.createObjectURL(file));
+    setDashboardMessageImages((current) => [...current, ...nextFiles].slice(0, 3));
+    setDashboardImagePreviews((current) => [...current, ...previews].slice(0, 3));
+  }
+
+  function removeDashboardImage(index: number) {
+    setDashboardMessageImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setDashboardImagePreviews((current) => {
+      const removed = current[index];
+      if (removed) URL.revokeObjectURL(removed);
+      return current.filter((_, itemIndex) => itemIndex !== index);
+    });
+  }
+
+  async function uploadDashboardImages() {
+    const uploadedImages: { url: string; key: string }[] = [];
+
+    for (const image of dashboardMessageImages) {
+      const compressed = await compressDashboardImage(image);
+      const formData = new FormData();
+      formData.append("file", compressed);
+
+      const res = await fetch("/api/storage/upload-dashboard-message-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await readJson(res);
+      const uploaded = data?.image;
+
+      if (!uploaded?.url || !uploaded?.key) {
+        throw new Error(label("failedToUploadDashboardImage", "Failed to upload announcement image"));
+      }
+
+      uploadedImages.push({ url: uploaded.url, key: uploaded.key });
+    }
+
+    return uploadedImages;
+  }
+
   async function sendDashboardMessage() {
     const message = dashboardMessageText.trim();
 
@@ -607,15 +746,18 @@ export default function AdminNumbersPanel() {
 
     try {
       setLoadingType("message");
+      const images = await uploadDashboardImages();
+
       const res = await fetch("/api/admin/dashboard-message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, images }),
       });
-      const data = await readJson(res);
+      await readJson(res);
       toast.success(label("dashboardMessageSent", "Message sent to all users"));
 
       setDashboardMessageText("");
+      resetDashboardMessageImages();
       setShowMessageModal(false);
     } catch (err: any) {
       toast.error(
@@ -695,7 +837,12 @@ export default function AdminNumbersPanel() {
 
       {showMessageModal && (
         <Modal
-          onClose={() => setShowMessageModal(false)}
+          onClose={() => {
+            setShowMessageModal(false);
+            resetDashboardMessageImages();
+            setDashboardMessageImageFile(null);
+            setDashboardMessageImagePreview("");
+          }}
           title={label("writeDashboardMessage", "Write a Message")}
         >
           <div className="space-y-4">
@@ -730,6 +877,48 @@ export default function AdminNumbersPanel() {
               className="w-full px-4 py-3 text-sm font-semibold text-gray-900 transition bg-white border outline-none resize-none dark:text-white dark:bg-slate-900 rounded-2xl border-amber-200 dark:border-amber-800/60 focus:border-amber-400 focus:ring-4 focus:ring-amber-100"
             />
 
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-gray-800 dark:text-slate-100">
+                {label("dashboardMessageImages", "Optional images")}
+              </label>
+
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleDashboardImageChange}
+                className="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 file:mr-4 file:rounded-xl file:border-0 file:bg-amber-100 file:px-4 file:py-2 file:text-sm file:font-bold file:text-amber-800 hover:file:bg-amber-200 dark:border-amber-800/60 dark:bg-slate-900 dark:text-white"
+              />
+
+              <div className="text-xs font-bold text-gray-500 dark:text-slate-400">
+                {label("dashboardMessageImageHelp", "You can upload up to 3 JPG, PNG, or WebP images. Images are compressed before upload.")}
+              </div>
+
+              {!!dashboardImagePreviews.length && (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {dashboardImagePreviews.map((preview, index) => (
+                    <div
+                      key={preview}
+                      className="overflow-hidden border border-amber-100 rounded-2xl bg-white dark:bg-slate-900 dark:border-amber-800/60"
+                    >
+                      <img
+                        src={preview}
+                        alt={`${label("dashboardMessageImagePreview", "Message image preview")} ${index + 1}`}
+                        className="object-cover w-full h-40 bg-slate-50 dark:bg-slate-950"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeDashboardImage(index)}
+                        className="w-full px-4 py-2 text-xs font-black text-red-700 transition bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-200"
+                      >
+                        {label("removeImage", "Remove image")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex items-center justify-between text-xs font-bold text-gray-500 dark:text-slate-400">
               <span>
                 {label("messageCharacterLimit", "Maximum 600 characters")}
@@ -740,7 +929,12 @@ export default function AdminNumbersPanel() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
-                onClick={() => setShowMessageModal(false)}
+                onClick={() => {
+                  setShowMessageModal(false);
+                  resetDashboardMessageImages();
+                  setDashboardMessageImageFile(null);
+                  setDashboardMessageImagePreview("");
+                }}
                 className="px-4 py-3 font-semibold text-gray-700 transition border border-gray-200 dark:text-slate-200 dark:border-slate-700 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800"
               >
                 {label("cancel", "Cancel")}

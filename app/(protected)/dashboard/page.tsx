@@ -16,11 +16,21 @@ import NumberAmountsModal from "@/components/NumberAmountsModal";
 import { translations } from "@/lib/i18n/translations";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
+
+type DashboardMessageImage = {
+  url: string;
+  key?: string;
+};
+
 type DashboardMessage = {
+
   id: string;
   text: string;
   createdAt?: string | null;
   expiresAt?: string | null;
+  imageUrl?: string | null;
+  imageKey?: string | null;
+  images?: DashboardMessageImage[];
 };
 
 type WinnerAnnouncementData = {
@@ -56,6 +66,33 @@ function isDashboardMessageDismissed(id: string) {
   return localStorage.getItem(dashboardMessageDismissKey(id)) === "1";
 }
 
+
+function normalizeDashboardMessageImages(value: any): DashboardMessageImage[] {
+  const images: DashboardMessageImage[] = [];
+
+  if (Array.isArray(value?.images)) {
+    for (const image of value.images) {
+      const url = String(image?.url || image?.imageUrl || image?.image_url || "").trim();
+      const key = String(image?.key || image?.imageKey || image?.image_key || "").trim();
+
+      if (url) {
+        images.push(key ? { url, key } : { url });
+      }
+
+      if (images.length >= 3) break;
+    }
+  }
+
+  const legacyUrl = String(value?.imageUrl || value?.image_url || "").trim();
+  const legacyKey = String(value?.imageKey || value?.image_key || "").trim();
+
+  if (!images.length && legacyUrl) {
+    images.push(legacyKey ? { url: legacyUrl, key: legacyKey } : { url: legacyUrl });
+  }
+
+  return images;
+}
+
 function normalizeDashboardMessageFromValue(
   value: any,
 ): DashboardMessage | null {
@@ -89,6 +126,9 @@ function normalizeDashboardMessageFromValue(
           text,
           createdAt: parsed.createdAt || parsed.created_at || null,
           expiresAt: expiresAt || null,
+          imageUrl: parsed.imageUrl || parsed.image_url || null,
+          imageKey: parsed.imageKey || parsed.image_key || null,
+          images: normalizeDashboardMessageImages(parsed),
         };
       }
     } catch {
@@ -98,6 +138,9 @@ function normalizeDashboardMessageFromValue(
         text: raw,
         createdAt: null,
         expiresAt: null,
+        imageUrl: null,
+        imageKey: null,
+        images: [],
       };
     }
 
@@ -124,6 +167,9 @@ function normalizeDashboardMessageFromValue(
     text,
     createdAt: value.createdAt || value.created_at || null,
     expiresAt: expiresAt || null,
+    imageUrl: value.imageUrl || value.image_url || null,
+    imageKey: value.imageKey || value.image_key || null,
+    images: normalizeDashboardMessageImages(value),
   };
 }
 
@@ -143,6 +189,9 @@ function normalizeDashboardMessage(message: any): DashboardMessage | null {
     text,
     createdAt: message.createdAt || null,
     expiresAt: message.expiresAt || null,
+    imageUrl: message.imageUrl || message.image_url || null,
+    imageKey: message.imageKey || message.image_key || null,
+    images: normalizeDashboardMessageImages(message),
   };
 }
 
@@ -177,6 +226,7 @@ export default function DashboardPage() {
   const [showPurchasesModal, setShowPurchasesModal] = useState(false);
   const [dashboardMessage, setDashboardMessage] =
     useState<DashboardMessage | null>(null);
+  const [activeAnnouncementImage, setActiveAnnouncementImage] = useState<string | null>(null);
   const [winnerAnnouncement, setWinnerAnnouncement] =
     useState<WinnerAnnouncementData | null>(null);
 
@@ -484,19 +534,39 @@ export default function DashboardPage() {
 
         {dashboardMessage && (
           <section className="overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-500 p-[1px] shadow-xl shadow-blue-900/10">
-            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900/95 dark:bg-slate-900/90 backdrop-blur md:p-5">
+            <div className="p-4 rounded-3xl bg-white dark:bg-slate-900/95 backdrop-blur md:p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="flex gap-3">
+                <div className="flex flex-1 gap-3">
                   <div className="flex items-center justify-center text-xl text-white shadow-lg h-11 w-11 shrink-0 rounded-2xl bg-gradient-to-br from-indigo-600 to-sky-500 shadow-blue-900/20">
                     ✦
                   </div>
-                  <div>
-                    <div className="text-xs font-black uppercase tracking-[0.25em] text-indigo-600">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-black uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-300">
                       {label("dashboardMessageTitle", "Announcement")}
                     </div>
                     <p className="mt-2 text-xl font-semibold leading-7 text-gray-800 dark:text-slate-100 whitespace-pre-wrap md:text-2xl">
                       {dashboardMessage.text}
                     </p>
+
+                    {!!dashboardMessage.images?.length && (
+                      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                        {dashboardMessage.images.map((image, index) => (
+                          <button
+                            key={`${image.url}-${index}`}
+                            type="button"
+                            onClick={() => setActiveAnnouncementImage(image.url)}
+                            className="group relative h-36 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800 sm:h-44 lg:h-48"
+                          >
+                            <img
+                              src={image.url}
+                              alt={`Announcement image ${index + 1}`}
+                              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                            />
+                            <div className="absolute inset-0 bg-black/0 transition group-hover:bg-black/10" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
@@ -509,6 +579,23 @@ export default function DashboardPage() {
               </div>
             </div>
           </section>
+        )}
+
+        {activeAnnouncementImage && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => setActiveAnnouncementImage(null)}
+              className="absolute right-4 top-4 rounded-full bg-white px-4 py-2 text-sm font-black text-slate-900 shadow-lg hover:bg-slate-100"
+            >
+              ✕ {label("close", "Close")}
+            </button>
+            <img
+              src={activeAnnouncementImage}
+              alt="Announcement"
+              className="max-h-[85vh] max-w-[92vw] rounded-2xl object-contain shadow-2xl"
+            />
+          </div>
         )}
 
         <WinnerAnnouncement announcement={winnerAnnouncement} />

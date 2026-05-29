@@ -88,12 +88,14 @@ function getCorrectedNow() {
 }
 
 function calculateRemainingSeconds(expiresAt?: string) {
-  if (!expiresAt) return 180;
+  // Do not invent a fresh 3-minute countdown on refresh.
+  // The countdown must always come from the backend/stored absolute expires_at value.
+  if (!expiresAt) return 0;
 
   const expiresAtMs = new Date(expiresAt).getTime();
-  if (!Number.isFinite(expiresAtMs)) return 180;
+  if (!Number.isFinite(expiresAtMs)) return 0;
 
-  return Math.max(0, Math.ceil((expiresAtMs - getCorrectedNow()) / 1000));
+  return Math.max(0, Math.floor((expiresAtMs - getCorrectedNow()) / 1000));
 }
 
 function readStoredHold() {

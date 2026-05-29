@@ -7,12 +7,43 @@ export const revalidate = 0;
 
 const MESSAGE_SETTING_KEY = "dashboard_message";
 
+type DashboardImage = {
+  url: string;
+  key: string;
+};
+
 type DashboardMessage = {
   id?: string;
   message?: string;
+  text?: string;
+  images?: DashboardImage[];
+  imageUrl?: string;
+  imageKey?: string;
   createdAt?: string;
   expiresAt?: string;
 };
+
+function normalizeImages(value: any): DashboardImage[] {
+  const images: DashboardImage[] = [];
+
+  if (Array.isArray(value?.images)) {
+    for (const image of value.images) {
+      const url = String(image?.url || "").trim();
+      const key = String(image?.key || "").trim();
+      if (url) images.push({ url, key });
+      if (images.length >= 3) break;
+    }
+  }
+
+  if (!images.length && value?.imageUrl) {
+    images.push({
+      url: String(value.imageUrl),
+      key: String(value.imageKey || ""),
+    });
+  }
+
+  return images;
+}
 
 function parseMessage(value: unknown): DashboardMessage | null {
   if (!value) return null;
@@ -21,7 +52,7 @@ function parseMessage(value: unknown): DashboardMessage | null {
     const parsed = typeof value === "string" ? JSON.parse(value) : value;
 
     if (!parsed || typeof parsed !== "object") return null;
-    if (typeof (parsed as any).message !== "string") return null;
+    if (typeof (parsed as any).message !== "string" && typeof (parsed as any).text !== "string") return null;
 
     return parsed as DashboardMessage;
   } catch {
@@ -41,7 +72,7 @@ export async function GET(req: Request) {
 
     const message = parseMessage(rows?.[0]?.value);
 
-    if (!message?.message || !message?.expiresAt) {
+    if ((!message?.message && !message?.text) || !message?.expiresAt) {
       return NextResponse.json({ message: null }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -51,11 +82,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: null }, { headers: { "Cache-Control": "no-store" } });
     }
 
+    const text = String(message.message || message.text || "").trim();
+    const images = normalizeImages(message);
+
     return NextResponse.json(
       {
         message: {
           id: message.id || String(expiresAt),
-          text: message.message,
+          text,
+          images,
           createdAt: message.createdAt || null,
           expiresAt: message.expiresAt,
         },

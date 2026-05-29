@@ -1,20 +1,87 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db/sql";
 import { requireUser } from "@/lib/auth/server";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const MESSAGE_SETTING_KEY = "dashboard_message";
+const DASHBOARD_IMAGE_BUCKET = process.env.SUPABASE_RECEIPTS_BUCKET || "receipts";
+
+type DashboardMessageImage = {
+  url: string;
+  key?: string;
+};
 
 type DashboardMessage = {
   id: string;
   text: string;
+  images?: DashboardMessageImage[];
   createdAt?: string | null;
   expiresAt?: string | null;
 };
 
-function parseDashboardMessage(value: unknown): DashboardMessage | null {
+function normalizeImages(parsed: any): DashboardMessageImage[] {
+  const images: DashboardMessageImage[] = [];
+
+  if (Array.isArray(parsed?.images)) {
+    for (const image of parsed.images) {
+      const url = String(image?.url || "").trim();
+      const key = String(image?.key || "").trim();
+      if (url) images.push({ url, key });
+      if (images.length >= 3) break;
+    }
+  }
+
+  // Backward compatibility with old single-image format.
+  if (!images.length && parsed?.imageUrl) {
+    images.push({
+      url: String(parsed.imageUrl),
+      key: String(parsed.imageKey || ""),
+    });
+  }
+
+  return images;
+}
+
+
+async function signDashboardMessageImages(
+  images: DashboardMessageImage[],
+): Promise<DashboardMessageImage[]> {
+  if (!images.length) return [];
+
+  const supabase = createSupabaseAdminClient();
+  const signedImages: DashboardMessageImage[] = [];
+
+  for (const image of images) {
+    const key = String(image?.key || "").trim();
+
+    // For private receipts bucket, public URLs will not render in the browser.
+    // Always prefer signed URLs when a safe dashboard image key exists.
+    if (key && key.startsWith("dashboard-messages/")) {
+      const { data, error } = await supabase.storage
+        .from(DASHBOARD_IMAGE_BUCKET)
+        .createSignedUrl(key, 60 * 60 * 24);
+
+      if (!error && data?.signedUrl) {
+        signedImages.push({ ...image, url: data.signedUrl, key });
+        continue;
+      }
+
+      console.error("Failed to sign dashboard image URL", { key, error });
+    }
+
+    // Fallback for older data where only a public URL was stored.
+    if (image?.url) {
+      signedImages.push(image);
+    }
+  }
+
+  return signedImages.slice(0, 3);
+}
+
+async function parseDashboardMessage(value: unknown): Promise<DashboardMessage | null> {
   if (!value) return null;
 
   const raw = typeof value === "string" ? value.trim() : value;
@@ -29,6 +96,7 @@ function parseDashboardMessage(value: unknown): DashboardMessage | null {
       return {
         id: `dashboard-message:${raw}`,
         text: raw,
+        images: [],
         createdAt: null,
         expiresAt: null,
       };
@@ -47,9 +115,18 @@ function parseDashboardMessage(value: unknown): DashboardMessage | null {
     if (!Number.isFinite(expiresMs) || expiresMs <= Date.now()) return null;
   }
 
+  const images = await signDashboardMessageImages(normalizeImages(parsed));
+
   return {
-    id: String(parsed.id || parsed.createdAt || parsed.created_at || expiresAt || `dashboard-message:${text}`),
+    id: String(
+      parsed.id ||
+        parsed.createdAt ||
+        parsed.created_at ||
+        expiresAt ||
+        `dashboard-message:${text}`,
+    ),
     text,
+    images,
     createdAt: parsed.createdAt || parsed.created_at || null,
     expiresAt,
   };
@@ -132,7 +209,7 @@ export async function GET(req: Request) {
       approvedPromise,
     ]);
 
-    const dashboardMessage = parseDashboardMessage(dashboardMessageRows?.[0]?.value);
+    const dashboardMessage = await parseDashboardMessage(dashboardMessageRows?.[0]?.value);
     const winnerAnnouncement = normalizeWinnerAnnouncement(winnerRows?.[0] ?? null);
 
     const approvedNumberMessages = (approvedRows || []).map((approved: any) => {
