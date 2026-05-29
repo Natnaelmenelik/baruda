@@ -844,6 +844,7 @@ export default function AdminNumbersPanel() {
             setDashboardMessageImagePreview("");
           }}
           title={label("writeDashboardMessage", "Write a Message")}
+          scrollable
         >
           <div className="space-y-4">
             <div className="p-4 text-sm border shadow-inner rounded-2xl border-amber-100 dark:border-amber-800/60 bg-gradient-to-br from-amber-50 dark:from-amber-950/40 via-white dark:via-slate-900/60 to-orange-50 dark:to-orange-950/30 text-amber-900 dark:text-amber-100">
@@ -1658,11 +1659,13 @@ function Modal({
   children,
   onClose,
   wide = false,
+  scrollable = false,
 }: {
   title: string;
   children: React.ReactNode;
   onClose: () => void;
   wide?: boolean;
+  scrollable?: boolean;
 }) {
   return (
     <div
@@ -1670,10 +1673,10 @@ function Modal({
       onClick={onClose}
     >
       <div
-        className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}
+        className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} ${scrollable ? "flex max-h-[88vh] flex-col overflow-hidden" : "max-h-[88vh] overflow-hidden"} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b">
+        <div className={`${scrollable ? "shrink-0" : ""} flex items-center justify-between px-5 py-4 border-b`}>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white md:text-xl">
             {title}
           </h2>
@@ -1685,7 +1688,7 @@ function Modal({
             ×
           </button>
         </div>
-        <div className="p-5 overflow-auto">{children}</div>
+        <div className={scrollable ? "min-h-0 flex-1 overflow-y-auto p-5" : "p-5 overflow-auto"}>{children}</div>
       </div>
     </div>
   );

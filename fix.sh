@@ -1,26 +1,62 @@
 python3 - <<'PY'
 from pathlib import Path
-import re
 
 p = Path("components/AdminNumbersPanel.tsx")
 s = p.read_text()
 
-# Make dashboard message modal content vertically scrollable
-s = re.sub(
-    r'className="([^"]*w-full max-w-[^"]*bg-white[^"]*)"',
-    lambda m: 'className="' + m.group(1) + ' max-h-[90vh] overflow-y-auto"',
-    s,
-    count=1
+# 1) Add a scrollable prop to the Modal function
+s = s.replace(
+'''function Modal({
+  title,
+  children,
+  onClose,
+  wide = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}) {''',
+'''function Modal({
+  title,
+  children,
+  onClose,
+  wide = false,
+  scrollable = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+  scrollable?: boolean;
+}) {'''
 )
 
-# Safer fallback: add scroll to any dashboard message modal container if not added
-if "max-h-[90vh] overflow-y-auto" not in s:
-    s = s.replace(
-        'className="w-full max-w-lg',
-        'className="max-h-[90vh] w-full max-w-lg overflow-y-auto',
-        1
-    )
+# 2) Make Modal wrapper/content scroll only when scrollable=true
+s = s.replace(
+'''className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} max-h-[88vh] overflow-hidden rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}''',
+'''className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} ${scrollable ? "flex max-h-[88vh] flex-col overflow-hidden" : "max-h-[88vh] overflow-hidden"} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}'''
+)
+
+s = s.replace(
+'''<div className="flex items-center justify-between px-5 py-4 border-b">''',
+'''<div className={`${scrollable ? "shrink-0" : ""} flex items-center justify-between px-5 py-4 border-b`}>'''
+)
+
+s = s.replace(
+'''<div className="p-5 overflow-auto">{children}</div>''',
+'''<div className={scrollable ? "min-h-0 flex-1 overflow-y-auto p-5" : "p-5 overflow-auto"}>{children}</div>'''
+)
+
+# 3) Apply scrollable only to Write a Message modal
+s = s.replace(
+'''title={label("writeDashboardMessage", "Write a Message")}
+        >''',
+'''title={label("writeDashboardMessage", "Write a Message")}
+          scrollable
+        >'''
+)
 
 p.write_text(s)
-print("✅ Made admin message modal vertically scrollable")
+print("✅ Targeted only the Write a Message modal and made it vertically scrollable")
 PY
