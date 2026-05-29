@@ -40,6 +40,26 @@ type NumberSubmissionRow = {
   user_phone?: string;
 };
 
+type ManualCloseLine = {
+  number: string;
+  amount: string;
+};
+
+type ManualEntryRow = {
+  id?: string;
+  user_name?: string;
+  user_phone?: string;
+  contact_phone?: string;
+  numbers?: number[];
+  items?: { number?: number; amount?: number }[];
+  number_amounts?: Record<string, number> | null;
+  total_amount?: number;
+  status?: string;
+  submission_type?: string;
+  approved_at?: string;
+  created_at?: string;
+};
+
 export default function AdminNumbersPanel() {
   const { t: txt, lang } = useLang();
 
@@ -70,6 +90,15 @@ export default function AdminNumbersPanel() {
   const [globalTargetInput, setGlobalTargetInput] = useState("");
   const [showGlobalTargetConfirm, setShowGlobalTargetConfirm] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
+  const [showManualCloseModal, setShowManualCloseModal] = useState(false);
+  const [manualClientName, setManualClientName] = useState("");
+  const [manualClientPhone, setManualClientPhone] = useState("");
+  const [manualCloseLines, setManualCloseLines] = useState<ManualCloseLine[]>([
+    { number: "", amount: "" },
+  ]);
+  const [manualEntries, setManualEntries] = useState<ManualEntryRow[]>([]);
+  const [manualEntriesLoading, setManualEntriesLoading] = useState(false);
+  const [manualCloseSubmitting, setManualCloseSubmitting] = useState(false);
   const [dashboardMessageText, setDashboardMessageText] = useState("");
   const [dashboardMessageImages, setDashboardMessageImages] = useState<File[]>([]);
   const [dashboardImagePreviews, setDashboardImagePreviews] = useState<string[]>([]);
@@ -154,8 +183,36 @@ export default function AdminNumbersPanel() {
 
   async function readJson(res: Response) {
     const data = await res.json().catch(() => ({}));
-    if (!res.ok)
-      throw new Error(data?.error || `Request failed: ${res.status}`);
+
+    if (!res.ok) {
+      const detailsMessage = Array.isArray(data?.details)
+        ? data.details
+            .map((item: any) =>
+              typeof item === "string"
+                ? item
+                : item?.message
+                  ? String(item.message)
+                  : "",
+            )
+            .filter(Boolean)
+            .join(" ")
+        : "";
+
+      const errorCode = typeof data?.error === "string" ? data.error : "";
+      const humanMessage =
+        data?.message ||
+        detailsMessage ||
+        (errorCode && errorCode !== "manual_entry_validation_failed"
+          ? errorCode
+          : "") ||
+        `Request failed: ${res.status}`;
+
+      const error = new Error(humanMessage) as Error & { data?: any; code?: string };
+      error.data = data;
+      error.code = errorCode;
+      throw error;
+    }
+
     return data;
   }
 
@@ -770,6 +827,153 @@ export default function AdminNumbersPanel() {
     }
   }
 
+
+  function resetManualCloseForm() {
+    setManualClientName("");
+    setManualClientPhone("");
+    setManualCloseLines([{ number: "", amount: "" }]);
+  }
+
+  function updateManualCloseLine(index: number, field: keyof ManualCloseLine, value: string) {
+    setManualCloseLines((previous) =>
+      previous.map((line, currentIndex) =>
+        currentIndex === index ? { ...line, [field]: value } : line,
+      ),
+    );
+  }
+
+  function addManualCloseLine() {
+    setManualCloseLines((previous) => [...previous, { number: "", amount: "" }]);
+  }
+
+  function removeManualCloseLine(index: number) {
+    setManualCloseLines((previous) =>
+      previous.length <= 1 ? [{ number: "", amount: "" }] : previous.filter((_, currentIndex) => currentIndex !== index),
+    );
+  }
+
+  function getManualCloseItems() {
+    return manualCloseLines
+      .map((line) => ({
+        number: Number(line.number),
+        amount: Number(line.amount),
+      }))
+      .filter(
+        (item) =>
+          Number.isInteger(item.number) &&
+          item.number > 0 &&
+          Number.isFinite(item.amount) &&
+          item.amount > 0,
+      );
+  }
+
+  function getManualTotalAmount() {
+    return getManualCloseItems().reduce((sum, item) => sum + item.amount, 0);
+  }
+
+  function getManualEntryNumbers(entry: ManualEntryRow) {
+    if (Array.isArray(entry.numbers) && entry.numbers.length) {
+      return entry.numbers.join(", ");
+    }
+
+    if (Array.isArray(entry.items) && entry.items.length) {
+      return entry.items
+        .map((item) => item.number)
+        .filter((value) => value !== undefined && value !== null)
+        .join(", ");
+    }
+
+    if (entry.number_amounts && typeof entry.number_amounts === "object") {
+      return Object.keys(entry.number_amounts).join(", ");
+    }
+
+    return "-";
+  }
+
+  function getManualEntryAmountBreakdown(entry: ManualEntryRow) {
+    if (Array.isArray(entry.items) && entry.items.length) {
+      return entry.items
+        .map((item) => `${item.number}: ${Number(item.amount || 0).toLocaleString()}`)
+        .join(" • ");
+    }
+
+    if (entry.number_amounts && typeof entry.number_amounts === "object") {
+      return Object.entries(entry.number_amounts)
+        .map(([number, amount]) => `${number}: ${Number(amount || 0).toLocaleString()}`)
+        .join(" • ");
+    }
+
+    return Number(entry.total_amount || 0).toLocaleString();
+  }
+
+  async function loadManualEntries(openModal = true) {
+    try {
+      if (openModal) setShowManualCloseModal(true);
+      setManualEntriesLoading(true);
+
+      const res = await fetch(`/api/admin/manual-entries?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-store" },
+      });
+      const data = await readJson(res);
+      setManualEntries(Array.isArray(data?.entries) ? data.entries : []);
+    } catch (err: any) {
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("failedToLoadManualEntries", "Failed to load manually closed numbers"),
+      );
+    } finally {
+      setManualEntriesLoading(false);
+    }
+  }
+
+  function openManualCloseModal() {
+    setShowManualCloseModal(true);
+    void loadManualEntries(false);
+  }
+
+  async function submitManualCloseNumbers() {
+    const clientName = manualClientName.trim();
+    const phone = manualClientPhone.trim();
+    const items = getManualCloseItems();
+
+    if (!clientName) {
+      toast.error(label("clientNameRequired", "Client name is required"));
+      return;
+    }
+
+    if (!items.length) {
+      toast.error(label("manualCloseNumberRequired", "Enter at least one valid number and amount"));
+      return;
+    }
+
+    try {
+      setManualCloseSubmitting(true);
+      const res = await fetch("/api/admin/manual-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientName, phone, items }),
+      });
+      const data = await readJson(res);
+
+      toast.success(label("manualCloseSuccess", "Number closed for client"));
+      resetManualCloseForm();
+      await loadManualEntries(false);
+      if (showManage) {
+        void loadNumbers();
+      }
+    } catch (err: any) {
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("manualCloseFailed", "Failed to close number for client"),
+      );
+    } finally {
+      setManualCloseSubmitting(false);
+    }
+  }
+
   function getApprovedFilteredAmount(user: ApprovedUserNumbersRow) {
     const filter = approvedNumberFilter.trim();
 
@@ -832,6 +1036,15 @@ export default function AdminNumbersPanel() {
           {loadingType === "manage"
             ? label("loading", "Loading...")
             : label("manageNumbers", "Manage Numbers")}
+        </button>
+
+        <button
+          type="button"
+          onClick={openManualCloseModal}
+          disabled={loadingType !== null || manualCloseSubmitting}
+          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm dark:text-purple-200 dark:bg-slate-900 dark:border-purple-800/60 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-50"
+        >
+          {label("manualCloseNumbersForClient", "Close Numbers for Client")}
         </button>
       </div>
 
@@ -952,6 +1165,197 @@ export default function AdminNumbersPanel() {
                   : label("sendMessage", "Send Message")}
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+
+      {showManualCloseModal && (
+        <Modal
+          onClose={() => setShowManualCloseModal(false)}
+          title={label("manualCloseNumbersForClient", "Close Numbers for Client")}
+          wide
+          scrollable
+        >
+          <div className="space-y-6">
+            <section className="rounded-2xl border border-purple-100 bg-purple-50 p-4 dark:border-purple-800/60 dark:bg-purple-950/30">
+              <div className="mb-4">
+                <h3 className="text-base font-black text-purple-900 dark:text-purple-100">
+                  {label("closeNumbersForClient", "Close number(s)")}
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-purple-700 dark:text-purple-200">
+                  {label(
+                    "manualCloseHelp",
+                    "Use this for clients who cannot register. The entry is saved as approved and uses the existing number logic.",
+                  )}
+                </p>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-gray-800 dark:text-slate-100">
+                    {label("clientName", "Client Name")} *
+                  </label>
+                  <input
+                    type="text"
+                    value={manualClientName}
+                    onChange={(event) => setManualClientName(event.target.value)}
+                    placeholder={label("clientNamePlaceholder", "Example: XYZ")}
+                    className="w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-gray-800 dark:text-slate-100">
+                    {label("phoneOptional", "Phone Number (optional)")}
+                  </label>
+                  <input
+                    type="tel"
+                    value={manualClientPhone}
+                    onChange={(event) => setManualClientPhone(event.target.value)}
+                    placeholder="09111"
+                    className="w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-black uppercase tracking-wide text-purple-700 dark:text-purple-200">
+                  <span>{label("number", "Number")}</span>
+                  <span>{label("amount", "Amount")}</span>
+                  <span className="sr-only">{label("remove", "Remove")}</span>
+                </div>
+
+                {manualCloseLines.map((line, index) => (
+                  <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={line.number}
+                      onChange={(event) => updateManualCloseLine(index, "number", event.target.value)}
+                      placeholder="25"
+                      className="w-full rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                    />
+                    <input
+                      type="number"
+                      min={1}
+                      value={line.amount}
+                      onChange={(event) => updateManualCloseLine(index, "amount", event.target.value)}
+                      placeholder="5000"
+                      className="w-full rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeManualCloseLine(index)}
+                      className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-black text-red-700 transition hover:bg-red-50 dark:border-red-800/60 dark:bg-slate-900 dark:text-red-200"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addManualCloseLine}
+                  className="rounded-xl border border-purple-200 bg-white px-4 py-2 text-sm font-black text-purple-700 transition hover:bg-purple-100 dark:border-purple-800/60 dark:bg-slate-900 dark:text-purple-200"
+                >
+                  + {label("addNumber", "Add Number")}
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-white p-3 text-sm font-bold text-purple-900 dark:bg-slate-900/70 dark:text-purple-100 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {label("totalAmount", "Total Amount")}: {getManualTotalAmount().toLocaleString()} {label("birr", "Birr")}
+                </span>
+                <button
+                  type="button"
+                  onClick={submitManualCloseNumbers}
+                  disabled={manualCloseSubmitting}
+                  className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {manualCloseSubmitting
+                    ? label("saving", "Saving...")
+                    : label("approveAndCloseNumbers", "Approve & Close Numbers")}
+                </button>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-black text-gray-900 dark:text-white">
+                    {label("manuallyClosedNumbers", "Manually Closed Numbers")}
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
+                    {label("manualEntriesExistingSchema", "Saved using approved submissions with no user account and no receipt.")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadManualEntries(false)}
+                  disabled={manualEntriesLoading}
+                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                >
+                  {manualEntriesLoading ? label("loading", "Loading...") : label("refresh", "Refresh")}
+                </button>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
+                <div className="max-h-[360px] overflow-auto">
+                  <table className="w-full min-w-[760px] text-sm">
+                    <thead className="sticky top-0 z-10 bg-gray-50 text-xs font-black uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                      <tr>
+                        <th className="p-3 text-left">{label("client", "Client")}</th>
+                        <th className="p-3 text-left">{label("phone", "Phone")}</th>
+                        <th className="p-3 text-left">{label("numbers", "Numbers")}</th>
+                        <th className="p-3 text-left">{label("amount", "Amount")}</th>
+                        <th className="p-3 text-left">{label("approvedAt", "Approved At")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                      {manualEntriesLoading ? (
+                        <tr>
+                          <td colSpan={5} className="p-6 text-center font-bold text-gray-500 dark:text-slate-400">
+                            {label("loading", "Loading...")}
+                          </td>
+                        </tr>
+                      ) : manualEntries.length ? (
+                        manualEntries.map((entry) => (
+                          <tr key={entry.id || `${entry.user_name}-${entry.created_at}`} className="align-top">
+                            <td className="p-3 font-bold text-gray-900 dark:text-white">
+                              {entry.user_name || "-"}
+                            </td>
+                            <td className="p-3 font-semibold text-gray-700 dark:text-slate-200">
+                              {entry.user_phone || entry.contact_phone || "-"}
+                            </td>
+                            <td className="p-3 font-black text-purple-700 dark:text-purple-200">
+                              {getManualEntryNumbers(entry)}
+                            </td>
+                            <td className="p-3">
+                              <div className="font-black text-gray-900 dark:text-white">
+                                {Number(entry.total_amount || 0).toLocaleString()} {label("birr", "Birr")}
+                              </div>
+                              <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
+                                {getManualEntryAmountBreakdown(entry)}
+                              </div>
+                            </td>
+                            <td className="p-3 font-semibold text-gray-600 dark:text-slate-300">
+                              {formatDate(entry.approved_at || entry.created_at)}
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="p-6 text-center font-bold text-gray-500 dark:text-slate-400">
+                            {label("noManualEntries", "No manually closed numbers yet.")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
           </div>
         </Modal>
       )}

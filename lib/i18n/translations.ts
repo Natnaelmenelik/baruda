@@ -1710,6 +1710,119 @@ try {
 } catch {}
 
 
+
+
+// Manual close numbers translation keys added by patch.
+try {
+  Object.assign((translations as any).en, {
+    manualCloseNumbersForClient: "Close Numbers for Client",
+    closeNumbersForClient: "Close number(s)",
+    manualCloseHelp:
+      "Close one or more numbers for an offline client. The entry is saved as an approved submission without a receipt.",
+    clientName: "Client Name",
+    clientNamePlaceholder: "Example: XYZ",
+    clientNameRequired: "Client name is required",
+    clientNameTooLong: "Client name is too long",
+    phoneOptional: "Phone Number (optional)",
+    addNumber: "Add Number",
+    remove: "Remove",
+    approveAndCloseNumbers: "Approve & Close Numbers",
+    manualCloseNumberRequired: "Enter at least one valid number and amount",
+    atLeastOneValidNumberAmountRequired:
+      "At least one valid number and amount is required",
+    manualCloseSuccess: "Number(s) closed for client",
+    manualCloseFailed: "Failed to close number(s) for client",
+    failedToLoadManualEntries: "Failed to load manually closed numbers",
+    manuallyClosedNumbers: "Manually Closed Numbers",
+    manualEntriesExistingSchema:
+      "Saved as approved submissions without a registered user account or receipt.",
+    noManualEntries: "No manually closed numbers yet.",
+    refresh: "Refresh",
+    saving: "Saving...",
+    client: "Client",
+    approvedAt: "Approved At",
+    numberNotAvailableWithNumber: "Number {number} is not available.",
+    numberAlreadyClosedWithNumber: "Number {number} is already closed.",
+    numberOnlyHasRemaining: "Number {number} only has {amount} Birr remaining.",
+    manualCloseMaxNumbers: "You can close up to 20 numbers at once",
+  });
+
+  Object.assign((translations as any).am, {
+    manualCloseNumbersForClient: "ለደንበኛ ቁጥሮችን ዝጋ",
+    closeNumbersForClient: "ቁጥር/ቁጥሮችን ዝጋ",
+    manualCloseHelp:
+      "መመዝገብ ላልቻለ ወይም በኦፍላይን ለከፈለ ደንበኛ አንድ ወይም ብዙ ቁጥሮችን እንደተፈቀደ ማስገባት። ደረሰኝ አያስፈልግም።",
+    clientName: "የደንበኛ ስም",
+    clientNamePlaceholder: "ምሳሌ፦ XYZ",
+    clientNameRequired: "የደንበኛ ስም ያስፈልጋል",
+    clientNameTooLong: "የደንበኛ ስም በጣም ረጅም ነው",
+    phoneOptional: "ስልክ ቁጥር (አማራጭ)",
+    addNumber: "ቁጥር ጨምር",
+    remove: "አስወግድ",
+    approveAndCloseNumbers: "ፍቀድና ቁጥሮችን ዝጋ",
+    manualCloseNumberRequired: "ቢያንስ አንድ ትክክለኛ ቁጥርና መጠን ያስገቡ",
+    atLeastOneValidNumberAmountRequired:
+      "ቢያንስ አንድ ትክክለኛ ቁጥርና መጠን ያስፈልጋል",
+    manualCloseSuccess: "ቁጥሩ/ቁጥሮቹ ለደንበኛው ተዘግተዋል",
+    manualCloseFailed: "ቁጥሮችን ለደንበኛ መዝጋት አልተሳካም",
+    failedToLoadManualEntries: "በእጅ የተዘጉ ቁጥሮችን መጫን አልተሳካም",
+    manuallyClosedNumbers: "በእጅ የተዘጉ ቁጥሮች",
+    manualEntriesExistingSchema:
+      "የተመዘገቡት ያለ ተጠቃሚ መለያና ያለ ደረሰኝ እንደተፈቀደ ማስገቢያ ነው።",
+    noManualEntries: "እስካሁን በእጅ የተዘጋ ቁጥር የለም።",
+    refresh: "አድስ",
+    saving: "በማስቀመጥ ላይ...",
+    client: "ደንበኛ",
+    approvedAt: "የተፈቀደበት ጊዜ",
+    numberNotAvailableWithNumber: "ቁጥር {number} አይገኝም።",
+    numberAlreadyClosedWithNumber: "ቁጥር {number} አስቀድሞ ተዘግቷል።",
+    numberOnlyHasRemaining: "ቁጥር {number} የቀረው {amount} ብር ብቻ ነው።",
+    manualCloseMaxNumbers: "በአንድ ጊዜ እስከ 20 ቁጥሮች መዝጋት ይችላሉ",
+  });
+
+  Object.assign((translations as any).om, {
+    manualCloseNumbersForClient: "Lakkoofsota Maamilaa Cufi",
+    closeNumbersForClient: "Lakkoofsa/lakkoofsota cufi",
+    manualCloseHelp:
+      "Maamila galmaa'uu hin dandeenye yookaan offline kaffaleef lakkoofsa tokko yookaan hedduu akka galmee mirkanaa'eetti galchi. Nagaheen hin barbaachisu.",
+    clientName: "Maqaa Maamilaa",
+    clientNamePlaceholder: "Fakkeenya: XYZ",
+    clientNameRequired: "Maqaan maamilaa barbaachisa",
+    clientNameTooLong: "Maqaan maamilaa baay'ee dheeraa dha",
+    phoneOptional: "Lakkoofsa Bilbilaa (dirqama miti)",
+    addNumber: "Lakkoofsa Dabaluu",
+    remove: "Haqi",
+    approveAndCloseNumbers: "Mirkaneessi & Lakkoofsota Cufi",
+    manualCloseNumberRequired: "Yoo xiqqaate lakkoofsa fi hanga sirrii tokko galchi",
+    atLeastOneValidNumberAmountRequired:
+      "Yoo xiqqaate lakkoofsi fi hangi sirrii tokko barbaachisa",
+    manualCloseSuccess: "Lakkoofsi/lakkoofsonni maamilaaf cufamaniiru",
+    manualCloseFailed: "Lakkoofsota maamilaaf cufuun hin milkoofne",
+    failedToLoadManualEntries: "Lakkoofsota harkaan cufaman fe'uun hin milkoofne",
+    manuallyClosedNumbers: "Lakkoofsota Harkaan Cufaman",
+    manualEntriesExistingSchema:
+      "Galmee mirkanaa'e ta'ee, herrega fayyadamaa galmaa'e yookaan nagahee malee kuufame.",
+    noManualEntries: "Lakkoofsi harkaan cufame ammaaf hin jiru.",
+    refresh: "Haaromsi",
+    saving: "Olkaa'aa jira...",
+    client: "Maamila",
+    approvedAt: "Yeroo Mirkanaa'e",
+    numberNotAvailableWithNumber: "Lakkoofsi {number} hin argamu.",
+    numberAlreadyClosedWithNumber: "Lakkoofsi {number} duraan cufameera.",
+    numberOnlyHasRemaining: "Lakkoofsi {number} Birr {amount} qofatu hafa.",
+    manualCloseMaxNumbers: "Yeroo tokko keessatti hanga lakkoofsa 20 cufuu dandeessa",
+  });
+} catch {}
+
+
+
+// Manual close Oromo compatibility alias.
+try {
+  if ((translations as any).or) {
+    Object.assign((translations as any).or, (translations as any).om || {});
+  }
+} catch {}
+
 export function t(lang: Lang, key: TranslationKey): string {
   const dict = translations[lang] || translations.en;
   return dict[key] || translations.en[key] || key;

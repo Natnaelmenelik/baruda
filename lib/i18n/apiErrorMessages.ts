@@ -123,6 +123,29 @@ export function translateApiError(error: any, lang: Lang) {
     return label(lang, "amountExceedsRemainingForNumber", raw, { number: match[1] });
   }
 
+
+  // Admin manual close dynamic validation errors
+  match = raw.match(/Number\s+(\d+)\s+is\s+not\s+available\.?/i);
+  if (match) {
+    return label(lang, "numberNotAvailableWithNumber", raw, { number: match[1] });
+  }
+
+  match = raw.match(/Number\s+(\d+)\s+is\s+already\s+closed\.?/i);
+  if (match) {
+    return label(lang, "numberAlreadyClosedWithNumber", raw, { number: match[1] });
+  }
+
+  if (/client name is required/i.test(raw)) return label(lang, "clientNameRequired", raw);
+  if (/client name is too long/i.test(raw)) return label(lang, "clientNameTooLong", raw);
+  if (/at least one valid number and amount is required/i.test(raw)) {
+    return label(lang, "atLeastOneValidNumberAmountRequired", raw);
+  }
+  if (/you can close up to 20 numbers at once/i.test(raw)) {
+    return label(lang, "manualCloseMaxNumbers", raw);
+  }
+  if (/failed to load manual entries/i.test(raw)) return label(lang, "failedToLoadManualEntries", raw);
+  if (/failed to close number for client/i.test(raw)) return label(lang, "manualCloseFailed", raw);
+
   // Static validation/API errors
   if (/amount exceeds remaining balance/i.test(raw)) return label(lang, "amountExceedsRemaining", raw);
   if (/failed to reserve selected amount/i.test(raw)) return label(lang, "failedToReserveSelectedAmount", raw);
