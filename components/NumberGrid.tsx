@@ -12,6 +12,8 @@ import { useLang } from "@/hooks/useLang";
 import { apiFetch } from "@/lib/auth/client";
 import { translations } from "@/lib/i18n/translations";
 import { translateApiError } from "@/lib/i18n/apiErrorMessages";
+import { APP_REALTIME_EVENTS } from "@/lib/realtime/appRealtimeEvents";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const SELECTED_NUMBERS_STORAGE_KEY = "baruda_selected_numbers";
 
@@ -165,6 +167,11 @@ async function fetchNumbers(): Promise<NumbersApiResponse> {
   return normalizeNumbersResponse(await readJson(res));
 }
 
+async function fetchLotterySettings() {
+  const res = await apiFetch("/api/settings", { cache: "no-store" });
+  return readJson(res);
+}
+
 export default function NumberGrid() {
   const queryClient = useQueryClient();
 
@@ -218,6 +225,78 @@ const { lang } = useLang();
     refetchInterval: false,
     refetchOnWindowFocus: false,
   });
+
+  const { data: lotterySettings } = useQuery({
+    queryKey: ["lottery-settings"],
+    queryFn: fetchLotterySettings,
+    staleTime: Infinity,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+
+  useEffect(() => {
+    const refreshLotterySettings = () => {
+      queryClient.invalidateQueries({ queryKey: ["lottery-settings"] });
+      queryClient.refetchQueries({
+        queryKey: ["lottery-settings"],
+        type: "active",
+      });
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === "baruda-settings-updated-at") {
+        refreshLotterySettings();
+      }
+    };
+
+    let broadcastChannel: BroadcastChannel | null = null;
+
+    try {
+      broadcastChannel = new BroadcastChannel("baruda-settings");
+      broadcastChannel.onmessage = (event) => {
+        if (event?.data?.type === "settings-updated") {
+          refreshLotterySettings();
+        }
+      };
+    } catch {
+      broadcastChannel = null;
+    }
+
+    window.addEventListener(APP_REALTIME_EVENTS.settingsUpdated, refreshLotterySettings);
+    window.addEventListener("settings-updated", refreshLotterySettings);
+    window.addEventListener("storage", handleStorage);
+
+    const supabase = getSupabaseBrowserClient();
+    const settingsChannel = supabase
+      .channel("dashboard-grid-status-settings-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "settings",
+          filter: "key=eq.numbers_grid_status",
+        },
+        refreshLotterySettings,
+      )
+      .subscribe();
+
+    return () => {
+      window.removeEventListener(APP_REALTIME_EVENTS.settingsUpdated, refreshLotterySettings);
+      window.removeEventListener("settings-updated", refreshLotterySettings);
+      window.removeEventListener("storage", handleStorage);
+      if (broadcastChannel) broadcastChannel.close();
+      supabase.removeChannel(settingsChannel);
+    };
+  }, [queryClient]);
+
+const numbersGridClosed = String(
+    lotterySettings?.numbersGridStatus ||
+      lotterySettings?.numbers_grid_status ||
+      "open",
+  ).toLowerCase() === "closed";
 
 const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
     ? numbersData.numbers
@@ -346,6 +425,11 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
   };
 
   const handleClick = (item: NumberItem) => {
+    if (numbersGridClosed) {
+      toast.error(txt.numbersGridClosedToast || "Number selection is temporarily closed.");
+      return;
+    }
+
     const num = Number(('num' in item ? item.num : item.number));
     if (!num) return;
 
@@ -371,6 +455,11 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
   };
 
 const handleProceed = async () => {
+    if (numbersGridClosed) {
+      toast.error(txt.numbersGridClosedToast || "Number selection is temporarily closed.");
+      return;
+    }
+
     if (!selectedNumbers.length) {
       toast.error(txt.selectAtLeastOneNumber);
       return;
@@ -458,8 +547,9 @@ const handleProceed = async () => {
         </div>
 
         <div className="order-2 xl:order-1 space-y-4">
-          <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 2xl:grid-cols-16">
-            {visibleNumbers.map((item) => {
+          <div className="relative overflow-hidden rounded-2xl">
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 2xl:grid-cols-16">
+              {visibleNumbers.map((item) => {
               const num = Number(('num' in item ? item.num : item.number));
               const selected = selectedNumbers.includes(num);
               const status = item.status || "available";
@@ -497,7 +587,25 @@ const handleProceed = async () => {
                   {num}
                 </button>
               );
-            })}
+              })}
+            </div>
+
+            {numbersGridClosed && (
+              <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-white/75 p-4 backdrop-blur-sm dark:bg-slate-950/75">
+                <div className="max-w-sm rounded-2xl border border-red-100 bg-white p-5 text-center shadow-2xl dark:border-red-900/50 dark:bg-slate-900">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl dark:bg-red-950/60">
+                    🔒
+                  </div>
+                  <h3 className="mt-3 text-lg font-black text-gray-900 dark:text-white">
+                    {txt.numbersGridClosedTitle || "Number Selection Closed"}
+                  </h3>
+                  <p className="mt-2 text-sm font-semibold text-gray-600 dark:text-slate-300">
+                    {txt.numbersGridClosedMessage ||
+                      "Number selection is temporarily closed. Please check back later."}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 rounded-xl border bg-white dark:bg-slate-900 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">

@@ -80,7 +80,6 @@ export async function POST(req: Request) {
     }
 
     await ensureUserExists(user, body);
-
     const submissionLimitRows = await sql`
       SELECT COUNT(*)::int AS count
       FROM submissions

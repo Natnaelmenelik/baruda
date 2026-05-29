@@ -9,7 +9,7 @@ export async function GET() {
 
   return NextResponse.json(settings, {
     headers: {
-      'Cache-Control': 'private, max-age=5, stale-while-revalidate=20',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
     },
   });
 }

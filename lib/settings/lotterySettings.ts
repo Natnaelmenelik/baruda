@@ -3,12 +3,14 @@ import { sql } from '@/lib/db/sql';
 export const DEFAULT_TICKET_PRICE = 300;
 export const DEFAULT_GRID_SIZE = 2000;
 
-const SETTINGS_CACHE_TTL_MS = 5_000;
+const SETTINGS_CACHE_TTL_MS = 0;
 let cachedSettings: { value: LotterySettings; expiresAt: number } | null = null;
 
 type LotterySettings = {
   ticketPrice: number;
   gridSize: number;
+  numbersGridStatus: "open" | "closed";
+  numbersGridOpen: boolean;
 };
 
 function cleanPositiveNumber(value: unknown, fallback: number) {
@@ -16,11 +18,18 @@ function cleanPositiveNumber(value: unknown, fallback: number) {
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
+function cleanGridStatus(value: unknown): "open" | "closed" {
+  return String(value || "open").toLowerCase() === "closed" ? "closed" : "open";
+}
+
 function normalizeSettings(rows: Array<{ key: string; value: unknown }>): LotterySettings {
   const map = new Map(rows.map((row) => [row.key, row.value]));
+  const numbersGridStatus = cleanGridStatus(map.get('numbers_grid_status'));
   return {
     ticketPrice: cleanPositiveNumber(map.get('ticket_price'), DEFAULT_TICKET_PRICE),
     gridSize: cleanPositiveNumber(map.get('grid_size'), DEFAULT_GRID_SIZE),
+    numbersGridStatus,
+    numbersGridOpen: numbersGridStatus !== 'closed',
   };
 }
 
@@ -65,7 +74,7 @@ export async function getLotterySettings() {
     const rows = await sql`
       SELECT key, value
       FROM settings
-      WHERE key IN ('ticket_price', 'grid_size')
+      WHERE key IN ('ticket_price', 'grid_size', 'numbers_grid_status')
     `;
 
     const value = normalizeSettings(rows as unknown as Array<{ key: string; value: unknown }>);
@@ -76,6 +85,8 @@ export async function getLotterySettings() {
     return {
       ticketPrice: DEFAULT_TICKET_PRICE,
       gridSize: DEFAULT_GRID_SIZE,
+      numbersGridStatus: 'open',
+      numbersGridOpen: true,
     };
   }
 }

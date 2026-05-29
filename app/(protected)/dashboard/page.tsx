@@ -343,7 +343,6 @@ export default function DashboardPage() {
       // Realtime already delivered the important status; fallback details are optional.
     }
   }
-
   async function loadDashboardAnnouncementsOnce() {
     const token =
       typeof window !== "undefined" ? localStorage.getItem("token") : null;
@@ -680,7 +679,8 @@ export default function DashboardPage() {
         </section>
 
         <section>
-          <NumberStatusLegend lang={lang} /> <NumberGrid />
+          <NumberStatusLegend lang={lang} />
+          <NumberGrid />
         </section>
       </div>
 

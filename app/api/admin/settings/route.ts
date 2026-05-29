@@ -128,6 +128,7 @@ export async function GET(req: Request) {
     const ticketPrice = await getSetting("ticket_price", "100");
     const gridSize = await getSetting("grid_size", "100");
     const defaultTargetAmount = await getSetting("default_target_amount", "5000");
+    const numbersGridStatus = String(await getSetting("numbers_grid_status", "open")).toLowerCase() === "closed" ? "closed" : "open";
 
     return NextResponse.json({
       ticketPrice: Number(ticketPrice),
@@ -136,6 +137,10 @@ export async function GET(req: Request) {
       grid_size: Number(gridSize),
       defaultTargetAmount: Number(defaultTargetAmount),
       default_target_amount: Number(defaultTargetAmount),
+      numbersGridStatus,
+      numbers_grid_status: numbersGridStatus,
+      numbersGridOpen: numbersGridStatus !== 'closed',
+      numbers_grid_open: numbersGridStatus !== 'closed',
     });
   } catch (error: any) {
     return NextResponse.json(
@@ -165,6 +170,10 @@ async function saveSettings(req: Request) {
     body.gridSize ?? body.grid_size ?? body.numberGridSize ?? body.numbersGridSize ?? 100,
   );
 
+  const numbersGridStatus = String(
+    body.numbersGridStatus ?? body.numbers_grid_status ?? body.gridStatus ?? body.grid_status ?? 'open',
+  ).toLowerCase() === 'closed' ? 'closed' : 'open';
+
   if (!Number.isFinite(ticketPrice) || ticketPrice <= 0) {
     return NextResponse.json({ error: "Invalid ticket price" }, { status: 400 });
   }
@@ -189,6 +198,7 @@ async function saveSettings(req: Request) {
 
   await upsertSetting("ticket_price", String(ticketPrice));
   await upsertSetting("grid_size", String(gridSize));
+  await upsertSetting("numbers_grid_status", numbersGridStatus);
 
   const defaultTargetAmount = await getSetting("default_target_amount", "5000");
 
@@ -200,6 +210,10 @@ async function saveSettings(req: Request) {
     grid_size: gridSize,
     defaultTargetAmount: Number(defaultTargetAmount),
     default_target_amount: Number(defaultTargetAmount),
+    numbersGridStatus,
+    numbers_grid_status: numbersGridStatus,
+    numbersGridOpen: numbersGridStatus !== 'closed',
+    numbers_grid_open: numbersGridStatus !== 'closed',
   });
 }
 
