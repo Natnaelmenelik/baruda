@@ -1489,7 +1489,7 @@ export default function AdminNumbersPanel() {
           onClick={() => setSelectionReceiptImage(null)}
         >
           <div
-            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl dark:bg-slate-900 rounded-2xl"
+            className="relative w-full max-w-4xl p-5 bg-white shadow-2xl dark:bg-slate-900 rounded-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 mb-4 border-b">
