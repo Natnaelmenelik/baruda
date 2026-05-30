@@ -2,7 +2,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNumberSummaryRealtime, type NumberSummaryCacheRow } from '@/hooks/useNumberSummaryRealtime';
+import {
+  useNumberSummaryRealtime,
+  type NumberSummaryCacheRow,
+} from "@/hooks/useNumberSummaryRealtime";
+import { useLotteryGridSettingsRealtime } from "@/hooks/useLotteryGridSettingsRealtime";
 import toast from "react-hot-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SubmitNumberModal from "@/components/SubmitNumberModal";
@@ -11,14 +15,19 @@ import ConfirmSelectionModal from "@/components/ConfirmSelectionModal";
 import { useLang } from "@/hooks/useLang";
 import { apiFetch } from "@/lib/auth/client";
 import { translations } from "@/lib/i18n/translations";
-import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 import { APP_REALTIME_EVENTS } from "@/lib/realtime/appRealtimeEvents";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { translateApiError } from "@/lib/i18n/apiErrorMessages";
 
 const SELECTED_NUMBERS_STORAGE_KEY = "baruda_selected_numbers";
 
-
-type NumberStatus = "available" | "pending" | "taken" | "locked" | "locked_by_me" | "open" | "closed";
+type NumberStatus =
+  | "available"
+  | "pending"
+  | "taken"
+  | "locked"
+  | "locked_by_me"
+  | "open"
+  | "closed";
 
 type NumberItem = {
   num?: number;
@@ -69,13 +78,14 @@ function normalizeNumbersResponse(data: any): NumbersApiResponse {
   };
 }
 
-
 function applyLiveNumberPatch(oldData: any, payload: any) {
   if (!oldData) return oldData;
 
   const affected = new Set(
     Array.isArray(payload?.numbers)
-      ? payload.numbers.map((n: any) => Number(n)).filter((n: number) => Number.isInteger(n))
+      ? payload.numbers
+          .map((n: any) => Number(n))
+          .filter((n: number) => Number.isInteger(n))
       : [],
   );
 
@@ -103,22 +113,30 @@ function applyLiveNumberPatch(oldData: any, payload: any) {
   return oldData;
 }
 
-
 function normalizeSummaryCacheRow(row: any): NumberItem | null {
   const number = Number(row?.number ?? row?.num);
   if (!Number.isInteger(number) || number <= 0) return null;
 
   const target = Number(row?.target_amount ?? row?.target ?? 0);
-  const approved = Number(row?.approved_amount ?? row?.sold_amount ?? row?.current_amount ?? row?.current ?? 0);
+  const approved = Number(
+    row?.approved_amount ??
+      row?.sold_amount ??
+      row?.current_amount ??
+      row?.current ??
+      0,
+  );
   const pending = Number(row?.pending_amount ?? 0);
   const hold = Number(row?.hold_amount ?? 0);
-  const remaining = Number(row?.remaining_amount ?? Math.max(target - approved - pending - hold, 0));
-  const rawStatus = String(row?.status || '').toLowerCase();
-  const status: NumberStatus = rawStatus === 'sold' || rawStatus === 'closed' || remaining <= 0
-    ? 'taken'
-    : pending > 0 || hold > 0 || rawStatus === 'pending'
-      ? 'pending'
-      : 'available';
+  const remaining = Number(
+    row?.remaining_amount ?? Math.max(target - approved - pending - hold, 0),
+  );
+  const rawStatus = String(row?.status || "").toLowerCase();
+  const status: NumberStatus =
+    rawStatus === "sold" || rawStatus === "closed" || remaining <= 0
+      ? "taken"
+      : pending > 0 || hold > 0 || rawStatus === "pending"
+        ? "pending"
+        : "available";
 
   return {
     num: number,
@@ -147,16 +165,60 @@ function patchNumberInQueryData(oldData: any, row: any) {
   };
 
   if (Array.isArray(oldData)) {
-    const exists = oldData.some((item) => Number(item?.number ?? item?.num) === patched.number);
-    return exists ? oldData.map(patchItem) : [...oldData, patched].sort((a, b) => Number(a.number ?? a.num) - Number(b.number ?? b.num));
+    const exists = oldData.some(
+      (item) => Number(item?.number ?? item?.num) === patched.number,
+    );
+    return exists
+      ? oldData.map(patchItem)
+      : [...oldData, patched].sort(
+          (a, b) => Number(a.number ?? a.num) - Number(b.number ?? b.num),
+        );
   }
 
   if (Array.isArray(oldData?.numbers)) {
-    const exists = oldData.numbers.some((item: any) => Number(item?.number ?? item?.num) === patched.number);
+    const exists = oldData.numbers.some(
+      (item: any) => Number(item?.number ?? item?.num) === patched.number,
+    );
     const numbers = exists
       ? oldData.numbers.map(patchItem)
-      : [...oldData.numbers, patched].sort((a: any, b: any) => Number(a.number ?? a.num) - Number(b.number ?? b.num));
+      : [...oldData.numbers, patched].sort(
+          (a: any, b: any) =>
+            Number(a.number ?? a.num) - Number(b.number ?? b.num),
+        );
     return { ...oldData, numbers };
+  }
+
+  return oldData;
+}
+
+function patchLotterySettingsInQueryData(oldData: any, row: any) {
+  const patched = normalizeLotterySettingsPayload(row);
+  if (!patched) return oldData;
+
+  return {
+    ...(oldData || {}),
+    ...patched,
+  };
+}
+
+function patchNumbersGridMetaInQueryData(oldData: any, settings: any) {
+  const patched = normalizeLotterySettingsPayload(settings);
+  if (!patched) return oldData;
+
+  if (Array.isArray(oldData)) {
+    return {
+      numbers: oldData,
+      gridSize: patched.gridSize,
+      grid_size: patched.gridSize,
+    };
+  }
+
+  if (oldData && typeof oldData === "object") {
+    return {
+      ...oldData,
+      gridSize: patched.gridSize,
+      grid_size: patched.gridSize,
+    };
   }
 
   return oldData;
@@ -172,17 +234,132 @@ async function fetchLotterySettings() {
   return readJson(res);
 }
 
+function normalizeLotterySettingsPayload(value: any) {
+  if (!value || typeof value !== "object") return null;
+
+  const ticketPrice = Number(value.ticketPrice ?? value.ticket_price ?? 300);
+  const gridSize = Number(value.gridSize ?? value.grid_size ?? 2000);
+  const defaultTargetAmount = Number(
+    value.defaultTargetAmount ?? value.default_target_amount ?? 5000,
+  );
+  const numbersGridStatus =
+    String(
+      value.numbersGridStatus ?? value.numbers_grid_status ?? "open",
+    ).toLowerCase() === "closed"
+      ? "closed"
+      : "open";
+
+  return {
+    ...value,
+    ticketPrice,
+    ticket_price: ticketPrice,
+    gridSize,
+    grid_size: gridSize,
+    defaultTargetAmount,
+    default_target_amount: defaultTargetAmount,
+    numbersGridStatus,
+    numbers_grid_status: numbersGridStatus,
+    numbersGridOpen: numbersGridStatus !== "closed",
+    numbers_grid_open: numbersGridStatus !== "closed",
+  };
+}
+
 export default function NumberGrid() {
   const queryClient = useQueryClient();
+  const [liveLotterySettings, setLiveLotterySettings] = useState<any>(null);
 
-  const handleNumberSummaryRealtime = useCallback((row: any) => {
-    queryClient.setQueryData(["numbers"], (oldData: any) =>
-      patchNumberInQueryData(oldData, row),
-    );
-  }, [queryClient]);
-  
+  const handleNumberSummaryRealtime = useCallback(
+    (row: any) => {
+      queryClient.setQueryData(["numbers"], (oldData: any) =>
+        patchNumberInQueryData(oldData, row),
+      );
+    },
+    [queryClient],
+  );
+
   useNumberSummaryRealtime(handleNumberSummaryRealtime);
-const { lang } = useLang();
+
+  const applyLotteryGridSettings = useCallback(
+    (settings: any) => {
+      const normalized = normalizeLotterySettingsPayload(settings?.settings || settings);
+      if (!normalized) return false;
+
+      setLiveLotterySettings((old: any) => ({
+        ...(old || {}),
+        ...normalized,
+      }));
+
+      queryClient.setQueryData(["lottery-settings"], (oldData: any) =>
+        patchLotterySettingsInQueryData(oldData, normalized),
+      );
+
+      queryClient.setQueryData(["settings"], (oldData: any) =>
+        patchLotterySettingsInQueryData(oldData, normalized),
+      );
+
+      queryClient.setQueryData(["numbers"], (oldData: any) =>
+        patchNumbersGridMetaInQueryData(oldData, normalized),
+      );
+
+      return true;
+    },
+    [queryClient],
+  );
+
+  const handleLotteryGridSettingsRealtime = useCallback(
+    (row: any) => {
+      // Mirrors ticket_price exactly:
+      // ticket_price: useNumberSummaryRealtime(row) -> setQueryData(["numbers"])
+      // grid/status: useLotteryGridSettingsRealtime(row) -> setQueryData(["lottery-settings"])
+      applyLotteryGridSettings(row);
+    },
+    [applyLotteryGridSettings],
+  );
+
+  useLotteryGridSettingsRealtime(handleLotteryGridSettingsRealtime);
+
+  useEffect(() => {
+    const refreshSettings = (event?: Event) => {
+      const detail = (event as CustomEvent<any>)?.detail;
+
+      if (applyLotteryGridSettings(detail?.settings || detail)) {
+        return;
+      }
+
+      // Fallback only for old empty events.
+      queryClient.invalidateQueries({ queryKey: ["lottery-settings"] });
+      queryClient.refetchQueries({
+        queryKey: ["lottery-settings"],
+        exact: true,
+      });
+    };
+
+    const refreshNumbers = () => {
+      queryClient.invalidateQueries({ queryKey: ["numbers"] });
+      queryClient.refetchQueries({ queryKey: ["numbers"], exact: true });
+    };
+
+    window.addEventListener(
+      APP_REALTIME_EVENTS.settingsUpdated,
+      refreshSettings,
+    );
+    window.addEventListener("settings-updated", refreshSettings);
+    window.addEventListener(APP_REALTIME_EVENTS.numbersUpdated, refreshNumbers);
+
+    return () => {
+      window.removeEventListener(
+        APP_REALTIME_EVENTS.settingsUpdated,
+        refreshSettings,
+      );
+      window.removeEventListener("settings-updated", refreshSettings);
+      window.removeEventListener(
+        APP_REALTIME_EVENTS.numbersUpdated,
+        refreshNumbers,
+      );
+    };
+  }, [applyLotteryGridSettings, queryClient]);
+
+  const { lang } = useLang();
   const txt = translations[lang];
 
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>(() => {
@@ -228,81 +405,52 @@ const { lang } = useLang();
 
   const { data: lotterySettings } = useQuery({
     queryKey: ["lottery-settings"],
-    queryFn: fetchLotterySettings,
-    staleTime: Infinity,
-    gcTime: 5 * 60 * 1000,
+    queryFn: async () =>
+      normalizeLotterySettingsPayload(await fetchLotterySettings()),
     refetchInterval: false,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    staleTime: Infinity,
   });
-
   useEffect(() => {
-    const refreshLotterySettings = () => {
-      queryClient.invalidateQueries({ queryKey: ["lottery-settings"] });
-      queryClient.refetchQueries({
-        queryKey: ["lottery-settings"],
-        type: "active",
-      });
-    };
+    if (!lotterySettings) return;
 
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === "baruda-settings-updated-at") {
-        refreshLotterySettings();
-      }
-    };
+    const normalized = normalizeLotterySettingsPayload(lotterySettings);
+    if (!normalized) return;
 
-    let broadcastChannel: BroadcastChannel | null = null;
+    setLiveLotterySettings((old: any) => ({
+      ...(old || {}),
+      ...normalized,
+    }));
 
-    try {
-      broadcastChannel = new BroadcastChannel("baruda-settings");
-      broadcastChannel.onmessage = (event) => {
-        if (event?.data?.type === "settings-updated") {
-          refreshLotterySettings();
-        }
-      };
-    } catch {
-      broadcastChannel = null;
-    }
+    queryClient.setQueryData(["settings"], (oldData: any) =>
+      patchLotterySettingsInQueryData(oldData, normalized),
+    );
+  }, [lotterySettings, queryClient]);
 
-    window.addEventListener(APP_REALTIME_EVENTS.settingsUpdated, refreshLotterySettings);
-    window.addEventListener("settings-updated", refreshLotterySettings);
-    window.addEventListener("storage", handleStorage);
-
-    const supabase = getSupabaseBrowserClient();
-    const settingsChannel = supabase
-      .channel("dashboard-grid-status-settings-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "settings",
-          filter: "key=eq.numbers_grid_status",
-        },
-        refreshLotterySettings,
-      )
-      .subscribe();
-
-    return () => {
-      window.removeEventListener(APP_REALTIME_EVENTS.settingsUpdated, refreshLotterySettings);
-      window.removeEventListener("settings-updated", refreshLotterySettings);
-      window.removeEventListener("storage", handleStorage);
-      if (broadcastChannel) broadcastChannel.close();
-      supabase.removeChannel(settingsChannel);
-    };
-  }, [queryClient]);
-
-const numbersGridClosed = String(
-    lotterySettings?.numbersGridStatus ||
-      lotterySettings?.numbers_grid_status ||
-      "open",
-  ).toLowerCase() === "closed";
-
-const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
+  const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
     ? numbersData.numbers
     : [];
 
-  const gridSize = Number(numbersData?.gridSize || numbers.length || 2000);
+  const effectiveLotterySettings = {
+    ...(lotterySettings || {}),
+    ...(liveLotterySettings || {}),
+  };
+
+  const gridSize = Number(
+    effectiveLotterySettings?.gridSize ||
+      effectiveLotterySettings?.grid_size ||
+      numbersData?.gridSize ||
+      numbers.length ||
+      2000,
+  );
+
+  const numbersGridClosed =
+    String(
+      effectiveLotterySettings?.numbersGridStatus ||
+        effectiveLotterySettings?.numbers_grid_status ||
+        "open",
+    ).toLowerCase() === "closed";
 
   const targetsByNumber = useMemo(() => {
     const map: Record<number, PoolTarget> = {};
@@ -316,7 +464,9 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
         item.current ?? item.current_amount ?? item.sold_amount ?? 0,
       );
       const remaining = Number(
-        item.remaining ?? item.remaining_amount ?? Math.max(target - current, 0),
+        item.remaining ??
+          item.remaining_amount ??
+          Math.max(target - current, 0),
       );
 
       map[number] = {
@@ -332,14 +482,27 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
   }, [numbers]);
 
   const safeNumbers = useMemo(() => {
-    const raw = Array.isArray(numbers) && numbers.length
-      ? numbers
-      : Array.from({ length: gridSize }, (_, i) => ({ num: i + 1, status: "available" as NumberStatus }));
+    const raw = Array.from({ length: gridSize }, (_, i) => {
+      const num = i + 1;
+      const existing = Array.isArray(numbers)
+        ? numbers.find((item) => Number(item?.number ?? item?.num) === num)
+        : null;
+
+      return (
+        existing || {
+          num,
+          number: num,
+          status: "available" as NumberStatus,
+        }
+      );
+    });
 
     return raw.map((item) => {
-      const num = Number(('num' in item ? item.num : item.number));
+      const num = Number("num" in item ? item.num : item.number);
       const pool = targetsByNumber[num];
-      const remaining = Number(pool?.remaining ?? ('remaining' in item ? item.remaining : 1));
+      const remaining = Number(
+        pool?.remaining ?? ("remaining" in item ? item.remaining : 1),
+      );
       const statusFromPool = pool?.status;
       const status =
         statusFromPool === "closed" || remaining <= 0 || item.status === "taken"
@@ -360,6 +523,11 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
   }, [numbers, gridSize, targetsByNumber]);
 
   const totalPages = Math.max(Math.ceil(safeNumbers.length / PAGE_SIZE), 1);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(Math.max(page, 1), totalPages));
+  }, [totalPages]);
+
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const startIndex = (safeCurrentPage - 1) * PAGE_SIZE;
   const endIndex = startIndex + PAGE_SIZE;
@@ -409,6 +577,13 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
   }, [searchNumber, safeNumbers.length]);
 
   const removeNumber = (num: number) => {
+    if (numbersGridClosed) {
+      toast.error(
+        txt.numbersGridClosedToast || "Number selection is temporarily closed.",
+      );
+      return;
+    }
+
     setSelectedNumbers((prev) => prev.filter((n) => n !== num));
     setAmounts((prev) => {
       const next = { ...prev };
@@ -417,20 +592,39 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
     });
   };
 
-  const clearSelection = () => {
+  const forceClearSelection = () => {
     setSelectedNumbers([]);
     setAmounts({});
     localStorage.removeItem(SELECTED_KEY);
     localStorage.removeItem(AMOUNTS_KEY);
   };
 
-  const handleClick = (item: NumberItem) => {
+  const clearSelection = () => {
     if (numbersGridClosed) {
-      toast.error(txt.numbersGridClosedToast || "Number selection is temporarily closed.");
+      toast.error(
+        txt.numbersGridClosedToast || "Number selection is temporarily closed.",
+      );
       return;
     }
 
-    const num = Number(('num' in item ? item.num : item.number));
+    forceClearSelection();
+  };
+
+  const handleClick = (item: NumberItem) => {
+    if (numbersGridClosed) {
+      toast.error(
+        txt.numbersGridClosedToast || "Number selection is temporarily closed.",
+      );
+      return;
+    }
+    if (numbersGridClosed) {
+      toast.error(
+        txt.numbersGridClosedToast || "Number selection is temporarily closed.",
+      );
+      return;
+    }
+
+    const num = Number("num" in item ? item.num : item.number);
     if (!num) return;
 
     const selected = selectedNumbers.includes(num);
@@ -446,17 +640,20 @@ const numbers: NumberItem[] = Array.isArray(numbersData?.numbers)
     }
 
     setSelectedNumbers((prev) =>
-      Array.from(new Set([...prev, num])).sort((a, b) => a - b)
+      Array.from(new Set([...prev, num])).sort((a, b) => a - b),
     );
   };
 
   const handleAmountChange = (num: number, value: string) => {
+    if (numbersGridClosed) return;
     setAmounts((prev) => ({ ...prev, [num]: value }));
   };
 
-const handleProceed = async () => {
+  const handleProceed = async () => {
     if (numbersGridClosed) {
-      toast.error(txt.numbersGridClosedToast || "Number selection is temporarily closed.");
+      toast.error(
+        txt.numbersGridClosedToast || "Number selection is temporarily closed.",
+      );
       return;
     }
 
@@ -476,12 +673,16 @@ const handleProceed = async () => {
       }
 
       if (amount < 500) {
-        toast.error(txt.minimumContributionAmount || "Minimum amount is 500 Birr");
+        toast.error(
+          txt.minimumContributionAmount || "Minimum amount is 500 Birr",
+        );
         return;
       }
 
       if (amount % 500 !== 0) {
-        toast.error(txt.amountMustBeMultipleOf500 || "Amount must be in multiples of 500");
+        toast.error(
+          txt.amountMustBeMultipleOf500 || "Amount must be in multiples of 500",
+        );
         return;
       }
 
@@ -495,7 +696,7 @@ const handleProceed = async () => {
   };
 
   const handleSubmitted = async () => {
-    clearSelection();
+    forceClearSelection();
     // Number status updates now arrive from number_status_summary_cache realtime.
   };
 
@@ -505,7 +706,7 @@ const handleProceed = async () => {
 
   if (error) {
     return (
-      <div className="rounded-xl bg-red-50 p-6 text-center text-red-600">
+      <div className="p-6 text-center text-red-600 rounded-xl bg-red-50">
         {txt.failedToLoadNumbers}
       </div>
     );
@@ -513,9 +714,9 @@ const handleProceed = async () => {
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex flex-col gap-3 rounded-2xl bg-white dark:bg-slate-900 p-4 shadow dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 p-4 mb-4 bg-white shadow rounded-2xl dark:bg-slate-900 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white dark:text-white">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
             {txt.chooseYourNumbers}
           </h2>
           <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-300">
@@ -528,11 +729,11 @@ const handleProceed = async () => {
           value={searchNumber}
           onChange={(e) => setSearchNumber(e.target.value)}
           placeholder={txt.searchNumber}
-          className="w-full rounded-xl border px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white md:w-64"
+          className="w-full px-4 py-3 border outline-none rounded-xl focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white md:w-64"
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="relative grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="order-1 xl:order-2">
           <SelectedNumbersPanel
             selectedNumbers={selectedNumbers}
@@ -543,73 +744,60 @@ const handleProceed = async () => {
             onClear={clearSelection}
             onRemove={removeNumber}
             lang={lang}
+            disabled={numbersGridClosed}
           />
         </div>
 
-        <div className="order-2 xl:order-1 space-y-4">
+        <div className="order-2 space-y-4 xl:order-1">
           <div className="relative overflow-hidden rounded-2xl">
             <div className="grid grid-cols-5 gap-2 sm:grid-cols-8 md:grid-cols-10 lg:grid-cols-12 xl:grid-cols-14 2xl:grid-cols-16">
               {visibleNumbers.map((item) => {
-              const num = Number(('num' in item ? item.num : item.number));
-              const selected = selectedNumbers.includes(num);
-              const status = item.status || "available";
+                const num = Number("num" in item ? item.num : item.number);
+                const selected = selectedNumbers.includes(num);
+                const status = item.status || "available";
 
-              let colorClass =
-                "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+                let colorClass =
+                  "border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-gray-800 dark:text-slate-100 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
 
-              if (status === "taken" || status === "closed") {
-                colorClass =
-                  "border-green-300 bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-800 dark:text-emerald-100 dark:border-green-700 dark:bg-green-950 dark:text-green-200";
-              }
+                if (status === "taken" || status === "closed") {
+                  colorClass =
+                    "border-green-300 bg-green-100 dark:bg-emerald-50 dark:bg-emerald-950/300/20 text-green-800 dark:text-emerald-100 dark:border-green-700 dark:bg-green-950 dark:text-green-200";
+                }
 
-              if (status === "pending") {
-                colorClass =
-                  "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200";
-              }
+                if (status === "pending") {
+                  colorClass =
+                    "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200";
+                }
 
-              if (selected) {
-                colorClass =
-                  "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none";
-              }
+                if (selected) {
+                  colorClass =
+                    "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200 dark:shadow-none";
+                }
 
-              return (
-                <button
-                  key={num}
-                  ref={(el) => {
-                    numberRefs.current[num] = el;
-                  }}
-                  type="button"
-                  onClick={() => handleClick(item)}
-                  disabled={!selected && (status === "taken" || status === "closed")}
-                  className={`min-h-[46px] rounded-xl border text-sm font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 sm:min-h-[48px] ${colorClass}`}
-                  title={String(status)}
-                >
-                  {num}
-                </button>
-              );
+                return (
+                  <button
+                    key={num}
+                    ref={(el) => {
+                      numberRefs.current[num] = el;
+                    }}
+                    type="button"
+                    onClick={() => handleClick(item)}
+                    disabled={
+                      numbersGridClosed ||
+                      (!selected && (status === "taken" || status === "closed"))
+                    }
+                    className={`min-h-[46px] rounded-xl border text-sm font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-80 sm:min-h-[48px] ${colorClass}`}
+                    title={String(status)}
+                  >
+                    {num}
+                  </button>
+                );
               })}
             </div>
+</div>
 
-            {numbersGridClosed && (
-              <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl bg-white/75 p-4 backdrop-blur-sm dark:bg-slate-950/75">
-                <div className="max-w-sm rounded-2xl border border-red-100 bg-white p-5 text-center shadow-2xl dark:border-red-900/50 dark:bg-slate-900">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-2xl dark:bg-red-950/60">
-                    🔒
-                  </div>
-                  <h3 className="mt-3 text-lg font-black text-gray-900 dark:text-white">
-                    {txt.numbersGridClosedTitle || "Number Selection Closed"}
-                  </h3>
-                  <p className="mt-2 text-sm font-semibold text-gray-600 dark:text-slate-300">
-                    {txt.numbersGridClosedMessage ||
-                      "Number selection is temporarily closed. Please check back later."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-3 rounded-xl border bg-white dark:bg-slate-900 p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-semibold text-gray-700 dark:text-slate-200 dark:text-slate-200">
+          <div className="flex flex-col gap-3 p-3 bg-white border shadow-sm rounded-xl dark:bg-slate-900 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm font-semibold text-gray-700 dark:text-slate-200">
               {txt.page} {safeCurrentPage} / {totalPages} — {startIndex + 1} -{" "}
               {Math.min(endIndex, safeNumbers.length)}
             </div>
@@ -619,23 +807,43 @@ const handleProceed = async () => {
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                 disabled={safeCurrentPage <= 1}
-                className="flex-1 rounded-lg border px-4 py-2 font-semibold disabled:opacity-40 dark:border-slate-700 sm:flex-none"
+                className="flex-1 px-4 py-2 font-semibold border rounded-lg disabled:opacity-40 dark:border-slate-700 sm:flex-none"
               >
                 {txt.previous}
               </button>
 
               <button
                 type="button"
-                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
                 disabled={safeCurrentPage >= totalPages}
-                className="flex-1 rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-40 sm:flex-none"
+                className="flex-1 px-4 py-2 font-semibold text-white bg-blue-600 rounded-lg disabled:opacity-40 sm:flex-none"
               >
                 {txt.next}
               </button>
             </div>
           </div>
-
         </div>
+
+        {numbersGridClosed && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center rounded-3xl border border-red-200/80 bg-gradient-to-br from-white/90 via-white/80 to-red-50/90 p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)] backdrop-blur-md dark:border-red-900/60 dark:from-slate-950/90 dark:via-slate-950/80 dark:to-red-950/50">
+            <div className="pointer-events-auto max-w-md rounded-3xl border border-red-100 bg-white p-6 text-center shadow-2xl dark:border-red-900/70 dark:bg-slate-900">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-red-100 text-4xl shadow-inner dark:bg-red-950/70">
+                🔒
+              </div>
+
+              <h3 className="mt-4 text-2xl font-black text-gray-950 dark:text-white">
+                {txt.numbersGridClosedTitle || "Number Selection Closed"}
+              </h3>
+
+              <p className="mt-3 text-sm font-semibold leading-6 text-gray-600 dark:text-slate-300">
+                {txt.numbersGridClosedMessage ||
+                  "Number selection is temporarily closed by admin. The number grid and selected numbers panel are disabled until it reopens."}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmSelectionModal
@@ -664,3 +872,4 @@ const handleProceed = async () => {
     </div>
   );
 }
+

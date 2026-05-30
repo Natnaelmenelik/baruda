@@ -5,7 +5,7 @@ import { NextResponse } from 'next/server';
 import { getLotterySettings } from '@/lib/settings/lotterySettings';
 
 export async function GET() {
-  const settings = await getLotterySettings();
+  const settings = await getLotterySettings({ forceRefreshCache: true });
 
   return NextResponse.json(settings, {
     headers: {

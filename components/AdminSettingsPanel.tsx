@@ -1,21 +1,102 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLang } from "@/hooks/useLang";
 import { translateApiError } from "@/lib/i18n/apiErrorMessages";
+import { emitSettingsUpdated } from "@/lib/realtime/appRealtimeEvents";
+
+type GridStatus = "open" | "closed";
+
+type LotterySettingsResponse = {
+  ticketPrice?: number;
+  ticket_price?: number;
+  gridSize?: number;
+  grid_size?: number;
+  defaultTargetAmount?: number;
+  default_target_amount?: number;
+  numbersGridStatus?: GridStatus | string;
+  numbers_grid_status?: GridStatus | string;
+  numbersGridOpen?: boolean;
+  numbers_grid_open?: boolean;
+  updatedAt?: string | null;
+  updated_at?: string | null;
+};
+
+function normalizeLotterySettings(
+  data: LotterySettingsResponse,
+  fallback?: {
+    ticketPrice?: number;
+    gridSize?: number;
+    numbersGridStatus?: GridStatus;
+  },
+) {
+  const ticketPrice = Number(
+    data.ticketPrice ?? data.ticket_price ?? fallback?.ticketPrice ?? 300,
+  );
+  const gridSize = Number(
+    data.gridSize ?? data.grid_size ?? fallback?.gridSize ?? 2000,
+  );
+  const defaultTargetAmount = Number(
+    data.defaultTargetAmount ?? data.default_target_amount ?? 5000,
+  );
+  const numbersGridStatus: GridStatus =
+    String(
+      data.numbersGridStatus ??
+        data.numbers_grid_status ??
+        fallback?.numbersGridStatus ??
+        "open",
+    ).toLowerCase() === "closed"
+      ? "closed"
+      : "open";
+  const updatedAt = data.updatedAt ?? data.updated_at ?? null;
+
+  return {
+    ticketPrice,
+    ticket_price: ticketPrice,
+    gridSize,
+    grid_size: gridSize,
+    defaultTargetAmount,
+    default_target_amount: defaultTargetAmount,
+    numbersGridStatus,
+    numbers_grid_status: numbersGridStatus,
+    numbersGridOpen: numbersGridStatus !== "closed",
+    numbers_grid_open: numbersGridStatus !== "closed",
+    updatedAt,
+    updated_at: updatedAt,
+  };
+}
+
+function patchNumbersGridMeta(oldData: any, settings: ReturnType<typeof normalizeLotterySettings>) {
+  if (Array.isArray(oldData)) {
+    return {
+      numbers: oldData,
+      gridSize: settings.gridSize,
+      grid_size: settings.gridSize,
+    };
+  }
+
+  if (oldData && typeof oldData === "object") {
+    return {
+      ...oldData,
+      gridSize: settings.gridSize,
+      grid_size: settings.gridSize,
+    };
+  }
+
+  return oldData;
+}
 
 export default function AdminSettingsPanel() {
   const queryClient = useQueryClient();
-
   const { lang } = useLang();
 
   const text = {
     en: {
       title: "Lottery Settings",
       description:
-        "Set ticket price and numbers grid size from the admin panel.",
+        "Set ticket price, numbers grid size, and selection status from the admin panel.",
       loading: "Loading settings...",
       ticketPrice: "Ticket Price",
       gridSize: "Numbers Grid Size",
@@ -27,13 +108,15 @@ export default function AdminSettingsPanel() {
       saveError: "Failed to save settings",
       saved: "Lottery settings updated successfully",
       numbersGridStatus: "Numbers Grid Status",
-      numbersGridStatusHelp: "When closed, users can see the grid but cannot touch/select numbers.",
+      numbersGridStatusHelp:
+        "When closed, users can see the grid but cannot touch/select numbers.",
       numbersGridOpen: "Open",
       numbersGridClosed: "Closed",
     },
     am: {
       title: "የሎተሪ ቅንብሮች",
-      description: "የቲኬት ዋጋን እና የቁጥሮች መጠንን ከአድሚን ፓነል ያስተካክሉ።",
+      description:
+        "የቲኬት ዋጋን፣ የቁጥሮች መጠንን እና የመምረጫ ሁኔታን ከአድሚን ፓነል ያስተካክሉ።",
       loading: "ቅንብሮች በመጫን ላይ...",
       ticketPrice: "የቲኬት ዋጋ",
       gridSize: "የቁጥሮች መጠን",
@@ -45,14 +128,15 @@ export default function AdminSettingsPanel() {
       saveError: "ቅንብሮችን ማስቀመጥ አልተቻለም",
       saved: "የሎተሪ ቅንብሮች ተሻሽለዋል",
       numbersGridStatus: "የቁጥሮች መደብ ሁኔታ",
-      numbersGridStatusHelp: "ሲዘጋ ተጠቃሚዎች መደቡን ማየት ይችላሉ፣ ግን ቁጥሮችን መንካት/መምረጥ አይችሉም።",
+      numbersGridStatusHelp:
+        "ሲዘጋ ተጠቃሚዎች መደቡን ማየት ይችላሉ፣ ግን ቁጥሮችን መንካት/መምረጥ አይችሉም።",
       numbersGridOpen: "ክፍት",
       numbersGridClosed: "ዝግ",
     },
     om: {
       title: "Sajataa Loatarii",
       description:
-        "Gatii tikkeetii fi hamma lakkoofsotaa paaneelii bulchiinsaa irraa sirreessi.",
+        "Gatii tikkeetii, hamma lakkoofsotaa fi haala filannoo paaneelii bulchiinsaa irraa sirreessi.",
       loading: "Sajataa fe'aa jira...",
       ticketPrice: "Gatii Tikkeetii",
       gridSize: "Hamma Lakkoofsotaa",
@@ -64,7 +148,8 @@ export default function AdminSettingsPanel() {
       saveError: "Sajataa oolchuun hin danda’amne",
       saved: "Sajataan loatarii milkiidhaan fooyya’eera",
       numbersGridStatus: "Haala Giriidii Lakkoofsotaa",
-      numbersGridStatusHelp: "Yoo cufame, fayyadamtoonni giriidii ni argu garuu lakkoofsa tuquu/filachuu hin danda’an.",
+      numbersGridStatusHelp:
+        "Yoo cufame, fayyadamtoonni giriidii ni argu garuu lakkoofsa tuquu/filachuu hin danda’an.",
       numbersGridOpen: "Banaa",
       numbersGridClosed: "Cufaa",
     },
@@ -74,25 +159,49 @@ export default function AdminSettingsPanel() {
 
   const [ticketPrice, setTicketPrice] = useState("");
   const [gridSize, setGridSize] = useState("");
-  const [numbersGridStatus, setNumbersGridStatus] = useState<"open" | "closed">("open");
+  const [numbersGridStatus, setNumbersGridStatus] = useState<GridStatus>("open");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  function syncSettings(settings: ReturnType<typeof normalizeLotterySettings>) {
+    queryClient.setQueryData(["lottery-settings"], (old: any) => ({
+      ...(old || {}),
+      ...settings,
+    }));
+
+    queryClient.setQueryData(["settings"], (old: any) => ({
+      ...(old || {}),
+      ...settings,
+    }));
+
+    queryClient.setQueryData(["numbers"], (old: any) =>
+      patchNumbersGridMeta(old, settings),
+    );
+
+    emitSettingsUpdated(settings);
+
+    // Compatibility for manual tests and any old listener using the literal name.
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("settings-updated", { detail: settings }),
+      );
+    }
+  }
+
   async function loadSettings() {
     try {
-      const res = await fetch("/api/admin/settings", {
-        cache: "no-store",
-      });
-
+      const res = await fetch("/api/admin/settings", { cache: "no-store" });
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.error || t.loadError);
       }
 
-      setTicketPrice(String(data.ticketPrice ?? 300));
-      setGridSize(String(data.gridSize ?? 2000));
-      setNumbersGridStatus(String(data.numbersGridStatus || data.numbers_grid_status || "open").toLowerCase() === "closed" ? "closed" : "open");
+      const settings = normalizeLotterySettings(data);
+      setTicketPrice(String(settings.ticketPrice));
+      setGridSize(String(settings.gridSize));
+      setNumbersGridStatus(settings.numbersGridStatus);
+      syncSettings(settings);
     } catch (error: any) {
       toast.error(translateApiError(error, lang) || t.loadError);
     } finally {
@@ -100,7 +209,7 @@ export default function AdminSettingsPanel() {
     }
   }
 
-  async function saveSettings(e: React.FormEvent) {
+  async function saveSettings(e: FormEvent) {
     e.preventDefault();
 
     const price = Number(ticketPrice);
@@ -121,12 +230,12 @@ export default function AdminSettingsPanel() {
     try {
       const res = await fetch("/api/admin/settings", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ticketPrice: price,
+          ticket_price: price,
           gridSize: size,
+          grid_size: size,
           numbersGridStatus,
           numbers_grid_status: numbersGridStatus,
         }),
@@ -137,20 +246,18 @@ export default function AdminSettingsPanel() {
       if (!res.ok) {
         throw new Error(data.error || t.saveError);
       }
-      toast.success(t.saved);
 
-      // Keep admin form in sync after successful save.
-      // This calls GET /api/admin/settings.
-      await loadSettings();
-
-      // Refresh public settings consumers
-      queryClient.invalidateQueries({
-        queryKey: ["lottery-settings"],
+      const settings = normalizeLotterySettings(data, {
+        ticketPrice: price,
+        gridSize: size,
+        numbersGridStatus,
       });
 
-      // Also manually refresh the public/user-facing settings endpoint.
-      // This intentionally calls GET /api/settings after every successful POST /api/admin/settings.
-      await fetch("/api/settings", { cache: "no-store" });
+      setTicketPrice(String(settings.ticketPrice));
+      setGridSize(String(settings.gridSize));
+      setNumbersGridStatus(settings.numbersGridStatus);
+      syncSettings(settings);
+      toast.success(t.saved);
     } catch (error: any) {
       toast.error(translateApiError(error, lang) || t.saveError);
     } finally {
@@ -209,11 +316,11 @@ export default function AdminSettingsPanel() {
             </label>
             <button
               type="button"
-              onClick={() =>
+              onClick={() => {
                 setNumbersGridStatus((current) =>
                   current === "closed" ? "open" : "closed",
-                )
-              }
+                );
+              }}
               className={`w-full rounded-lg border px-3 py-2 text-sm font-bold transition ${
                 numbersGridStatus === "closed"
                   ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
@@ -224,7 +331,9 @@ export default function AdminSettingsPanel() {
                 ? t.numbersGridClosed
                 : t.numbersGridOpen}
             </button>
-            <p className="mt-1 text-xs text-gray-500">{t.numbersGridStatusHelp}</p>
+            <p className="mt-1 text-xs text-gray-500">
+              {t.numbersGridStatusHelp}
+            </p>
           </div>
 
           <div className="flex items-start pt-6">
