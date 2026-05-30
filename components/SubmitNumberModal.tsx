@@ -287,6 +287,7 @@ export default function SubmitNumberModal({
   const holdReadyToastShownRef = useRef<string | null>(null);
   const reservingHoldRef = useRef(false);
   const closingModalRef = useRef(false);
+  const holdExpiryHandledRef = useRef(false);
 
     const lastReservationSignatureRef = useRef<string>("");
 const amountMap = useMemo(() => {
@@ -415,6 +416,9 @@ const amountMap = useMemo(() => {
   useEffect(() => {
     if (!open) return;
 
+    closingModalRef.current = false;
+    holdExpiryHandledRef.current = false;
+
     if (!selectedNumbers.length || totalAmount <= 0) {
       return;
     }
@@ -499,6 +503,92 @@ const amountMap = useMemo(() => {
     setReceiptKey("");
   }
 
+  function clearPaymentHoldUiState() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(HOLD_STORAGE_KEY);
+      localStorage.removeItem(PAYMENT_DRAFT_STORAGE_KEY);
+      localStorage.removeItem("baruda_payment_hold_id");
+      localStorage.removeItem("lottery_selected_numbers");
+      localStorage.removeItem("lottery_contribution_amounts");
+      localStorage.removeItem("pooled_contribution_amounts");
+    }
+
+    setSavedDraft(null);
+    setReservationHold(null);
+    holdReadyToastShownRef.current = null;
+    lastReservationSignatureRef.current = "";
+    setClientHoldKey(makeClientHoldKey());
+    setReceiptUrl("");
+    setReceiptKey("");
+    setReservingHold(false);
+  }
+
+  function handleHoldExpiredImmediate() {
+    if (holdExpiryHandledRef.current) return;
+
+    holdExpiryHandledRef.current = true;
+    closingModalRef.current = true;
+
+    const hold = reservationHold || readStoredActiveHold();
+    const holdId = hold?.id || (typeof window !== "undefined" ? localStorage.getItem("baruda_payment_hold_id") : null);
+    const releasedNumbers = Array.isArray(hold?.numbers) && hold.numbers.length ? hold.numbers : activeNumbers;
+    const releasedClientHoldKey = hold?.client_hold_key || activeClientHoldKey;
+
+    // Close and clear first. Do not wait for the API.
+    clearPaymentHoldUiState();
+    setError("");
+    onClose();
+
+    if (releasedNumbers.length) {
+      dispatchNumbersRefresh({
+        action: "hold_released",
+        numbers: releasedNumbers,
+        status: "available",
+        holdId,
+        clientHoldKey: releasedClientHoldKey,
+      });
+
+      broadcastNumbersUpdate({
+        action: "hold_released",
+        numbers: releasedNumbers,
+        status: "available",
+        holdId,
+        clientHoldKey: releasedClientHoldKey,
+        source: "receipt-timer-expired-immediate",
+      });
+    }
+
+    if (holdId) {
+      void fetch(`/api/holds/${holdId}?reason=timer_expired`, { method: "DELETE" })
+        .then(async (res) => {
+          const data = await res.json().catch(() => ({}));
+          const apiNumbers = Array.isArray(data?.numbers) ? data.numbers : releasedNumbers;
+
+          if (apiNumbers.length) {
+            dispatchNumbersRefresh({
+              action: "hold_released",
+              numbers: apiNumbers,
+              status: "available",
+              holdId,
+              clientHoldKey: releasedClientHoldKey,
+            });
+
+            broadcastNumbersUpdate({
+              action: "hold_released",
+              numbers: apiNumbers,
+              status: "available",
+              holdId,
+              clientHoldKey: releasedClientHoldKey,
+              source: "receipt-timer-expired-api-confirmed",
+            });
+          }
+        })
+        .catch(() => {
+          // Backend cleanup can still catch it later. UI is already released.
+        });
+    }
+  }
+
   async function closeModal() {
     if (submitting) return;
     closingModalRef.current = true;
@@ -513,6 +603,7 @@ const amountMap = useMemo(() => {
     async function reserveSelectedAmountBeforeUpload() {
       if (!effectiveOpen) return;
       if (closingModalRef.current) return;
+      if (holdExpiryHandledRef.current) return;
       if (reservingHoldRef.current) return;
       if (reservationHold?.id && reservationHold?.expires_at && new Date(reservationHold.expires_at).getTime() > Date.now()) return;
       if (
@@ -1091,7 +1182,7 @@ const amountMap = useMemo(() => {
           holdNumbers={activeNumbers}
           holdNumberAmounts={holdAmountMap}
           holdTotalAmount={totalAmount}
-          onHoldExpired={closeModal}
+          onHoldExpired={handleHoldExpiredImmediate}
           onChange={(url, key, holdId) => {
             setReceiptUrl(url);
             setReceiptKey(key || "");

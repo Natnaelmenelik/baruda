@@ -1,145 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="${1:-.}"
-cd "$ROOT"
+FILE="components/SubmitNumberModal.tsx"
 
-SUBMIT="components/SubmitNumberModal.tsx"
-RECEIPT="components/ReceiptUploader.tsx"
-HOLDS="app/api/holds/route.ts"
+if [ ! -f "$FILE" ]; then
+  echo "❌ $FILE not found. Run this script from the project root."
+  exit 1
+fi
 
-for f in "$SUBMIT" "$RECEIPT" "$HOLDS"; do
-  if [ ! -f "$f" ]; then
-    echo "ERROR: $f not found. Run this script from your Next.js project root."
-    exit 1
-  fi
-  cp "$f" "$f.bak_timer_$(date +%Y%m%d_%H%M%S)"
-done
+cp "$FILE" "$FILE.bak-receipt-expiry-immediate-$(date +%Y%m%d%H%M%S)"
 
 python3 - <<'PY'
 from pathlib import Path
+p = Path("components/SubmitNumberModal.tsx")
+s = p.read_text()
 
-# 1) Fix timer reset on refresh: do not recompute server offset from stale stored server_now.
-receipt = Path('components/ReceiptUploader.tsx')
-s = receipt.read_text()
-old = """function saveServerOffset(serverNow?: string) {
-  if (typeof window === 'undefined' || !serverNow) return;
-
-  const serverNowMs = new Date(serverNow).getTime();
-  if (!Number.isFinite(serverNowMs)) return;
-
-  const offsetMs = serverNowMs - Date.now();
-  localStorage.setItem(SERVER_OFFSET_STORAGE_KEY, String(Math.round(offsetMs)));
-}
-
-function getCorrectedNow() {
-  if (typeof window === 'undefined') return Date.now();
-
-  const offsetMs = Number(localStorage.getItem(SERVER_OFFSET_STORAGE_KEY) || '0');
-  return Date.now() + (Number.isFinite(offsetMs) ? offsetMs : 0);
-}
-"""
-new = """function saveServerOffset(serverNow?: string) {
-  // Important: server_now stored in localStorage becomes stale after refresh.
-  // Recomputing offset from that old value makes the countdown jump back to 3:00.
-  // Keep this as a no-op and always count down from the absolute expires_at value.
-  void serverNow;
-}
-
-function getCorrectedNow() {
-  return Date.now();
-}
-"""
+# 1) Add expiry handled ref beside existing modal refs.
+old = """  const reservingHoldRef = useRef(false);\n  const closingModalRef = useRef(false);\n\n    const lastReservationSignatureRef = useRef<string>(\"\");"""
+new = """  const reservingHoldRef = useRef(false);\n  const closingModalRef = useRef(false);\n  const holdExpiryHandledRef = useRef(false);\n\n    const lastReservationSignatureRef = useRef<string>(\"\");"""
 if old not in s:
-    print('WARN: ReceiptUploader timer offset block not found; skipping that exact replacement')
-else:
-    s = s.replace(old, new)
-receipt.write_text(s)
+    raise SystemExit("Could not find ref block to patch")
+s = s.replace(old, new, 1)
 
-# 2) Fix modal auto re-reserving/reopening when timer reaches 0.
-submit = Path('components/SubmitNumberModal.tsx')
-s = submit.read_text()
+# 2) Reset expiry flag when modal opens.
+old = """  useEffect(() => {\n    if (!open) return;\n\n    if (!selectedNumbers.length || totalAmount <= 0) {"""
+new = """  useEffect(() => {\n    if (!open) return;\n\n    closingModalRef.current = false;\n    holdExpiryHandledRef.current = false;\n\n    if (!selectedNumbers.length || totalAmount <= 0) {"""
+if old not in s:
+    raise SystemExit("Could not find open effect to patch")
+s = s.replace(old, new, 1)
 
-if 'const closingModalRef = useRef(false);' not in s:
-    s = s.replace(
-        '  const reservingHoldRef = useRef(false);\n',
-        '  const reservingHoldRef = useRef(false);\n  const closingModalRef = useRef(false);\n'
-    )
+# 3) Add immediate UI cleanup helper + expiry handler after releaseActivePaymentHold.
+marker = """  async function closeModal() {\n    if (submitting) return;\n    closingModalRef.current = true;\n    await releaseActivePaymentHold();\n    setError(\"\");\n    onClose();\n  }"""
+insert = """  function clearPaymentHoldUiState() {\n    if (typeof window !== \"undefined\") {\n      localStorage.removeItem(HOLD_STORAGE_KEY);\n      localStorage.removeItem(PAYMENT_DRAFT_STORAGE_KEY);\n      localStorage.removeItem(\"baruda_payment_hold_id\");\n      localStorage.removeItem(\"lottery_selected_numbers\");\n      localStorage.removeItem(\"lottery_contribution_amounts\");\n      localStorage.removeItem(\"pooled_contribution_amounts\");\n    }\n\n    setSavedDraft(null);\n    setReservationHold(null);\n    holdReadyToastShownRef.current = null;\n    lastReservationSignatureRef.current = \"\";\n    setClientHoldKey(makeClientHoldKey());\n    setReceiptUrl(\"\");\n    setReceiptKey(\"\");\n    setReservingHold(false);\n  }\n\n  function handleHoldExpiredImmediate() {\n    if (holdExpiryHandledRef.current) return;\n\n    holdExpiryHandledRef.current = true;\n    closingModalRef.current = true;\n\n    const hold = reservationHold || readStoredActiveHold();\n    const holdId = hold?.id || (typeof window !== \"undefined\" ? localStorage.getItem(\"baruda_payment_hold_id\") : null);\n    const releasedNumbers = Array.isArray(hold?.numbers) && hold.numbers.length ? hold.numbers : activeNumbers;\n    const releasedClientHoldKey = hold?.client_hold_key || activeClientHoldKey;\n\n    // Close and clear first. Do not wait for the API.\n    clearPaymentHoldUiState();\n    setError(\"\");\n    onClose();\n\n    if (releasedNumbers.length) {\n      dispatchNumbersRefresh({\n        action: \"hold_released\",\n        numbers: releasedNumbers,\n        status: \"available\",\n        holdId,\n        clientHoldKey: releasedClientHoldKey,\n      });\n\n      broadcastNumbersUpdate({\n        action: \"hold_released\",\n        numbers: releasedNumbers,\n        status: \"available\",\n        holdId,\n        clientHoldKey: releasedClientHoldKey,\n        source: \"receipt-timer-expired-immediate\",\n      });\n    }\n\n    if (holdId) {\n      void fetch(`/api/holds/${holdId}?reason=timer_expired`, { method: \"DELETE\" })\n        .then(async (res) => {\n          const data = await res.json().catch(() => ({}));\n          const apiNumbers = Array.isArray(data?.numbers) ? data.numbers : releasedNumbers;\n\n          if (apiNumbers.length) {\n            dispatchNumbersRefresh({\n              action: \"hold_released\",\n              numbers: apiNumbers,\n              status: \"available\",\n              holdId,\n              clientHoldKey: releasedClientHoldKey,\n            });\n\n            broadcastNumbersUpdate({\n              action: \"hold_released\",\n              numbers: apiNumbers,\n              status: \"available\",\n              holdId,\n              clientHoldKey: releasedClientHoldKey,\n              source: \"receipt-timer-expired-api-confirmed\",\n            });\n          }\n        })\n        .catch(() => {\n          // Backend cleanup can still catch it later. UI is already released.\n        });\n    }\n  }\n\n  async function closeModal() {\n    if (submitting) return;\n    closingModalRef.current = true;\n    await releaseActivePaymentHold();\n    setError(\"\");\n    onClose();\n  }"""
+if marker not in s:
+    raise SystemExit("Could not find closeModal block to patch")
+s = s.replace(marker, insert, 1)
 
-if 'closingModalRef.current = false;' not in s:
-    marker = '  const activeClientHoldKey =\n    reservationHold?.client_hold_key || savedDraft?.clientHoldKey || clientHoldKey;\n'
-    insert = marker + """
+# 4) Prevent reserve effect from recreating a hold after timer-expiry cleanup.
+old = """      if (!effectiveOpen) return;\n      if (closingModalRef.current) return;\n      if (reservingHoldRef.current) return;"""
+new = """      if (!effectiveOpen) return;\n      if (closingModalRef.current) return;\n      if (holdExpiryHandledRef.current) return;\n      if (reservingHoldRef.current) return;"""
+if old not in s:
+    raise SystemExit("Could not find reserve guard to patch")
+s = s.replace(old, new, 1)
 
-  useEffect(() => {
-    if (open) {
-      closingModalRef.current = false;
-    }
-  }, [open]);
-"""
-    if marker in s:
-        s = s.replace(marker, insert)
-    else:
-        print('WARN: activeClientHoldKey marker not found; open reset effect not inserted')
+# 5) Connect ReceiptUploader to immediate expiry handler instead of normal closeModal.
+old = "onHoldExpired={closeModal}"
+new = "onHoldExpired={handleHoldExpiredImmediate}"
+if old not in s:
+    raise SystemExit("Could not find ReceiptUploader onHoldExpired={closeModal}")
+s = s.replace(old, new, 1)
 
-# stop reservation while closing/expiring
-s = s.replace(
-    '      if (!effectiveOpen) return;\n      if (reservingHoldRef.current) return;',
-    '      if (!effectiveOpen) return;\n      if (closingModalRef.current) return;\n      if (reservingHoldRef.current) return;'
-)
-
-# mark closing before releasing so useEffect cannot create a fresh 3-minute hold
-s = s.replace(
-    '  async function closeModal() {\n    if (submitting) return;\n    await releaseActivePaymentHold();',
-    '  async function closeModal() {\n    if (submitting) return;\n    closingModalRef.current = true;\n    await releaseActivePaymentHold();'
-)
-
-# persist the payment draft immediately after backend hold creation, using backend expires_at.
-old = """        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
-        localStorage.setItem("baruda_payment_hold_id", data.id);
-        setReservationHold(data);
-        showHoldReadyToast(data);
-"""
-new = """        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
-        localStorage.setItem("baruda_payment_hold_id", data.id);
-
-        const nextDraftAmountMap = Object.fromEntries(
-          Object.entries(holdAmountMap).map(([number, amount]) => [Number(number), Number(amount)]),
-        ) as Record<number, number>;
-
-        const nextDraft: PaymentDraft = {
-          clientHoldKey: data.client_hold_key || activeClientHoldKey,
-          numbers: activeNumbers,
-          amountMap: nextDraftAmountMap,
-          totalAmount,
-          expiresAt: data.expires_at,
-        };
-
-        localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
-        setSavedDraft(nextDraft);
-        setReservationHold(data);
-        showHoldReadyToast(data);
-"""
-if old in s:
-    s = s.replace(old, new)
-else:
-    print('WARN: hold creation storage block not found; draft persistence not inserted')
-
-submit.write_text(s)
-
-# 3) Make POST /api/holds safe if an expired client_hold_key is reused later.
-holds = Path('app/api/holds/route.ts')
-s = holds.read_text()
-s = s.replace(
-    '        expires_at = payment_holds.expires_at,\n        updated_at = NOW()',
-    """        expires_at = CASE
-          WHEN payment_holds.status = 'active' AND payment_holds.expires_at > NOW()
-          THEN payment_holds.expires_at
-          ELSE NOW() + INTERVAL '3 minutes'
-        END,
-        updated_at = NOW()"""
-)
-holds.write_text(s)
+p.write_text(s)
 PY
 
-echo "✅ Payment hold timer refresh/expiry fix applied."
-echo "Next: run npm run build"
+echo "✅ Patched receipt timer expiry to close immediately and release hold in background."
+echo "Next: npm run build"
