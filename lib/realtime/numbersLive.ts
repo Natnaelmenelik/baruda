@@ -60,6 +60,7 @@ export async function broadcastNumbersUpdate(payload: NumbersLivePayload) {
 export function dispatchNumbersRefresh(payload?: Partial<NumbersLivePayload>) {
   try {
     window.dispatchEvent(new CustomEvent('numbers-refresh', { detail: payload || {} }));
+    window.dispatchEvent(new CustomEvent('numbers-updated', { detail: payload || {} }));
     // Legacy number-amounts-refresh dispatch disabled. NumberGrid updates from Supabase Realtime payload directly.
 } catch {}
 }

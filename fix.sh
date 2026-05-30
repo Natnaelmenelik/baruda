@@ -1,43 +1,77 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FILE="components/SubmitNumberModal.tsx"
+ROOT="${1:-.}"
+cd "$ROOT"
 
-if [ ! -f "$FILE" ]; then
-  echo "❌ $FILE not found. Run this script from the project root."
+if [ ! -f "components/SubmitNumberModal.tsx" ]; then
+  echo "ERROR: run this from the project root. components/SubmitNumberModal.tsx not found."
   exit 1
 fi
 
-cp "$FILE" "$FILE.bak.timer-cancel-logic.$(date +%Y%m%d%H%M%S)"
+cp components/SubmitNumberModal.tsx components/SubmitNumberModal.tsx.bak_timer_expiry_final
+cp lib/realtime/numbersLive.ts lib/realtime/numbersLive.ts.bak_timer_expiry_final
 
-python3 - <<'PY'
+python3 <<'PY'
 from pathlib import Path
-import re
 
-path = Path("components/SubmitNumberModal.tsx")
-text = path.read_text()
-original = text
+submit = Path('components/SubmitNumberModal.tsx')
+s = submit.read_text()
 
-# Make timer expiry use the exact same callback path as Cancel/X.
-# This avoids the previous fire-and-forget/background release path where UI closed
-# but amount recalculation waited longer.
-text = re.sub(r"onHoldExpired=\{[^}\n]+\}", "onHoldExpired={closeModal}", text)
+# 1) Timer expiry must use the immediate expiry handler, not closeModal.
+s = s.replace('onHoldExpired={closeModal}', 'onHoldExpired={handleHoldExpiredImmediate}')
 
-# Prevent double release if timer expires while user also clicks X/Cancel.
-text = text.replace(
-    "async function closeModal() {\n    if (submitting) return;\n    closingModalRef.current = true;",
-    "async function closeModal() {\n    if (submitting || closingModalRef.current) return;\n    closingModalRef.current = true;",
+# 2) Add Authorization header to releaseActivePaymentHold normal release flow.
+s = s.replace(
+'''      if (hold?.id) {
+        const res = await fetch(`/api/holds/${hold.id}`, { method: "DELETE" });''',
+'''      if (hold?.id) {
+        const token = localStorage.getItem("token");
+        const res = await fetch(`/api/holds/${hold.id}`, {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });'''
 )
 
-# Some earlier patches may have added timer-only handlers that close first and release in the background.
-# They can remain unused safely, but make sure the receipt uploader is not wired to them.
+# 3) Add Authorization header to the timer-expired DELETE request.
+s = s.replace(
+'''    if (holdId) {
+      void fetch(`/api/holds/${holdId}?reason=timer_expired`, { method: "DELETE" })''',
+'''    if (holdId) {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      void fetch(`/api/holds/${holdId}?reason=timer_expired`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })'''
+)
 
-if text == original:
-    print("⚠️ No changes were needed. Timer expiry already appears to use closeModal.")
-else:
-    path.write_text(text)
-    print("✅ Updated timer expiry to use the same release/close logic as Cancel/X.")
+submit.write_text(s)
+
+# 4) Make the existing local refresh helper also fire the event that NumberGrid actually listens to.
+numbers_live = Path('lib/realtime/numbersLive.ts')
+n = numbers_live.read_text()
+old = "window.dispatchEvent(new CustomEvent('numbers-refresh', { detail: payload || {} }));"
+new = """window.dispatchEvent(new CustomEvent('numbers-refresh', { detail: payload || {} }));
+    window.dispatchEvent(new CustomEvent('numbers-updated', { detail: payload || {} }));"""
+if old in n and "new CustomEvent('numbers-updated'" not in n:
+    n = n.replace(old, new)
+elif old in n:
+    # Ensure both exist even if a previous patch partially touched the file.
+    if "window.dispatchEvent(new CustomEvent('numbers-updated'" not in n:
+        n = n.replace(old, new)
+
+numbers_live.write_text(n)
 PY
 
-echo "\nDone. Now run:"
-echo "npm run build"
+# Verification output
+echo "--- onHoldExpired usage ---"
+grep -n "onHoldExpired" components/SubmitNumberModal.tsx components/ReceiptUploader.tsx || true
+
+echo "--- DELETE /api/holds usage ---"
+grep -n "api/holds/.*DELETE\|method: \"DELETE\"" components/SubmitNumberModal.tsx | head -20 || true
+
+echo "--- local number refresh events ---"
+grep -n "numbers-refresh\|numbers-updated" lib/realtime/numbersLive.ts || true
+
+echo ""
+echo "Done. Now run: npm run build"

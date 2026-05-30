@@ -462,7 +462,11 @@ const amountMap = useMemo(() => {
       const hold = raw ? JSON.parse(raw) : null;
 
       if (hold?.id) {
-        const res = await fetch(`/api/holds/${hold.id}`, { method: "DELETE" });
+        const token = localStorage.getItem("token");
+        const res = await fetch(`/api/holds/${hold.id}`, {
+          method: "DELETE",
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
         const data = await res.json().catch(() => ({}));
         const releasedNumbers = Array.isArray(data?.numbers)
           ? data.numbers
@@ -559,7 +563,11 @@ const amountMap = useMemo(() => {
     }
 
     if (holdId) {
-      void fetch(`/api/holds/${holdId}?reason=timer_expired`, { method: "DELETE" })
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      void fetch(`/api/holds/${holdId}?reason=timer_expired`, {
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      })
         .then(async (res) => {
           const data = await res.json().catch(() => ({}));
           const apiNumbers = Array.isArray(data?.numbers) ? data.numbers : releasedNumbers;
@@ -1182,7 +1190,7 @@ const amountMap = useMemo(() => {
           holdNumbers={activeNumbers}
           holdNumberAmounts={holdAmountMap}
           holdTotalAmount={totalAmount}
-          onHoldExpired={closeModal}
+          onHoldExpired={handleHoldExpiredImmediate}
           onChange={(url, key, holdId) => {
             setReceiptUrl(url);
             setReceiptKey(key || "");
