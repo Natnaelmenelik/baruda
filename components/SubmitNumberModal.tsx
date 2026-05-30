@@ -590,7 +590,7 @@ const amountMap = useMemo(() => {
   }
 
   async function closeModal() {
-    if (submitting) return;
+    if (submitting || closingModalRef.current) return;
     closingModalRef.current = true;
     await releaseActivePaymentHold();
     setError("");
@@ -1182,7 +1182,7 @@ const amountMap = useMemo(() => {
           holdNumbers={activeNumbers}
           holdNumberAmounts={holdAmountMap}
           holdTotalAmount={totalAmount}
-          onHoldExpired={handleHoldExpiredImmediate}
+          onHoldExpired={closeModal}
           onChange={(url, key, holdId) => {
             setReceiptUrl(url);
             setReceiptKey(key || "");
