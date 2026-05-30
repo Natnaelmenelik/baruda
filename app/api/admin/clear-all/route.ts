@@ -11,6 +11,10 @@ const RECEIPTS_BUCKET =
   process.env.RECEIPTS_BUCKET ||
   "receipts";
 
+// Dashboard message images are stored inside the receipts bucket under this folder.
+// Clear & Start New Round must delete receipt files, but must NEVER delete this folder.
+const DASHBOARD_MESSAGES_STORAGE_FOLDER = "dashboard-messages";
+
 type StorageCleanupResult = {
   bucket: string;
   dbKeysFound: number;
@@ -20,6 +24,7 @@ type StorageCleanupResult = {
   failed: number;
   errors: string[];
   attemptedKeys: string[];
+  preservedKeys: string[];
 };
 
 function uniqueCleanKeys(keys: Array<string | null | undefined>) {
@@ -63,11 +68,26 @@ function fallbackKeyFromUrl(url: string | null | undefined) {
   return normalizeReceiptKey(String(url || ""));
 }
 
+function shouldPreserveStorageKey(rawKey: string) {
+  const key = normalizeReceiptKey(rawKey).replace(/^\/+/, "");
+
+  return (
+    key === DASHBOARD_MESSAGES_STORAGE_FOLDER ||
+    key.startsWith(`${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`)
+  );
+}
+
 async function listAllStorageFiles(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   bucket: string,
   prefix = "",
 ): Promise<string[]> {
+  // If the recursive scanner reaches the dashboard message folder, stop.
+  // This prevents even accidental deletion of dashboard message assets.
+  if (prefix && shouldPreserveStorageKey(prefix)) {
+    return [];
+  }
+
   const allFiles: string[] = [];
 
   const { data, error } = await supabase.storage.from(bucket).list(prefix, {
@@ -83,6 +103,11 @@ async function listAllStorageFiles(
   for (const item of data || []) {
     const name = item.name;
     const fullPath = prefix ? `${prefix}/${name}` : name;
+
+    // Protect both the folder placeholder and any nested image path.
+    if (shouldPreserveStorageKey(fullPath)) {
+      continue;
+    }
 
     /*
       Supabase Storage list items may represent folders with id = null.
@@ -114,7 +139,12 @@ async function removeStorageFilesInBatches(
   let failed = 0;
 
   const uniqueKeys = Array.from(
-    new Set(keys.map(normalizeReceiptKey).filter(Boolean)),
+    new Set(
+      keys
+        .map(normalizeReceiptKey)
+        .filter(Boolean)
+        .filter((key) => !shouldPreserveStorageKey(key)),
+    ),
   );
 
   for (let i = 0; i < uniqueKeys.length; i += 100) {
@@ -158,9 +188,12 @@ async function deleteReceiptStorageFiles(
     /*
       Comprehensive cleanup:
       1. delete DB-known receipt keys
-      2. list the whole receipts bucket recursively
-      3. delete everything found in the bucket
-      This handles old records with wrong receipt_key paths.
+      2. list the receipts bucket recursively
+      3. delete receipt files only
+
+      IMPORTANT:
+      dashboard-messages/* is protected because dashboard message images are
+      intentionally stored inside the same receipts bucket.
     */
     listedFiles = await listAllStorageFiles(supabase, RECEIPTS_BUCKET);
   } catch (error: any) {
@@ -169,16 +202,21 @@ async function deleteReceiptStorageFiles(
     errors.push(message);
   }
 
-  const allKeys = Array.from(
+  const rawKeys = Array.from(
     new Set(
       [...dbKeys, ...listedFiles].map(normalizeReceiptKey).filter(Boolean),
     ),
   );
 
+  const preservedKeys = rawKeys.filter(shouldPreserveStorageKey);
+  const allKeys = rawKeys.filter((key) => !shouldPreserveStorageKey(key));
+
   console.log("Deleting receipt files:", {
     bucket: RECEIPTS_BUCKET,
     dbKeysFound: dbKeys.length,
     listedFilesFound: listedFiles.length,
+    protectedFolder: `${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`,
+    preserved: preservedKeys.length,
     attempted: allKeys.length,
     keys: allKeys,
   });
@@ -189,7 +227,10 @@ async function deleteReceiptStorageFiles(
     allKeys,
   );
 
-  console.log("Receipt delete result:", removeResult);
+  console.log("Receipt delete result:", {
+    ...removeResult,
+    preservedKeys,
+  });
 
   return {
     bucket: RECEIPTS_BUCKET,
@@ -200,6 +241,7 @@ async function deleteReceiptStorageFiles(
     failed: removeResult.failed,
     errors: [...errors, ...removeResult.errors],
     attemptedKeys: removeResult.attemptedKeys,
+    preservedKeys,
   };
 }
 

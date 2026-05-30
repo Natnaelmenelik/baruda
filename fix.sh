@@ -1,132 +1,236 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FILE="components/SelectedNumbersPanel.tsx"
+FILE="app/api/admin/clear-all/route.ts"
 
 if [ ! -f "$FILE" ]; then
-  echo "ERROR: $FILE not found. Run this from your project root."
+  echo "❌ Cannot find $FILE. Run this script from your project root."
   exit 1
 fi
 
-cp "$FILE" "$FILE.bak_duplicate_disabled_$(date +%Y%m%d_%H%M%S)"
+cp "$FILE" "$FILE.bak.$(date +%Y%m%d%H%M%S)"
 
 python3 - <<'PY'
 from pathlib import Path
+import re
 
-path = Path("components/SelectedNumbersPanel.tsx")
+path = Path("app/api/admin/clear-all/route.ts")
 text = path.read_text()
 
-# Remove duplicate JSX attributes named disabled inside each opening tag.
-# Keeps the first disabled=... and removes any later disabled=... in the same tag.
-out = []
-i = 0
-changed = 0
+# Ensure StorageCleanupResult can report preserved files without TypeScript errors.
+text = re.sub(
+    r"type StorageCleanupResult = \{([\s\S]*?)  attemptedKeys: string\[\];\n\};",
+    lambda m: "type StorageCleanupResult = {" + m.group(1) + "  attemptedKeys: string[];\n  preservedKeys: string[];\n};",
+    text,
+    count=1,
+)
 
-while i < len(text):
-    if text[i] != '<' or i + 1 >= len(text) or text[i+1] in '/>!':
-        out.append(text[i])
-        i += 1
-        continue
+# Add preserved dashboard folder constants after RECEIPTS_BUCKET.
+if "DASHBOARD_MESSAGES_STORAGE_FOLDER" not in text:
+    marker = '''const RECEIPTS_BUCKET =
+  process.env.SUPABASE_RECEIPTS_BUCKET ||
+  process.env.RECEIPTS_BUCKET ||
+  "receipts";
+'''
+    replacement = marker + '''
+// Dashboard message images are stored inside the receipts bucket under this folder.
+// Clear & Start New Round must delete receipt files, but must NEVER delete this folder.
+const DASHBOARD_MESSAGES_STORAGE_FOLDER = "dashboard-messages";
+'''
+    if marker not in text:
+        raise SystemExit("Could not find RECEIPTS_BUCKET block to patch")
+    text = text.replace(marker, replacement, 1)
 
-    start = i
-    quote = None
-    brace_depth = 0
-    j = i + 1
-    while j < len(text):
-        ch = text[j]
-        if quote:
-            if ch == quote and text[j-1] != '\\':
-                quote = None
-        else:
-            if ch in ('"', "'"):
-                quote = ch
-            elif ch == '{':
-                brace_depth += 1
-            elif ch == '}':
-                brace_depth = max(0, brace_depth - 1)
-            elif ch == '>' and brace_depth == 0:
-                break
-        j += 1
+# Remove older partial preserved-prefix constants if they exist, to avoid confusion.
+text = re.sub(
+    r'\n// Dashboard message images are intentionally stored[\s\S]*?const PRESERVED_STORAGE_PREFIXES = \["dashboard-messages/"\];\n',
+    '\n',
+    text,
+    count=1,
+)
 
-    if j >= len(text):
-        out.append(text[start:])
-        break
+# Add/replace helper after fallbackKeyFromUrl.
+helper = '''function fallbackKeyFromUrl(url: string | null | undefined) {
+  return normalizeReceiptKey(String(url || ""));
+}
 
-    tag = text[start:j+1]
+function shouldPreserveStorageKey(rawKey: string) {
+  const key = normalizeReceiptKey(rawKey).replace(/^\\/+/, "");
 
-    # Only process tags that contain disabled more than once.
-    if tag.count('disabled=') <= 1:
-        out.append(tag)
-        i = j + 1
-        continue
+  return (
+    key === DASHBOARD_MESSAGES_STORAGE_FOLDER ||
+    key.startsWith(`${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`)
+  );
+}
+'''
+text = re.sub(
+    r'function fallbackKeyFromUrl\(url: string \| null \| undefined\) \{[\s\S]*?\}\n\n(?:function shouldPreserveStorageKey\([\s\S]*?\}\n\n)?',
+    helper + '\n',
+    text,
+    count=1,
+)
 
-    pieces = []
-    k = 0
-    seen_disabled = False
-    while k < len(tag):
-        idx = tag.find('disabled=', k)
-        if idx == -1:
-            pieces.append(tag[k:])
-            break
+# Make recursive listing skip the protected folder completely.
+list_start = text.find('async function listAllStorageFiles(')
+list_end = text.find('\nasync function removeStorageFilesInBatches', list_start)
+if list_start == -1 or list_end == -1:
+    raise SystemExit("Could not find listAllStorageFiles block")
+list_func = '''async function listAllStorageFiles(
+  supabase: ReturnType<typeof createSupabaseAdminClient>,
+  bucket: string,
+  prefix = "",
+): Promise<string[]> {
+  // If the recursive scanner reaches the dashboard message folder, stop.
+  // This prevents even accidental deletion of dashboard message assets.
+  if (prefix && shouldPreserveStorageKey(prefix)) {
+    return [];
+  }
 
-        pieces.append(tag[k:idx])
+  const allFiles: string[] = [];
 
-        # Parse disabled={...}, disabled="...", disabled='...', or bare-ish value until whitespace/>.
-        end = idx + len('disabled=')
-        if end < len(tag) and tag[end] == '{':
-            depth = 0
-            q = None
-            m = end
-            while m < len(tag):
-                c = tag[m]
-                if q:
-                    if c == q and tag[m-1] != '\\':
-                        q = None
-                else:
-                    if c in ('"', "'"):
-                        q = c
-                    elif c == '{':
-                        depth += 1
-                    elif c == '}':
-                        depth -= 1
-                        if depth == 0:
-                            m += 1
-                            break
-                m += 1
-            attr = tag[idx:m]
-            k = m
-        elif end < len(tag) and tag[end] in ('"', "'"):
-            q = tag[end]
-            m = end + 1
-            while m < len(tag):
-                if tag[m] == q and tag[m-1] != '\\':
-                    m += 1
-                    break
-                m += 1
-            attr = tag[idx:m]
-            k = m
-        else:
-            m = end
-            while m < len(tag) and not tag[m].isspace() and tag[m] not in '/>':
-                m += 1
-            attr = tag[idx:m]
-            k = m
+  const { data, error } = await supabase.storage.from(bucket).list(prefix, {
+    limit: 1000,
+    offset: 0,
+    sortBy: { column: "name", order: "asc" },
+  });
 
-        if not seen_disabled:
-            pieces.append(attr)
-            seen_disabled = True
-        else:
-            changed += 1
-            # Remove extra whitespace left before duplicate attr where possible.
-            if pieces and pieces[-1].endswith(' '):
-                pieces[-1] = pieces[-1].rstrip(' ')
+  if (error) {
+    throw new Error(error.message || `Failed to list bucket ${bucket}`);
+  }
 
-    out.append(''.join(pieces))
-    i = j + 1
+  for (const item of data || []) {
+    const name = item.name;
+    const fullPath = prefix ? `${prefix}/${name}` : name;
 
-new_text = ''.join(out)
-path.write_text(new_text)
-print(f"Fixed duplicate disabled attributes removed: {changed}")
+    // Protect both the folder placeholder and any nested image path.
+    if (shouldPreserveStorageKey(fullPath)) {
+      continue;
+    }
+
+    /*
+      Supabase Storage list items may represent folders with id = null.
+      Files normally have id / metadata.
+    */
+    const isFolder =
+      !item.id &&
+      !item.updated_at &&
+      (!item.metadata || Object.keys(item.metadata || {}).length === 0);
+
+    if (isFolder) {
+      const nested = await listAllStorageFiles(supabase, bucket, fullPath);
+      allFiles.push(...nested);
+    } else {
+      allFiles.push(fullPath);
+    }
+  }
+
+  return allFiles;
+}
+'''
+text = text[:list_start] + list_func + text[list_end:]
+
+# Make batch removal defensively skip protected keys too.
+text = re.sub(
+    r'''  const uniqueKeys = Array\.from\(\n    new Set\(keys\.map\(normalizeReceiptKey\)\.filter\(Boolean\)\),\n  \);''',
+    '''  const uniqueKeys = Array.from(
+    new Set(
+      keys
+        .map(normalizeReceiptKey)
+        .filter(Boolean)
+        .filter((key) => !shouldPreserveStorageKey(key)),
+    ),
+  );''',
+    text,
+    count=1,
+)
+
+# Rewrite deleteReceiptStorageFiles fully, so it never sends dashboard-messages paths to remove().
+start = text.find('async function deleteReceiptStorageFiles(')
+end = text.find('\nexport async function POST', start)
+if start == -1 or end == -1:
+    raise SystemExit("Could not find deleteReceiptStorageFiles block")
+new_delete = '''async function deleteReceiptStorageFiles(
+  dbReceiptKeys: string[],
+): Promise<StorageCleanupResult> {
+  const supabase = createSupabaseAdminClient();
+
+  const dbKeys = uniqueCleanKeys(dbReceiptKeys);
+  let listedFiles: string[] = [];
+  const errors: string[] = [];
+
+  try {
+    /*
+      Comprehensive cleanup:
+      1. delete DB-known receipt keys
+      2. list the receipts bucket recursively
+      3. delete receipt files only
+
+      IMPORTANT:
+      dashboard-messages/* is protected because dashboard message images are
+      intentionally stored inside the same receipts bucket.
+    */
+    listedFiles = await listAllStorageFiles(supabase, RECEIPTS_BUCKET);
+  } catch (error: any) {
+    const message = error?.message || "Failed to list receipts bucket";
+    console.warn("Receipt bucket list failed:", message);
+    errors.push(message);
+  }
+
+  const rawKeys = Array.from(
+    new Set(
+      [...dbKeys, ...listedFiles].map(normalizeReceiptKey).filter(Boolean),
+    ),
+  );
+
+  const preservedKeys = rawKeys.filter(shouldPreserveStorageKey);
+  const allKeys = rawKeys.filter((key) => !shouldPreserveStorageKey(key));
+
+  console.log("Deleting receipt files:", {
+    bucket: RECEIPTS_BUCKET,
+    dbKeysFound: dbKeys.length,
+    listedFilesFound: listedFiles.length,
+    protectedFolder: `${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`,
+    preserved: preservedKeys.length,
+    attempted: allKeys.length,
+    keys: allKeys,
+  });
+
+  const removeResult = await removeStorageFilesInBatches(
+    supabase,
+    RECEIPTS_BUCKET,
+    allKeys,
+  );
+
+  console.log("Receipt delete result:", {
+    ...removeResult,
+    preservedKeys,
+  });
+
+  return {
+    bucket: RECEIPTS_BUCKET,
+    dbKeysFound: dbKeys.length,
+    listedFilesFound: listedFiles.length,
+    attempted: removeResult.attempted,
+    deleted: removeResult.deleted,
+    failed: removeResult.failed,
+    errors: [...errors, ...removeResult.errors],
+    attemptedKeys: removeResult.attemptedKeys,
+    preservedKeys,
+  };
+}
+'''
+text = text[:start] + new_delete + text[end:]
+
+path.write_text(text)
 PY
 
-echo "Done. Now run: npm run build"
+echo "✅ Patched $FILE"
+echo "✅ Clear & Start New Round will now protect: receipts/dashboard-messages/*"
+echo "✅ This version protects both 'dashboard-messages' folder placeholder and 'dashboard-messages/...' files."
+echo ""
+echo "Next steps:"
+echo "  npm run build"
+echo "  deploy"
+echo "  upload a dashboard message image"
+echo "  click Clear & Start New Round"
+echo "  verify the image still exists in Supabase Storage"
