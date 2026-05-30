@@ -105,7 +105,7 @@ export async function POST(req: Request) {
 
     await sql`
       UPDATE payment_holds
-      SET status = 'expired', updated_at = NOW()
+      SET status = 'cancelled', updated_at = NOW()
       WHERE status = 'active' AND expires_at <= NOW()
     `;
 

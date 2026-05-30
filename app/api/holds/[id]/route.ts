@@ -23,7 +23,7 @@ export async function GET(
       SET
         status = CASE
           WHEN status = 'active' AND expires_at <= NOW()
-          THEN 'expired'
+          THEN 'cancelled'
           ELSE status
         END,
         updated_at = NOW()

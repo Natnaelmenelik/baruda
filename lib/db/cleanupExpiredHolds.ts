@@ -33,7 +33,7 @@ export async function cleanupExpiredHoldsIfNeeded(
     try {
       await sql`
         UPDATE payment_holds
-        SET status = 'expired',
+        SET status = 'cancelled',
             updated_at = NOW()
         WHERE status = 'active'
           AND expires_at <= NOW()
@@ -58,7 +58,7 @@ export async function cleanupExpiredHoldsNow() {
   try {
     await sql`
       UPDATE payment_holds
-      SET status = 'expired',
+      SET status = 'cancelled',
           updated_at = NOW()
       WHERE status = 'active'
         AND expires_at <= NOW()
