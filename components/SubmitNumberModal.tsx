@@ -534,67 +534,31 @@ const amountMap = useMemo(() => {
     closingModalRef.current = true;
 
     const hold = reservationHold || readStoredActiveHold();
-    const holdId = hold?.id || (typeof window !== "undefined" ? localStorage.getItem("baruda_payment_hold_id") : null);
-    const releasedNumbers = Array.isArray(hold?.numbers) && hold.numbers.length ? hold.numbers : activeNumbers;
-    const releasedClientHoldKey = hold?.client_hold_key || activeClientHoldKey;
+    const holdId =
+      hold?.id ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("baruda_payment_hold_id")
+        : null);
 
-    // Close and clear first. Do not wait for the API.
+    // Timer expiry must end inside the ReceiptUploader modal:
+    // 1. close the modal immediately
+    // 2. clear only local hold/draft UI state
+    // 3. call the same DELETE /api/holds/:id release API used by Cancel/X
+    // Realtime will reflect the cache update after the backend cancels the hold.
     clearPaymentHoldUiState();
     setError("");
     onClose();
 
-    if (releasedNumbers.length) {
-      dispatchNumbersRefresh({
-        action: "hold_released",
-        numbers: releasedNumbers,
-        status: "available",
-        holdId,
-        clientHoldKey: releasedClientHoldKey,
-      });
+    if (!holdId) return;
 
-      broadcastNumbersUpdate({
-        action: "hold_released",
-        numbers: releasedNumbers,
-        status: "available",
-        holdId,
-        clientHoldKey: releasedClientHoldKey,
-        source: "receipt-timer-expired-immediate",
-      });
-    }
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-    if (holdId) {
-      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      void fetch(`/api/holds/${holdId}?reason=timer_expired`, {
-        method: "DELETE",
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      })
-        .then(async (res) => {
-          const data = await res.json().catch(() => ({}));
-          const apiNumbers = Array.isArray(data?.numbers) ? data.numbers : releasedNumbers;
-
-          if (apiNumbers.length) {
-            dispatchNumbersRefresh({
-              action: "hold_released",
-              numbers: apiNumbers,
-              status: "available",
-              holdId,
-              clientHoldKey: releasedClientHoldKey,
-            });
-
-            broadcastNumbersUpdate({
-              action: "hold_released",
-              numbers: apiNumbers,
-              status: "available",
-              holdId,
-              clientHoldKey: releasedClientHoldKey,
-              source: "receipt-timer-expired-api-confirmed",
-            });
-          }
-        })
-        .catch(() => {
-          // Backend cleanup can still catch it later. UI is already released.
-        });
-    }
+    void fetch(`/api/holds/${holdId}`, {
+      method: "DELETE",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    }).catch(() => {
+      // Do not reopen or block the modal. Backend cleanup/realtime can recover.
+    });
   }
 
   async function closeModal() {
