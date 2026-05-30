@@ -1,236 +1,145 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FILE="app/api/admin/clear-all/route.ts"
+ROOT="${1:-.}"
+cd "$ROOT"
 
-if [ ! -f "$FILE" ]; then
-  echo "❌ Cannot find $FILE. Run this script from your project root."
-  exit 1
-fi
+SUBMIT="components/SubmitNumberModal.tsx"
+RECEIPT="components/ReceiptUploader.tsx"
+HOLDS="app/api/holds/route.ts"
 
-cp "$FILE" "$FILE.bak.$(date +%Y%m%d%H%M%S)"
+for f in "$SUBMIT" "$RECEIPT" "$HOLDS"; do
+  if [ ! -f "$f" ]; then
+    echo "ERROR: $f not found. Run this script from your Next.js project root."
+    exit 1
+  fi
+  cp "$f" "$f.bak_timer_$(date +%Y%m%d_%H%M%S)"
+done
 
 python3 - <<'PY'
 from pathlib import Path
-import re
 
-path = Path("app/api/admin/clear-all/route.ts")
-text = path.read_text()
+# 1) Fix timer reset on refresh: do not recompute server offset from stale stored server_now.
+receipt = Path('components/ReceiptUploader.tsx')
+s = receipt.read_text()
+old = """function saveServerOffset(serverNow?: string) {
+  if (typeof window === 'undefined' || !serverNow) return;
 
-# Ensure StorageCleanupResult can report preserved files without TypeScript errors.
-text = re.sub(
-    r"type StorageCleanupResult = \{([\s\S]*?)  attemptedKeys: string\[\];\n\};",
-    lambda m: "type StorageCleanupResult = {" + m.group(1) + "  attemptedKeys: string[];\n  preservedKeys: string[];\n};",
-    text,
-    count=1,
-)
+  const serverNowMs = new Date(serverNow).getTime();
+  if (!Number.isFinite(serverNowMs)) return;
 
-# Add preserved dashboard folder constants after RECEIPTS_BUCKET.
-if "DASHBOARD_MESSAGES_STORAGE_FOLDER" not in text:
-    marker = '''const RECEIPTS_BUCKET =
-  process.env.SUPABASE_RECEIPTS_BUCKET ||
-  process.env.RECEIPTS_BUCKET ||
-  "receipts";
-'''
-    replacement = marker + '''
-// Dashboard message images are stored inside the receipts bucket under this folder.
-// Clear & Start New Round must delete receipt files, but must NEVER delete this folder.
-const DASHBOARD_MESSAGES_STORAGE_FOLDER = "dashboard-messages";
-'''
-    if marker not in text:
-        raise SystemExit("Could not find RECEIPTS_BUCKET block to patch")
-    text = text.replace(marker, replacement, 1)
-
-# Remove older partial preserved-prefix constants if they exist, to avoid confusion.
-text = re.sub(
-    r'\n// Dashboard message images are intentionally stored[\s\S]*?const PRESERVED_STORAGE_PREFIXES = \["dashboard-messages/"\];\n',
-    '\n',
-    text,
-    count=1,
-)
-
-# Add/replace helper after fallbackKeyFromUrl.
-helper = '''function fallbackKeyFromUrl(url: string | null | undefined) {
-  return normalizeReceiptKey(String(url || ""));
+  const offsetMs = serverNowMs - Date.now();
+  localStorage.setItem(SERVER_OFFSET_STORAGE_KEY, String(Math.round(offsetMs)));
 }
 
-function shouldPreserveStorageKey(rawKey: string) {
-  const key = normalizeReceiptKey(rawKey).replace(/^\\/+/, "");
+function getCorrectedNow() {
+  if (typeof window === 'undefined') return Date.now();
 
-  return (
-    key === DASHBOARD_MESSAGES_STORAGE_FOLDER ||
-    key.startsWith(`${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`)
-  );
+  const offsetMs = Number(localStorage.getItem(SERVER_OFFSET_STORAGE_KEY) || '0');
+  return Date.now() + (Number.isFinite(offsetMs) ? offsetMs : 0);
 }
-'''
-text = re.sub(
-    r'function fallbackKeyFromUrl\(url: string \| null \| undefined\) \{[\s\S]*?\}\n\n(?:function shouldPreserveStorageKey\([\s\S]*?\}\n\n)?',
-    helper + '\n',
-    text,
-    count=1,
-)
+"""
+new = """function saveServerOffset(serverNow?: string) {
+  // Important: server_now stored in localStorage becomes stale after refresh.
+  // Recomputing offset from that old value makes the countdown jump back to 3:00.
+  // Keep this as a no-op and always count down from the absolute expires_at value.
+  void serverNow;
+}
 
-# Make recursive listing skip the protected folder completely.
-list_start = text.find('async function listAllStorageFiles(')
-list_end = text.find('\nasync function removeStorageFilesInBatches', list_start)
-if list_start == -1 or list_end == -1:
-    raise SystemExit("Could not find listAllStorageFiles block")
-list_func = '''async function listAllStorageFiles(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  bucket: string,
-  prefix = "",
-): Promise<string[]> {
-  // If the recursive scanner reaches the dashboard message folder, stop.
-  // This prevents even accidental deletion of dashboard message assets.
-  if (prefix && shouldPreserveStorageKey(prefix)) {
-    return [];
-  }
+function getCorrectedNow() {
+  return Date.now();
+}
+"""
+if old not in s:
+    print('WARN: ReceiptUploader timer offset block not found; skipping that exact replacement')
+else:
+    s = s.replace(old, new)
+receipt.write_text(s)
 
-  const allFiles: string[] = [];
+# 2) Fix modal auto re-reserving/reopening when timer reaches 0.
+submit = Path('components/SubmitNumberModal.tsx')
+s = submit.read_text()
 
-  const { data, error } = await supabase.storage.from(bucket).list(prefix, {
-    limit: 1000,
-    offset: 0,
-    sortBy: { column: "name", order: "asc" },
-  });
+if 'const closingModalRef = useRef(false);' not in s:
+    s = s.replace(
+        '  const reservingHoldRef = useRef(false);\n',
+        '  const reservingHoldRef = useRef(false);\n  const closingModalRef = useRef(false);\n'
+    )
 
-  if (error) {
-    throw new Error(error.message || `Failed to list bucket ${bucket}`);
-  }
+if 'closingModalRef.current = false;' not in s:
+    marker = '  const activeClientHoldKey =\n    reservationHold?.client_hold_key || savedDraft?.clientHoldKey || clientHoldKey;\n'
+    insert = marker + """
 
-  for (const item of data || []) {
-    const name = item.name;
-    const fullPath = prefix ? `${prefix}/${name}` : name;
-
-    // Protect both the folder placeholder and any nested image path.
-    if (shouldPreserveStorageKey(fullPath)) {
-      continue;
+  useEffect(() => {
+    if (open) {
+      closingModalRef.current = false;
     }
+  }, [open]);
+"""
+    if marker in s:
+        s = s.replace(marker, insert)
+    else:
+        print('WARN: activeClientHoldKey marker not found; open reset effect not inserted')
 
-    /*
-      Supabase Storage list items may represent folders with id = null.
-      Files normally have id / metadata.
-    */
-    const isFolder =
-      !item.id &&
-      !item.updated_at &&
-      (!item.metadata || Object.keys(item.metadata || {}).length === 0);
-
-    if (isFolder) {
-      const nested = await listAllStorageFiles(supabase, bucket, fullPath);
-      allFiles.push(...nested);
-    } else {
-      allFiles.push(fullPath);
-    }
-  }
-
-  return allFiles;
-}
-'''
-text = text[:list_start] + list_func + text[list_end:]
-
-# Make batch removal defensively skip protected keys too.
-text = re.sub(
-    r'''  const uniqueKeys = Array\.from\(\n    new Set\(keys\.map\(normalizeReceiptKey\)\.filter\(Boolean\)\),\n  \);''',
-    '''  const uniqueKeys = Array.from(
-    new Set(
-      keys
-        .map(normalizeReceiptKey)
-        .filter(Boolean)
-        .filter((key) => !shouldPreserveStorageKey(key)),
-    ),
-  );''',
-    text,
-    count=1,
+# stop reservation while closing/expiring
+s = s.replace(
+    '      if (!effectiveOpen) return;\n      if (reservingHoldRef.current) return;',
+    '      if (!effectiveOpen) return;\n      if (closingModalRef.current) return;\n      if (reservingHoldRef.current) return;'
 )
 
-# Rewrite deleteReceiptStorageFiles fully, so it never sends dashboard-messages paths to remove().
-start = text.find('async function deleteReceiptStorageFiles(')
-end = text.find('\nexport async function POST', start)
-if start == -1 or end == -1:
-    raise SystemExit("Could not find deleteReceiptStorageFiles block")
-new_delete = '''async function deleteReceiptStorageFiles(
-  dbReceiptKeys: string[],
-): Promise<StorageCleanupResult> {
-  const supabase = createSupabaseAdminClient();
+# mark closing before releasing so useEffect cannot create a fresh 3-minute hold
+s = s.replace(
+    '  async function closeModal() {\n    if (submitting) return;\n    await releaseActivePaymentHold();',
+    '  async function closeModal() {\n    if (submitting) return;\n    closingModalRef.current = true;\n    await releaseActivePaymentHold();'
+)
 
-  const dbKeys = uniqueCleanKeys(dbReceiptKeys);
-  let listedFiles: string[] = [];
-  const errors: string[] = [];
+# persist the payment draft immediately after backend hold creation, using backend expires_at.
+old = """        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem("baruda_payment_hold_id", data.id);
+        setReservationHold(data);
+        showHoldReadyToast(data);
+"""
+new = """        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem("baruda_payment_hold_id", data.id);
 
-  try {
-    /*
-      Comprehensive cleanup:
-      1. delete DB-known receipt keys
-      2. list the receipts bucket recursively
-      3. delete receipt files only
+        const nextDraftAmountMap = Object.fromEntries(
+          Object.entries(holdAmountMap).map(([number, amount]) => [Number(number), Number(amount)]),
+        ) as Record<number, number>;
 
-      IMPORTANT:
-      dashboard-messages/* is protected because dashboard message images are
-      intentionally stored inside the same receipts bucket.
-    */
-    listedFiles = await listAllStorageFiles(supabase, RECEIPTS_BUCKET);
-  } catch (error: any) {
-    const message = error?.message || "Failed to list receipts bucket";
-    console.warn("Receipt bucket list failed:", message);
-    errors.push(message);
-  }
+        const nextDraft: PaymentDraft = {
+          clientHoldKey: data.client_hold_key || activeClientHoldKey,
+          numbers: activeNumbers,
+          amountMap: nextDraftAmountMap,
+          totalAmount,
+          expiresAt: data.expires_at,
+        };
 
-  const rawKeys = Array.from(
-    new Set(
-      [...dbKeys, ...listedFiles].map(normalizeReceiptKey).filter(Boolean),
-    ),
-  );
+        localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
+        setSavedDraft(nextDraft);
+        setReservationHold(data);
+        showHoldReadyToast(data);
+"""
+if old in s:
+    s = s.replace(old, new)
+else:
+    print('WARN: hold creation storage block not found; draft persistence not inserted')
 
-  const preservedKeys = rawKeys.filter(shouldPreserveStorageKey);
-  const allKeys = rawKeys.filter((key) => !shouldPreserveStorageKey(key));
+submit.write_text(s)
 
-  console.log("Deleting receipt files:", {
-    bucket: RECEIPTS_BUCKET,
-    dbKeysFound: dbKeys.length,
-    listedFilesFound: listedFiles.length,
-    protectedFolder: `${DASHBOARD_MESSAGES_STORAGE_FOLDER}/`,
-    preserved: preservedKeys.length,
-    attempted: allKeys.length,
-    keys: allKeys,
-  });
-
-  const removeResult = await removeStorageFilesInBatches(
-    supabase,
-    RECEIPTS_BUCKET,
-    allKeys,
-  );
-
-  console.log("Receipt delete result:", {
-    ...removeResult,
-    preservedKeys,
-  });
-
-  return {
-    bucket: RECEIPTS_BUCKET,
-    dbKeysFound: dbKeys.length,
-    listedFilesFound: listedFiles.length,
-    attempted: removeResult.attempted,
-    deleted: removeResult.deleted,
-    failed: removeResult.failed,
-    errors: [...errors, ...removeResult.errors],
-    attemptedKeys: removeResult.attemptedKeys,
-    preservedKeys,
-  };
-}
-'''
-text = text[:start] + new_delete + text[end:]
-
-path.write_text(text)
+# 3) Make POST /api/holds safe if an expired client_hold_key is reused later.
+holds = Path('app/api/holds/route.ts')
+s = holds.read_text()
+s = s.replace(
+    '        expires_at = payment_holds.expires_at,\n        updated_at = NOW()',
+    """        expires_at = CASE
+          WHEN payment_holds.status = 'active' AND payment_holds.expires_at > NOW()
+          THEN payment_holds.expires_at
+          ELSE NOW() + INTERVAL '3 minutes'
+        END,
+        updated_at = NOW()"""
+)
+holds.write_text(s)
 PY
 
-echo "✅ Patched $FILE"
-echo "✅ Clear & Start New Round will now protect: receipts/dashboard-messages/*"
-echo "✅ This version protects both 'dashboard-messages' folder placeholder and 'dashboard-messages/...' files."
-echo ""
-echo "Next steps:"
-echo "  npm run build"
-echo "  deploy"
-echo "  upload a dashboard message image"
-echo "  click Clear & Start New Round"
-echo "  verify the image still exists in Supabase Storage"
+echo "✅ Payment hold timer refresh/expiry fix applied."
+echo "Next: run npm run build"

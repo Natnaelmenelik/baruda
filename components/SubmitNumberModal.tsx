@@ -286,6 +286,7 @@ export default function SubmitNumberModal({
   const [reservingHold, setReservingHold] = useState(false);
   const holdReadyToastShownRef = useRef<string | null>(null);
   const reservingHoldRef = useRef(false);
+  const closingModalRef = useRef(false);
 
     const lastReservationSignatureRef = useRef<string>("");
 const amountMap = useMemo(() => {
@@ -376,6 +377,13 @@ const amountMap = useMemo(() => {
 
   const activeClientHoldKey =
     reservationHold?.client_hold_key || savedDraft?.clientHoldKey || clientHoldKey;
+
+
+  useEffect(() => {
+    if (open) {
+      closingModalRef.current = false;
+    }
+  }, [open]);
 
   function showHoldReadyToast(hold: any) {
     const holdId = hold?.id ? String(hold.id) : "";
@@ -493,6 +501,7 @@ const amountMap = useMemo(() => {
 
   async function closeModal() {
     if (submitting) return;
+    closingModalRef.current = true;
     await releaseActivePaymentHold();
     setError("");
     onClose();
@@ -503,6 +512,7 @@ const amountMap = useMemo(() => {
 
     async function reserveSelectedAmountBeforeUpload() {
       if (!effectiveOpen) return;
+      if (closingModalRef.current) return;
       if (reservingHoldRef.current) return;
       if (reservationHold?.id && reservationHold?.expires_at && new Date(reservationHold.expires_at).getTime() > Date.now()) return;
       if (
@@ -559,6 +569,21 @@ const amountMap = useMemo(() => {
 
         localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
         localStorage.setItem("baruda_payment_hold_id", data.id);
+
+        const nextDraftAmountMap = Object.fromEntries(
+          Object.entries(holdAmountMap).map(([number, amount]) => [Number(number), Number(amount)]),
+        ) as Record<number, number>;
+
+        const nextDraft: PaymentDraft = {
+          clientHoldKey: data.client_hold_key || activeClientHoldKey,
+          numbers: activeNumbers,
+          amountMap: nextDraftAmountMap,
+          totalAmount,
+          expiresAt: data.expires_at,
+        };
+
+        localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
+        setSavedDraft(nextDraft);
         setReservationHold(data);
         showHoldReadyToast(data);
 

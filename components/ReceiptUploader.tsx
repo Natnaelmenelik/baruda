@@ -71,20 +71,14 @@ function formatTime(seconds: number) {
 }
 
 function saveServerOffset(serverNow?: string) {
-  if (typeof window === 'undefined' || !serverNow) return;
-
-  const serverNowMs = new Date(serverNow).getTime();
-  if (!Number.isFinite(serverNowMs)) return;
-
-  const offsetMs = serverNowMs - Date.now();
-  localStorage.setItem(SERVER_OFFSET_STORAGE_KEY, String(Math.round(offsetMs)));
+  // Important: server_now stored in localStorage becomes stale after refresh.
+  // Recomputing offset from that old value makes the countdown jump back to 3:00.
+  // Keep this as a no-op and always count down from the absolute expires_at value.
+  void serverNow;
 }
 
 function getCorrectedNow() {
-  if (typeof window === 'undefined') return Date.now();
-
-  const offsetMs = Number(localStorage.getItem(SERVER_OFFSET_STORAGE_KEY) || '0');
-  return Date.now() + (Number.isFinite(offsetMs) ? offsetMs : 0);
+  return Date.now();
 }
 
 function calculateRemainingSeconds(expiresAt?: string) {

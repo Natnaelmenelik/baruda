@@ -193,7 +193,11 @@ export async function POST(req: Request) {
         number_amounts = '{}'::jsonb,
         total_amount = EXCLUDED.total_amount,
         status = 'active',
-        expires_at = payment_holds.expires_at,
+        expires_at = CASE
+          WHEN payment_holds.status = 'active' AND payment_holds.expires_at > NOW()
+          THEN payment_holds.expires_at
+          ELSE NOW() + INTERVAL '3 minutes'
+        END,
         updated_at = NOW()
       RETURNING id, client_hold_key, numbers, total_amount, status, expires_at, created_at, updated_at
       `,
