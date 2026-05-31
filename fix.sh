@@ -4,92 +4,112 @@ set -euo pipefail
 ROOT="${1:-.}"
 cd "$ROOT"
 
-if [ ! -f "package.json" ] || [ ! -d "app" ]; then
-  echo "ERROR: Run this script from the project root folder, for example: cd baruda"
+SUBMIT="components/SubmitNumberModal.tsx"
+HOLD_ROUTE="app/api/holds/[id]/route.ts"
+
+if [ ! -f "$SUBMIT" ]; then
+  echo "ERROR: $SUBMIT not found. Run this from the project root." >&2
   exit 1
 fi
 
-echo "Patching localhost project: change payment hold timeout status from expired to cancelled..."
+if [ ! -f "$HOLD_ROUTE" ]; then
+  echo "ERROR: $HOLD_ROUTE not found. Run this from the project root." >&2
+  exit 1
+fi
 
-backup_file() {
-  local file="$1"
-  if [ -f "$file" ] && [ ! -f "$file.bak_expired_to_cancelled" ]; then
-    cp "$file" "$file.bak_expired_to_cancelled"
-  fi
+cp "$SUBMIT" "$SUBMIT.bak.timer-release-$(date +%Y%m%d%H%M%S)"
+cp "$HOLD_ROUTE" "$HOLD_ROUTE.bak.idempotent-delete-$(date +%Y%m%d%H%M%S)"
+
+python3 - <<'PY'
+from pathlib import Path
+
+submit = Path('components/SubmitNumberModal.tsx')
+text = submit.read_text()
+
+insert_after = '''function readStoredActiveHold() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(HOLD_STORAGE_KEY);
+    if (!raw) return null;
+
+    const hold = JSON.parse(raw);
+
+    if (
+      hold?.id &&
+      hold?.expires_at &&
+      new Date(hold.expires_at).getTime() > Date.now()
+    ) {
+      return hold;
+    }
+  } catch {
+    // ignore invalid stored hold
+  }
+
+  return null;
 }
+'''
 
-patch_file() {
-  local file="$1"
-  [ -f "$file" ] || return 0
-  backup_file "$file"
-  perl -0pi -e "s/THEN 'expired'/THEN 'cancelled'/g" "$file"
-  perl -0pi -e "s/SET status = 'expired'/SET status = 'cancelled'/g" "$file"
-  perl -0pi -e "s/SET status='expired'/SET status='cancelled'/g" "$file"
-  perl -0pi -e "s/status = 'expired'/status = 'cancelled'/g" "$file"
-  perl -0pi -e "s/status='expired'/status='cancelled'/g" "$file"
+release_reader = '''function readStoredHoldForRelease() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(HOLD_STORAGE_KEY);
+    if (!raw) return null;
+
+    const hold = JSON.parse(raw);
+
+    // Release/cancel must not require expires_at > Date.now().
+    // At timer expiry, expires_at is already passed, but the hold still
+    // needs to be cancelled through DELETE /api/holds/:id.
+    if (hold?.id) return hold;
+  } catch {
+    // ignore invalid stored hold
+  }
+
+  return null;
 }
+'''
 
-# Runtime code that was actively turning timed-out holds into expired
-patch_file "app/api/holds/[id]/route.ts"
-patch_file "app/api/submit/route.ts"
-patch_file "lib/db/cleanupExpiredHolds.ts"
+if 'function readStoredHoldForRelease()' not in text:
+    if insert_after not in text:
+        raise SystemExit('Could not find readStoredActiveHold block to insert release reader')
+    text = text.replace(insert_after, insert_after + '\n' + release_reader)
 
-# Database SQL/functions that can still mark timed-out holds as expired
-patch_file "database/supabase/006_relational_payment_holds.sql"
-patch_file "database/supabase/000_full_schema_production.sql"
-patch_file "database/supabase/20260524_safe_performance_cleanup.sql"
-patch_file "database/supabase/20260524_number_status_summary_cache.sql"
+old = 'const hold = reservationHold || readStoredActiveHold();'
+new = 'const hold = reservationHold || readStoredHoldForRelease();'
+if old in text:
+    text = text.replace(old, new, 1)
+elif new not in text:
+    raise SystemExit('Could not find timer expiry hold lookup line')
 
-mkdir -p database/supabase
-cat > database/supabase/20260530_timeout_holds_cancelled_not_expired.sql <<'SQL'
--- Make timed-out payment holds become cancelled, not expired.
--- Run this once in Supabase SQL Editor for the DB used by your localhost/project.
+submit.write_text(text)
 
-UPDATE public.payment_holds
-SET status = 'cancelled', updated_at = now()
-WHERE status = 'expired';
+route = Path('app/api/holds/[id]/route.ts')
+rt = route.read_text()
+old_sql = '''UPDATE payment_holds
+      SET status = 'cancelled',
+          updated_at = NOW()
+      WHERE id::text = $1
+        AND status = 'active'
+      RETURNING id, client_hold_key, numbers, status, updated_at'''
+new_sql = '''UPDATE payment_holds
+      SET status = 'cancelled',
+          updated_at = NOW()
+      WHERE id::text = $1
+        AND status <> 'completed'
+      RETURNING id, client_hold_key, numbers, status, updated_at'''
+if old_sql in rt:
+    rt = rt.replace(old_sql, new_sql, 1)
+elif "AND status <> 'completed'" not in rt:
+    raise SystemExit('Could not find DELETE update SQL to make idempotent')
 
-CREATE OR REPLACE FUNCTION public.cleanup_expired_payment_holds()
-RETURNS integer
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  v_count integer := 0;
-BEGIN
-  UPDATE public.payment_holds
-  SET status = 'cancelled',
-      updated_at = now()
-  WHERE status = 'active'
-    AND expires_at <= now();
+route.write_text(rt)
+PY
 
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-  RETURN v_count;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.expire_payment_holds()
-RETURNS void
-LANGUAGE plpgsql
-AS $$
-DECLARE
-  k text;
-  rec record;
-BEGIN
-  FOR rec IN SELECT * FROM public.payment_holds WHERE status='active' AND expires_at <= now() LOOP
-    UPDATE public.payment_holds SET status='cancelled', updated_at=now() WHERE id=rec.id;
-    FOR k IN SELECT jsonb_object_keys(COALESCE(rec.number_amounts, '{}'::jsonb)) LOOP
-      PERFORM public.refresh_number_status_summary(k::integer);
-    END LOOP;
-  END LOOP;
-  PERFORM public.refresh_admin_stats_summary();
-END;
-$$;
-SQL
-
+echo "Done. Patched:"
+echo "- components/SubmitNumberModal.tsx: timer release reads stored hold even after expires_at passed"
+echo "- app/api/holds/[id]/route.ts: DELETE is idempotent for non-completed holds"
 echo ""
-echo "Done. Timed-out holds will now be marked cancelled instead of expired in the patched code."
-echo "Generated SQL migration: database/supabase/20260530_timeout_holds_cancelled_not_expired.sql"
-echo "Run that SQL in Supabase SQL Editor for your local/dev database if it uses Supabase."
-echo ""
-echo "Check remaining active status-setting references with:"
-echo "grep -RIn \"status.*expired\|SET status.*expired\|THEN 'expired'\" app lib database supabase 2>/dev/null || true"
+echo "Now run:"
+echo "  npm run build"

@@ -146,6 +146,26 @@ function readStoredActiveHold() {
   return null;
 }
 
+function readStoredHoldForRelease() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = localStorage.getItem(HOLD_STORAGE_KEY);
+    if (!raw) return null;
+
+    const hold = JSON.parse(raw);
+
+    // Release/cancel must not require expires_at > Date.now().
+    // At timer expiry, expires_at is already passed, but the hold still
+    // needs to be cancelled through DELETE /api/holds/:id.
+    if (hold?.id) return hold;
+  } catch {
+    // ignore invalid stored hold
+  }
+
+  return null;
+}
+
 
 function draftFromActiveHold(hold: any): PaymentDraft | null {
   if (!hold?.id || !hold?.expires_at) return null;
@@ -533,7 +553,7 @@ const amountMap = useMemo(() => {
     holdExpiryHandledRef.current = true;
     closingModalRef.current = true;
 
-    const hold = reservationHold || readStoredActiveHold();
+    const hold = reservationHold || readStoredHoldForRelease();
     const holdId =
       hold?.id ||
       (typeof window !== "undefined"

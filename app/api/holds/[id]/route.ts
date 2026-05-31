@@ -83,7 +83,7 @@ export async function DELETE(
       SET status = 'cancelled',
           updated_at = NOW()
       WHERE id::text = $1
-        AND status = 'active'
+        AND status <> 'completed'
       RETURNING id, client_hold_key, numbers, status, updated_at
       `,
       [id],
