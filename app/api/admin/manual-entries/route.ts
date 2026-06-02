@@ -69,11 +69,26 @@ export async function GET(req: Request) {
       WITH item_data AS (
         SELECT
           si.submission_id,
-          ARRAY_AGG(si.number ORDER BY si.created_at ASC, si.id ASC)::int[] AS item_numbers,
-          COALESCE(SUM(si.amount), 0)::int AS item_total,
-          JSON_AGG(
-            JSON_BUILD_OBJECT('number', si.number, 'amount', si.amount)
-            ORDER BY si.created_at ASC, si.id ASC
+          COALESCE(
+            ARRAY_AGG(si.number ORDER BY si.created_at ASC, si.id ASC)
+              FILTER (WHERE COALESCE(si.status, 'active') <> 'rejected'),
+            ARRAY[]::int[]
+          ) AS item_numbers,
+          COALESCE(
+            SUM(si.amount) FILTER (WHERE COALESCE(si.status, 'active') <> 'rejected'),
+            0
+          )::int AS item_total,
+          COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'number', si.number,
+                'amount', si.amount,
+                'status', COALESCE(si.status, 'active'),
+                'rejected_at', si.rejected_at
+              )
+              ORDER BY si.created_at ASC, si.id ASC
+            ),
+            '[]'::json
           ) AS items
         FROM submission_items si
         GROUP BY si.submission_id
@@ -90,7 +105,7 @@ export async function GET(req: Request) {
         ) AS numbers,
         COALESCE(idata.items, '[]'::json) AS items,
         COALESCE(idata.item_total, s.total_amount, 0)::int AS total_amount,
-        COALESCE(s.status, 'approved') AS status,
+        COALESCE(s.status, 'pending') AS status,
         COALESCE(s.submission_type, 'single') AS submission_type,
         s.number_amounts,
         s.approved_at,
@@ -99,10 +114,10 @@ export async function GET(req: Request) {
       FROM submissions s
       LEFT JOIN item_data idata ON idata.submission_id = s.id
       WHERE s.user_id IS NULL
-        AND COALESCE(s.status, '') = 'approved'
+        AND COALESCE(s.status, '') IN ('pending', 'approved')
         AND COALESCE(s.has_receipt, false) = false
         AND COALESCE(s.user_name, '') <> ''
-      ORDER BY COALESCE(s.approved_at, s.created_at) DESC
+      ORDER BY COALESCE(s.submitted_at, s.created_at) DESC
       LIMIT ${limit}
     `;
 
@@ -236,12 +251,12 @@ export async function POST(req: Request) {
           ${clientPhone},
           ${clientPhone},
           ${clientName},
-          'approved',
+          'pending',
           ${submissionType},
           ${groupId},
           ${JSON.stringify(numberAmounts)}::jsonb,
           NOW(),
-          NOW(),
+          NULL,
           NOW(),
           NOW()
         )
@@ -284,14 +299,14 @@ export async function POST(req: Request) {
         numbers,
         items,
         total_amount: totalAmount,
-        status: "approved",
+        status: "pending",
         submission_type: submissionType,
         approved_at: result.approved_at,
         created_at: result.created_at,
       },
     });
   } catch (error: any) {
-    const message = error?.message || "Failed to close number for client";
+    const message = error?.message || "Failed to save manual client entry";
     const status = errorStatus(message);
 
     if (status >= 500) {

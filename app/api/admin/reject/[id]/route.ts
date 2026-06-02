@@ -190,6 +190,7 @@ export async function POST(req: Request, context: RouteContext) {
         SELECT submission_id, number, amount
         FROM submission_items
         WHERE submission_id = ANY($1::int[])
+          AND COALESCE(status, 'active') <> 'rejected'
         ORDER BY number ASC
       `,
       [submissionIds],
@@ -287,45 +288,14 @@ export async function POST(req: Request, context: RouteContext) {
       [submissionIds],
     );
 
-    const values: any[] = [];
-    const placeholders: string[] = [];
-
-    affectedNumbers.forEach((number, index) => {
-      const base = index * 2 + 1;
-      placeholders.push(`($${base}::int, $${base + 1}::int)`);
-      values.push(number, amountByNumber.get(number) || 0);
-    });
-
     /*
-      Affected numbers only:
-      release pending amount.
-      No full number recalculation.
+      Status changed from pending -> rejected above.
+      Do NOT manually decrement cache here. Recalculate affected numbers from
+      submission_items/submissions so manual entries and rejected item rows stay accurate.
     */
     await client.query(
-      `
-        WITH item_updates(number, amount) AS (
-          VALUES ${placeholders.join(", ")}
-        )
-        UPDATE number_status_summary_cache cache
-        SET
-          pending_amount = GREATEST(cache.pending_amount - item_updates.amount, 0),
-          remaining_amount = GREATEST(
-            cache.target_amount
-              - cache.approved_amount
-              - GREATEST(cache.pending_amount - item_updates.amount, 0)
-              - cache.hold_amount,
-            0
-          ),
-          status = CASE
-            WHEN cache.approved_amount >= cache.target_amount THEN 'sold'
-            WHEN GREATEST(cache.pending_amount - item_updates.amount, 0) > 0 OR cache.hold_amount > 0 THEN 'pending'
-            ELSE 'open'
-          END,
-          updated_at = NOW()
-        FROM item_updates
-        WHERE cache.number = item_updates.number
-      `,
-      values,
+      `SELECT public.refresh_number_status_summary_cache_many($1::integer[])`,
+      [affectedNumbers],
     );
 
     const totalAmount = Array.from(amountByNumber.values()).reduce(

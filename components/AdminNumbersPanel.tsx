@@ -45,13 +45,23 @@ type ManualCloseLine = {
   amount: string;
 };
 
+type ManualEntryEditLine = {
+  number: string;
+  amount: string;
+};
+
 type ManualEntryRow = {
   id?: string;
   user_name?: string;
   user_phone?: string;
   contact_phone?: string;
   numbers?: number[];
-  items?: { number?: number; amount?: number }[];
+  items?: {
+    number?: number;
+    amount?: number;
+    status?: string;
+    rejected_at?: string;
+  }[];
   number_amounts?: Record<string, number> | null;
   total_amount?: number;
   status?: string;
@@ -99,11 +109,25 @@ export default function AdminNumbersPanel() {
   const [manualEntries, setManualEntries] = useState<ManualEntryRow[]>([]);
   const [manualEntriesLoading, setManualEntriesLoading] = useState(false);
   const [manualCloseSubmitting, setManualCloseSubmitting] = useState(false);
+  const [selectedManualEntry, setSelectedManualEntry] =
+    useState<ManualEntryRow | null>(null);
+  const [manualEntryEditName, setManualEntryEditName] = useState("");
+  const [manualEntryEditPhone, setManualEntryEditPhone] = useState("");
+  const [manualEntryEditLines, setManualEntryEditLines] = useState<
+    ManualEntryEditLine[]
+  >([]);
+  const [manualEntryEditSaving, setManualEntryEditSaving] = useState(false);
   const [dashboardMessageText, setDashboardMessageText] = useState("");
-  const [dashboardMessageImages, setDashboardMessageImages] = useState<File[]>([]);
-  const [dashboardImagePreviews, setDashboardImagePreviews] = useState<string[]>([]);
-  const [dashboardMessageImageFile, setDashboardMessageImageFile] = useState<File | null>(null);
-  const [dashboardMessageImagePreview, setDashboardMessageImagePreview] = useState("");
+  const [dashboardMessageImages, setDashboardMessageImages] = useState<File[]>(
+    [],
+  );
+  const [dashboardImagePreviews, setDashboardImagePreviews] = useState<
+    string[]
+  >([]);
+  const [dashboardMessageImageFile, setDashboardMessageImageFile] =
+    useState<File | null>(null);
+  const [dashboardMessageImagePreview, setDashboardMessageImagePreview] =
+    useState("");
   const [selectionReceiptImage, setSelectionReceiptImage] = useState<
     string | null
   >(null);
@@ -207,7 +231,10 @@ export default function AdminNumbersPanel() {
           : "") ||
         `Request failed: ${res.status}`;
 
-      const error = new Error(humanMessage) as Error & { data?: any; code?: string };
+      const error = new Error(humanMessage) as Error & {
+        data?: any;
+        code?: string;
+      };
       error.data = data;
       error.code = errorCode;
       throw error;
@@ -665,7 +692,6 @@ export default function AdminNumbersPanel() {
     };
   }
 
-
   async function compressDashboardImage(file: File): Promise<File> {
     const maxDimension = 1280;
     const quality = 0.78;
@@ -688,7 +714,10 @@ export default function AdminNumbersPanel() {
       img.src = dataUrl;
     });
 
-    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+    const scale = Math.min(
+      1,
+      maxDimension / Math.max(image.width, image.height),
+    );
     const width = Math.max(1, Math.round(image.width * scale));
     const height = Math.max(1, Math.round(image.height * scale));
 
@@ -722,7 +751,9 @@ export default function AdminNumbersPanel() {
     setDashboardImagePreviews([]);
   }
 
-  function handleDashboardImageChange(event: React.ChangeEvent<HTMLInputElement>) {
+  function handleDashboardImageChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
     const files = Array.from(event.target.files || []);
     event.target.value = "";
 
@@ -742,12 +773,18 @@ export default function AdminNumbersPanel() {
     }
 
     const previews = nextFiles.map((file) => URL.createObjectURL(file));
-    setDashboardMessageImages((current) => [...current, ...nextFiles].slice(0, 3));
-    setDashboardImagePreviews((current) => [...current, ...previews].slice(0, 3));
+    setDashboardMessageImages((current) =>
+      [...current, ...nextFiles].slice(0, 3),
+    );
+    setDashboardImagePreviews((current) =>
+      [...current, ...previews].slice(0, 3),
+    );
   }
 
   function removeDashboardImage(index: number) {
-    setDashboardMessageImages((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setDashboardMessageImages((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index),
+    );
     setDashboardImagePreviews((current) => {
       const removed = current[index];
       if (removed) URL.revokeObjectURL(removed);
@@ -772,7 +809,12 @@ export default function AdminNumbersPanel() {
       const uploaded = data?.image;
 
       if (!uploaded?.url || !uploaded?.key) {
-        throw new Error(label("failedToUploadDashboardImage", "Failed to upload announcement image"));
+        throw new Error(
+          label(
+            "failedToUploadDashboardImage",
+            "Failed to upload announcement image",
+          ),
+        );
       }
 
       uploadedImages.push({ url: uploaded.url, key: uploaded.key });
@@ -827,14 +869,17 @@ export default function AdminNumbersPanel() {
     }
   }
 
-
   function resetManualCloseForm() {
     setManualClientName("");
     setManualClientPhone("");
     setManualCloseLines([{ number: "", amount: "" }]);
   }
 
-  function updateManualCloseLine(index: number, field: keyof ManualCloseLine, value: string) {
+  function updateManualCloseLine(
+    index: number,
+    field: keyof ManualCloseLine,
+    value: string,
+  ) {
     setManualCloseLines((previous) =>
       previous.map((line, currentIndex) =>
         currentIndex === index ? { ...line, [field]: value } : line,
@@ -843,12 +888,17 @@ export default function AdminNumbersPanel() {
   }
 
   function addManualCloseLine() {
-    setManualCloseLines((previous) => [...previous, { number: "", amount: "" }]);
+    setManualCloseLines((previous) => [
+      ...previous,
+      { number: "", amount: "" },
+    ]);
   }
 
   function removeManualCloseLine(index: number) {
     setManualCloseLines((previous) =>
-      previous.length <= 1 ? [{ number: "", amount: "" }] : previous.filter((_, currentIndex) => currentIndex !== index),
+      previous.length <= 1
+        ? [{ number: "", amount: "" }]
+        : previous.filter((_, currentIndex) => currentIndex !== index),
     );
   }
 
@@ -871,13 +921,26 @@ export default function AdminNumbersPanel() {
     return getManualCloseItems().reduce((sum, item) => sum + item.amount, 0);
   }
 
+  function getActiveManualEntryItems(entry: ManualEntryRow) {
+    return (Array.isArray(entry.items) ? entry.items : []).filter(
+      (item) => String(item?.status || "active").toLowerCase() !== "rejected",
+    );
+  }
+
+  function getRejectedManualEntryItems(entry: ManualEntryRow) {
+    return (Array.isArray(entry.items) ? entry.items : []).filter(
+      (item) => String(item?.status || "active").toLowerCase() === "rejected",
+    );
+  }
+
   function getManualEntryNumbers(entry: ManualEntryRow) {
     if (Array.isArray(entry.numbers) && entry.numbers.length) {
       return entry.numbers.join(", ");
     }
 
-    if (Array.isArray(entry.items) && entry.items.length) {
-      return entry.items
+    const activeItems = getActiveManualEntryItems(entry);
+    if (activeItems.length) {
+      return activeItems
         .map((item) => item.number)
         .filter((value) => value !== undefined && value !== null)
         .join(", ");
@@ -891,19 +954,176 @@ export default function AdminNumbersPanel() {
   }
 
   function getManualEntryAmountBreakdown(entry: ManualEntryRow) {
-    if (Array.isArray(entry.items) && entry.items.length) {
-      return entry.items
-        .map((item) => `${item.number}: ${Number(item.amount || 0).toLocaleString()}`)
+    const activeItems = getActiveManualEntryItems(entry);
+    if (activeItems.length) {
+      return activeItems
+        .map(
+          (item) =>
+            `${item.number}: ${Number(item.amount || 0).toLocaleString()}`,
+        )
         .join(" • ");
     }
 
     if (entry.number_amounts && typeof entry.number_amounts === "object") {
       return Object.entries(entry.number_amounts)
-        .map(([number, amount]) => `${number}: ${Number(amount || 0).toLocaleString()}`)
+        .map(
+          ([number, amount]) =>
+            `${number}: ${Number(amount || 0).toLocaleString()}`,
+        )
         .join(" • ");
     }
 
     return Number(entry.total_amount || 0).toLocaleString();
+  }
+
+  function getManualEntryEditLines(entry: ManualEntryRow): ManualEntryEditLine[] {
+    const activeItems = getActiveManualEntryItems(entry);
+
+    if (activeItems.length) {
+      return activeItems
+        .map((item) => ({
+          number: String(item.number ?? ""),
+          amount: String(item.amount ?? ""),
+        }))
+        .filter((item) => item.number && item.amount);
+    }
+
+    if (entry.number_amounts && typeof entry.number_amounts === "object") {
+      return Object.entries(entry.number_amounts).map(([number, amount]) => ({
+        number,
+        amount: String(amount ?? ""),
+      }));
+    }
+
+    return [];
+  }
+
+  function getManualEntryStatusLabel(entry: ManualEntryRow) {
+    const status = String(entry.status || "pending").toLowerCase();
+
+    if (status === "approved") return label("approved", "Approved");
+    if (status === "rejected") return label("rejected", "Rejected");
+    return label("pending", "Pending");
+  }
+
+  function getManualEntryStatusBadgeClass(entry: ManualEntryRow) {
+    const status = String(entry.status || "pending").toLowerCase();
+
+    if (status === "approved") {
+      return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/30 dark:text-emerald-200";
+    }
+
+    if (status === "rejected") {
+      return "border-red-200 bg-red-50 text-red-700 dark:border-red-800/60 dark:bg-red-950/30 dark:text-red-200";
+    }
+
+    return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200";
+  }
+
+  function getManualEntryEditItems() {
+    return manualEntryEditLines
+      .map((line) => ({
+        number: Number(line.number),
+        amount: Number(line.amount),
+      }))
+      .filter(
+        (item) =>
+          Number.isInteger(item.number) &&
+          item.number > 0 &&
+          Number.isFinite(item.amount) &&
+          item.amount > 0,
+      );
+  }
+
+  function getManualEntryEditTotalAmount() {
+    return getManualEntryEditItems().reduce(
+      (sum, item) => sum + item.amount,
+      0,
+    );
+  }
+
+  function openManualEntryDetails(entry: ManualEntryRow) {
+    setSelectedManualEntry(entry);
+    setManualEntryEditName(entry.user_name || "");
+    setManualEntryEditPhone(entry.user_phone || entry.contact_phone || "");
+    setManualEntryEditLines(getManualEntryEditLines(entry));
+  }
+
+  function closeManualEntryDetails() {
+    if (manualEntryEditSaving) return;
+    setSelectedManualEntry(null);
+    setManualEntryEditName("");
+    setManualEntryEditPhone("");
+    setManualEntryEditLines([]);
+  }
+
+  function updateManualEntryEditLine(
+    index: number,
+    field: keyof ManualEntryEditLine,
+    value: string,
+  ) {
+    setManualEntryEditLines((previous) =>
+      previous.map((line, currentIndex) =>
+        currentIndex === index ? { ...line, [field]: value } : line,
+      ),
+    );
+  }
+
+  function removeManualEntryEditLine(index: number) {
+    setManualEntryEditLines((previous) =>
+      previous.filter((_, currentIndex) => currentIndex !== index),
+    );
+  }
+
+  async function saveManualEntryDetails() {
+    if (!selectedManualEntry?.id) return;
+
+    const clientName = manualEntryEditName.trim();
+    const phone = manualEntryEditPhone.trim();
+    const items = getManualEntryEditItems();
+
+    if (!clientName) {
+      toast.error(label("clientNameRequired", "Client name is required"));
+      return;
+    }
+
+    try {
+      setManualEntryEditSaving(true);
+      const res = await fetch(
+        `/api/admin/manual-entries/${selectedManualEntry.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+          clientName,
+          phone,
+          status: selectedManualEntry.status || "pending",
+          items,
+        }),
+        },
+      );
+      const data = await readJson(res);
+
+      toast.success(
+        data?.deleted
+          ? label("manualEntryDeleted", "Manual entry removed")
+          : label("manualEntryUpdated", "Manual entry updated"),
+      );
+
+      await loadManualEntries(false);
+      closeManualEntryDetails();
+      if (showManage) {
+        void loadNumbers();
+      }
+    } catch (err: any) {
+      toast.error(
+        translateApiError(err, lang) ||
+          err.message ||
+          label("failedToSaveManualEntry", "Failed to save manual entry"),
+      );
+    } finally {
+      setManualEntryEditSaving(false);
+    }
   }
 
   async function loadManualEntries(openModal = true) {
@@ -921,7 +1141,10 @@ export default function AdminNumbersPanel() {
       toast.error(
         translateApiError(err, lang) ||
           err.message ||
-          label("failedToLoadManualEntries", "Failed to load manually closed numbers"),
+          label(
+            "failedToLoadManualEntries",
+            "Failed to load manually closed numbers",
+          ),
       );
     } finally {
       setManualEntriesLoading(false);
@@ -944,7 +1167,12 @@ export default function AdminNumbersPanel() {
     }
 
     if (!items.length) {
-      toast.error(label("manualCloseNumberRequired", "Enter at least one valid number and amount"));
+      toast.error(
+        label(
+          "manualCloseNumberRequired",
+          "Enter at least one valid number and amount",
+        ),
+      );
       return;
     }
 
@@ -953,11 +1181,13 @@ export default function AdminNumbersPanel() {
       const res = await fetch("/api/admin/manual-entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clientName, phone, items }),
+        body: JSON.stringify({ clientName, phone, status: "pending", items }),
       });
       const data = await readJson(res);
 
-      toast.success(label("manualCloseSuccess", "Number closed for client"));
+      toast.success(
+        label("manualCloseSuccess", "Manual entry saved as pending"),
+      );
       resetManualCloseForm();
       await loadManualEntries(false);
       if (showManage) {
@@ -1101,11 +1331,14 @@ export default function AdminNumbersPanel() {
                 multiple
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={handleDashboardImageChange}
-                className="w-full rounded-2xl border border-amber-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 file:mr-4 file:rounded-xl file:border-0 file:bg-amber-100 file:px-4 file:py-2 file:text-sm file:font-bold file:text-amber-800 hover:file:bg-amber-200 dark:border-amber-800/60 dark:bg-slate-900 dark:text-white"
+                className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border rounded-2xl border-amber-200 file:mr-4 file:rounded-xl file:border-0 file:bg-amber-100 file:px-4 file:py-2 file:text-sm file:font-bold file:text-amber-800 hover:file:bg-amber-200 dark:border-amber-800/60 dark:bg-slate-900 dark:text-white"
               />
 
               <div className="text-xs font-bold text-gray-500 dark:text-slate-400">
-                {label("dashboardMessageImageHelp", "You can upload up to 3 JPG, PNG, or WebP images. Images are compressed before upload.")}
+                {label(
+                  "dashboardMessageImageHelp",
+                  "You can upload up to 3 JPG, PNG, or WebP images. Images are compressed before upload.",
+                )}
               </div>
 
               {!!dashboardImagePreviews.length && (
@@ -1113,7 +1346,7 @@ export default function AdminNumbersPanel() {
                   {dashboardImagePreviews.map((preview, index) => (
                     <div
                       key={preview}
-                      className="overflow-hidden border border-amber-100 rounded-2xl bg-white dark:bg-slate-900 dark:border-amber-800/60"
+                      className="overflow-hidden bg-white border border-amber-100 rounded-2xl dark:bg-slate-900 dark:border-amber-800/60"
                     >
                       <img
                         src={preview}
@@ -1169,16 +1402,18 @@ export default function AdminNumbersPanel() {
         </Modal>
       )}
 
-
       {showManualCloseModal && (
         <Modal
           onClose={() => setShowManualCloseModal(false)}
-          title={label("manualCloseNumbersForClient", "Close Numbers for Client")}
+          title={label(
+            "manualCloseNumbersForClient",
+            "Close Numbers for Client",
+          )}
           wide
           scrollable
         >
           <div className="space-y-6">
-            <section className="rounded-2xl border border-purple-100 bg-purple-50 p-4 dark:border-purple-800/60 dark:bg-purple-950/30">
+            <section className="p-4 border border-purple-100 rounded-2xl bg-purple-50 dark:border-purple-800/60 dark:bg-purple-950/30">
               <div className="mb-4">
                 <h3 className="text-base font-black text-purple-900 dark:text-purple-100">
                   {label("closeNumbersForClient", "Close number(s)")}
@@ -1186,35 +1421,39 @@ export default function AdminNumbersPanel() {
                 <p className="mt-1 text-xs font-semibold text-purple-700 dark:text-purple-200">
                   {label(
                     "manualCloseHelp",
-                    "Use this for clients who cannot register. The entry is saved as approved and uses the existing number logic.",
+                    "Use this for clients who cannot register. The entry is saved as pending and uses the existing number logic.",
                   )}
                 </p>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-sm font-bold text-gray-800 dark:text-slate-100">
+                  <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
                     {label("clientName", "Client Name")} *
                   </label>
                   <input
                     type="text"
                     value={manualClientName}
-                    onChange={(event) => setManualClientName(event.target.value)}
+                    onChange={(event) =>
+                      setManualClientName(event.target.value)
+                    }
                     placeholder={label("clientNamePlaceholder", "Example: XYZ")}
-                    className="w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-bold text-gray-800 dark:text-slate-100">
+                  <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
                     {label("phoneOptional", "Phone Number (optional)")}
                   </label>
                   <input
                     type="tel"
                     value={manualClientPhone}
-                    onChange={(event) => setManualClientPhone(event.target.value)}
+                    onChange={(event) =>
+                      setManualClientPhone(event.target.value)
+                    }
                     placeholder="09111"
-                    className="w-full rounded-xl border border-purple-200 bg-white px-4 py-3 text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                    className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
                   />
                 </div>
               </div>
@@ -1227,27 +1466,42 @@ export default function AdminNumbersPanel() {
                 </div>
 
                 {manualCloseLines.map((line, index) => (
-                  <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <div
+                    key={index}
+                    className="grid grid-cols-[1fr_1fr_auto] gap-2"
+                  >
                     <input
                       type="number"
                       min={1}
                       value={line.number}
-                      onChange={(event) => updateManualCloseLine(index, "number", event.target.value)}
+                      onChange={(event) =>
+                        updateManualCloseLine(
+                          index,
+                          "number",
+                          event.target.value,
+                        )
+                      }
                       placeholder="25"
-                      className="w-full rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-sm font-bold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
                     />
                     <input
                       type="number"
                       min={1}
                       value={line.amount}
-                      onChange={(event) => updateManualCloseLine(index, "amount", event.target.value)}
+                      onChange={(event) =>
+                        updateManualCloseLine(
+                          index,
+                          "amount",
+                          event.target.value,
+                        )
+                      }
                       placeholder="5000"
-                      className="w-full rounded-xl border border-purple-200 bg-white px-3 py-2 text-sm font-bold text-gray-900 outline-none focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-sm font-bold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
                     />
                     <button
                       type="button"
                       onClick={() => removeManualCloseLine(index)}
-                      className="rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-black text-red-700 transition hover:bg-red-50 dark:border-red-800/60 dark:bg-slate-900 dark:text-red-200"
+                      className="px-3 py-2 text-sm font-black text-red-700 transition bg-white border border-red-200 rounded-xl hover:bg-red-50 dark:border-red-800/60 dark:bg-slate-900 dark:text-red-200"
                     >
                       ×
                     </button>
@@ -1257,71 +1511,116 @@ export default function AdminNumbersPanel() {
                 <button
                   type="button"
                   onClick={addManualCloseLine}
-                  className="rounded-xl border border-purple-200 bg-white px-4 py-2 text-sm font-black text-purple-700 transition hover:bg-purple-100 dark:border-purple-800/60 dark:bg-slate-900 dark:text-purple-200"
+                  className="px-4 py-2 text-sm font-black text-purple-700 transition bg-white border border-purple-200 rounded-xl hover:bg-purple-100 dark:border-purple-800/60 dark:bg-slate-900 dark:text-purple-200"
                 >
                   + {label("addNumber", "Add Number")}
                 </button>
               </div>
 
-              <div className="mt-4 flex flex-col gap-3 rounded-xl bg-white p-3 text-sm font-bold text-purple-900 dark:bg-slate-900/70 dark:text-purple-100 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-bold text-purple-900 bg-white rounded-xl dark:bg-slate-900/70 dark:text-purple-100 sm:flex-row sm:items-center sm:justify-between">
                 <span>
-                  {label("totalAmount", "Total Amount")}: {getManualTotalAmount().toLocaleString()} {label("birr", "Birr")}
+                  {label("totalAmount", "Total Amount")}:{" "}
+                  {getManualTotalAmount().toLocaleString()}{" "}
+                  {label("birr", "Birr")}
                 </span>
                 <button
                   type="button"
                   onClick={submitManualCloseNumbers}
                   disabled={manualCloseSubmitting}
-                  className="rounded-xl bg-purple-600 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-purple-700 disabled:opacity-50"
+                  className="px-5 py-3 text-sm font-black text-white transition bg-purple-600 shadow-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
                 >
                   {manualCloseSubmitting
                     ? label("saving", "Saving...")
-                    : label("approveAndCloseNumbers", "Approve & Close Numbers")}
+                    : label(
+                        "saveAsPendingAndCloseNumbers",
+                        "Save as Pending & Close Numbers",
+                      )}
                 </button>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <section className="p-4 bg-white border border-gray-200 rounded-2xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex flex-col gap-2 mb-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-base font-black text-gray-900 dark:text-white">
                     {label("manuallyClosedNumbers", "Manually Closed Numbers")}
                   </h3>
                   <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
-                    {label("manualEntriesExistingSchema", "Saved using approved submissions with no user account and no receipt.")}
+                    {label(
+                      "manualEntriesExistingSchema",
+                      "Saved using pending submissions with no user account and no receipt.",
+                    )}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => loadManualEntries(false)}
                   disabled={manualEntriesLoading}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                  className="px-4 py-2 text-xs font-black text-gray-700 transition border border-gray-200 rounded-xl bg-gray-50 hover:bg-gray-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                 >
-                  {manualEntriesLoading ? label("loading", "Loading...") : label("refresh", "Refresh")}
+                  {manualEntriesLoading
+                    ? label("loading", "Loading...")
+                    : label("refresh", "Refresh")}
                 </button>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
+              <div className="overflow-hidden border border-gray-200 rounded-xl dark:border-slate-700">
                 <div className="max-h-[360px] overflow-auto">
                   <table className="w-full min-w-[760px] text-sm">
-                    <thead className="sticky top-0 z-10 bg-gray-50 text-xs font-black uppercase tracking-wide text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                    <thead className="sticky top-0 z-10 text-xs font-black tracking-wide text-gray-500 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-300">
                       <tr>
-                        <th className="p-3 text-left">{label("client", "Client")}</th>
-                        <th className="p-3 text-left">{label("phone", "Phone")}</th>
-                        <th className="p-3 text-left">{label("numbers", "Numbers")}</th>
-                        <th className="p-3 text-left">{label("amount", "Amount")}</th>
-                        <th className="p-3 text-left">{label("approvedAt", "Approved At")}</th>
+                        <th className="p-3 text-left">
+                          {label("client", "Client")}
+                        </th>
+                        <th className="p-3 text-left">
+                          {label("phone", "Phone")}
+                        </th>
+                        <th className="p-3 text-left">
+                          {label("numbers", "Numbers")}
+                        </th>
+                        <th className="p-3 text-left">
+                          {label("amount", "Amount")}
+                        </th>
+                        <th className="p-3 text-left">
+                          {label("status", "Status")}
+                        </th>
+                        <th className="p-3 text-left">
+                          {label("submittedAt", "Submitted At")}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                       {manualEntriesLoading ? (
                         <tr>
-                          <td colSpan={5} className="p-6 text-center font-bold text-gray-500 dark:text-slate-400">
+                          <td
+                            colSpan={6}
+                            className="p-6 font-bold text-center text-gray-500 dark:text-slate-400"
+                          >
                             {label("loading", "Loading...")}
                           </td>
                         </tr>
                       ) : manualEntries.length ? (
                         manualEntries.map((entry) => (
-                          <tr key={entry.id || `${entry.user_name}-${entry.created_at}`} className="align-top">
+                          <tr
+                            key={
+                              entry.id ||
+                              `${entry.user_name}-${entry.created_at}`
+                            }
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openManualEntryDetails(entry)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                openManualEntryDetails(entry);
+                              }
+                            }}
+                            className="align-top transition cursor-pointer hover:bg-purple-50 dark:hover:bg-slate-800/80"
+                            title={label(
+                              "clickRowForDetails",
+                              "Click to view and edit details",
+                            )}
+                          >
                             <td className="p-3 font-bold text-gray-900 dark:text-white">
                               {entry.user_name || "-"}
                             </td>
@@ -1333,26 +1632,207 @@ export default function AdminNumbersPanel() {
                             </td>
                             <td className="p-3">
                               <div className="font-black text-gray-900 dark:text-white">
-                                {Number(entry.total_amount || 0).toLocaleString()} {label("birr", "Birr")}
+                                {Number(
+                                  entry.total_amount || 0,
+                                ).toLocaleString()}{" "}
+                                {label("birr", "Birr")}
                               </div>
                               <div className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
                                 {getManualEntryAmountBreakdown(entry)}
                               </div>
+                              {getRejectedManualEntryItems(entry).length >
+                                0 && (
+                                <div className="mt-1 text-xs font-black text-red-600 dark:text-red-300">
+                                  {label("rejectedNumbers", "Rejected numbers")}
+                                  :{" "}
+                                  {getRejectedManualEntryItems(entry)
+                                    .map(
+                                      (item) =>
+                                        `${item.number}: ${Number(item.amount || 0).toLocaleString()}`,
+                                    )
+                                    .join(" • ")}
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex rounded-full border px-3 py-1 text-xs font-black ${getManualEntryStatusBadgeClass(entry)}`}
+                              >
+                                {getManualEntryStatusLabel(entry)}
+                              </span>
                             </td>
                             <td className="p-3 font-semibold text-gray-600 dark:text-slate-300">
-                              {formatDate(entry.approved_at || entry.created_at)}
+                              {formatDate(entry.created_at)}
                             </td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={5} className="p-6 text-center font-bold text-gray-500 dark:text-slate-400">
-                            {label("noManualEntries", "No manually closed numbers yet.")}
+                          <td
+                            colSpan={6}
+                            className="p-6 font-bold text-center text-gray-500 dark:text-slate-400"
+                          >
+                            {label(
+                              "noManualEntries",
+                              "No manually closed numbers yet.",
+                            )}
                           </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </section>
+          </div>
+        </Modal>
+      )}
+
+      {selectedManualEntry && (
+        <Modal
+          onClose={closeManualEntryDetails}
+          title={label("manualEntryDetails", "Manual Entry Details")}
+          wide
+          scrollable
+        >
+          <div className="space-y-5">
+            <section className="p-4 border border-purple-100 rounded-2xl bg-purple-50 dark:border-purple-800/60 dark:bg-purple-950/30">
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
+                    {label("clientName", "Client Name")} *
+                  </label>
+                  <input
+                    type="text"
+                    value={manualEntryEditName}
+                    onChange={(event) =>
+                      setManualEntryEditName(event.target.value)
+                    }
+                    className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
+                    {label("phoneOptional", "Phone Number (optional)")}
+                  </label>
+                  <input
+                    type="tel"
+                    value={manualEntryEditPhone}
+                    onChange={(event) =>
+                      setManualEntryEditPhone(event.target.value)
+                    }
+                    className="w-full px-4 py-3 text-sm font-semibold text-gray-900 bg-white border border-purple-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-purple-800/60 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
+                    {label("status", "Status")}
+                  </label>
+                  <div className="px-4 py-3 text-sm font-black border rounded-xl border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+                    {label("pending", "Pending")}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section className="p-4 bg-white border border-gray-200 rounded-2xl dark:border-slate-700 dark:bg-slate-900">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div>
+                  <h3 className="text-base font-black text-gray-900 dark:text-white">
+                    {label("selectedNumbers", "Selected Numbers")}
+                  </h3>
+                  <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
+                    {label(
+                      "manualEntryEditHelp",
+                      "Edit an amount only if the extra amount is available, or remove a number from this entry.",
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs font-black uppercase tracking-wide text-gray-500 dark:text-slate-300">
+                  <span>{label("number", "Number")}</span>
+                  <span>{label("amount", "Amount")}</span>
+                  <span className="sr-only">{label("remove", "Remove")}</span>
+                </div>
+
+                {manualEntryEditLines.length ? (
+                  manualEntryEditLines.map((line, index) => (
+                    <div
+                      key={`${line.number}-${index}`}
+                      className="grid grid-cols-[1fr_1fr_auto] gap-2"
+                    >
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.number}
+                        onChange={(event) =>
+                          updateManualEntryEditLine(
+                            index,
+                            "number",
+                            event.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 text-sm font-bold text-gray-900 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      />
+                      <input
+                        type="number"
+                        min={1}
+                        value={line.amount}
+                        onChange={(event) =>
+                          updateManualEntryEditLine(
+                            index,
+                            "amount",
+                            event.target.value,
+                          )
+                        }
+                        className="w-full px-3 py-2 text-sm font-bold text-gray-900 bg-white border border-gray-200 outline-none rounded-xl focus:ring-2 focus:ring-purple-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeManualEntryEditLine(index)}
+                        className="px-3 py-2 text-sm font-black text-red-700 transition bg-white border border-red-200 rounded-xl hover:bg-red-50 dark:border-red-800/60 dark:bg-slate-900 dark:text-red-200"
+                      >
+                        {label("remove", "Remove")}
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 text-sm font-bold text-center text-gray-500 border border-gray-300 border-dashed rounded-xl dark:border-slate-700 dark:text-slate-400">
+                    {label(
+                      "noNumbersLeft",
+                      "No numbers left. Saving will remove this manual entry.",
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 p-3 mt-4 text-sm font-bold text-gray-900 rounded-xl bg-gray-50 dark:bg-slate-800/70 dark:text-white sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  {label("totalAmount", "Total Amount")}:{" "}
+                  {getManualEntryEditTotalAmount().toLocaleString()}{" "}
+                  {label("birr", "Birr")}
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={closeManualEntryDetails}
+                    disabled={manualEntryEditSaving}
+                    className="px-5 py-3 text-sm font-black text-gray-700 transition bg-white border border-gray-200 rounded-xl hover:bg-gray-100 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                  >
+                    {label("cancel", "Cancel")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={saveManualEntryDetails}
+                    disabled={manualEntryEditSaving}
+                    className="px-5 py-3 text-sm font-black text-white transition bg-purple-600 shadow-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    {manualEntryEditSaving
+                      ? label("saving", "Saving...")
+                      : label("saveChanges", "Save Changes")}
+                  </button>
                 </div>
               </div>
             </section>
@@ -1426,7 +1906,7 @@ export default function AdminNumbersPanel() {
                 {filteredApprovedUsers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="p-8 text-center text-gray-500 dark:text-slate-400"
                     >
                       {label("noData", "No data found")}
@@ -2080,7 +2560,9 @@ function Modal({
         className={`w-full ${wide ? "max-w-5xl" : "max-w-md"} ${scrollable ? "flex max-h-[88vh] flex-col overflow-hidden" : "max-h-[88vh] overflow-hidden"} rounded-2xl bg-white dark:bg-slate-900 shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`${scrollable ? "shrink-0" : ""} flex items-center justify-between px-5 py-4 border-b`}>
+        <div
+          className={`${scrollable ? "shrink-0" : ""} flex items-center justify-between px-5 py-4 border-b`}
+        >
           <h2 className="text-lg font-bold text-gray-900 dark:text-white md:text-xl">
             {title}
           </h2>
@@ -2092,7 +2574,15 @@ function Modal({
             ×
           </button>
         </div>
-        <div className={scrollable ? "min-h-0 flex-1 overflow-y-auto p-5" : "p-5 overflow-auto"}>{children}</div>
+        <div
+          className={
+            scrollable
+              ? "min-h-0 flex-1 overflow-y-auto p-5"
+              : "p-5 overflow-auto"
+          }
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

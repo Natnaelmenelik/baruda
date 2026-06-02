@@ -54,14 +54,27 @@ export async function GET(req: Request) {
       WITH item_data AS (
         SELECT
           si.submission_id,
-          ARRAY_AGG(si.number ORDER BY si.created_at ASC, si.id ASC)::int[] AS item_numbers,
-          COALESCE(SUM(si.amount), 0)::int AS item_total,
-          JSON_AGG(
-            JSON_BUILD_OBJECT(
-              'number', si.number,
-              'amount', si.amount
-            )
-            ORDER BY si.created_at ASC, si.id ASC
+          COALESCE(
+            ARRAY_AGG(si.number ORDER BY si.created_at ASC, si.id ASC)
+              FILTER (WHERE COALESCE(si.status, 'active') <> 'rejected'),
+            ARRAY[]::int[]
+          ) AS item_numbers,
+          COALESCE(
+            SUM(si.amount) FILTER (WHERE COALESCE(si.status, 'active') <> 'rejected'),
+            0
+          )::int AS item_total,
+          COALESCE(
+            JSON_AGG(
+              JSON_BUILD_OBJECT(
+                'number', si.number,
+                'amount', si.amount,
+                'status', COALESCE(si.status, 'active'),
+                'rejected_at', si.rejected_at,
+                'rejected_reason', si.rejected_reason
+              )
+              ORDER BY si.created_at ASC, si.id ASC
+            ),
+            '[]'::json
           ) AS items
         FROM submission_items si
         GROUP BY si.submission_id

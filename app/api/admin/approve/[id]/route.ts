@@ -180,6 +180,7 @@ export async function POST(req: Request, context: RouteContext) {
         SELECT number, amount
         FROM submission_items
         WHERE submission_id = $1
+          AND COALESCE(status, 'active') <> 'rejected'
         ORDER BY number ASC
       `,
       [submission.id],
@@ -315,70 +316,16 @@ export async function POST(req: Request, context: RouteContext) {
       throw new Error("Submission could not be approved");
     }
 
-    const values: any[] = [];
-    const placeholders: string[] = [];
-
-    items.forEach((item, index) => {
-      const base = index * 2 + 1;
-      placeholders.push(`($${base}::int, $${base + 1}::int)`);
-      values.push(item.number, item.amount);
-    });
-
     /*
-      Affected numbers only:
-      pending -> approved.
-      No full number recalculation.
+      Status changed from pending -> approved above.
+      Do NOT manually increment number_status_summary_cache or number_pools here.
+      Manual entries are already represented in submission_items and were already
+      counted as pending before approval. The safe source of truth is to recalculate
+      affected numbers from submission_items after the status change.
     */
     await client.query(
-      `
-        WITH item_updates(number, amount) AS (
-          VALUES ${placeholders.join(", ")}
-        )
-        UPDATE number_status_summary_cache cache
-        SET
-          approved_amount = cache.approved_amount + item_updates.amount,
-          sold_amount = cache.sold_amount + item_updates.amount,
-          pending_amount = GREATEST(cache.pending_amount - item_updates.amount, 0),
-          remaining_amount = GREATEST(
-            cache.target_amount
-              - (cache.approved_amount + item_updates.amount)
-              - GREATEST(cache.pending_amount - item_updates.amount, 0)
-              - cache.hold_amount,
-            0
-          ),
-          status = CASE
-            WHEN cache.approved_amount + item_updates.amount >= cache.target_amount THEN 'sold'
-            WHEN GREATEST(cache.pending_amount - item_updates.amount, 0) > 0 OR cache.hold_amount > 0 THEN 'pending'
-            ELSE 'open'
-          END,
-          updated_at = NOW()
-        FROM item_updates
-        WHERE cache.number = item_updates.number
-      `,
-      values,
-    );
-
-    /*
-      Keep legacy number_pools in sync for existing reads.
-      Affected numbers only.
-    */
-    await client.query(
-      `
-        WITH item_updates(number, amount) AS (
-          VALUES ${placeholders.join(", ")}
-        )
-        UPDATE number_pools np
-        SET
-          current_amount = np.current_amount + item_updates.amount,
-          status = CASE
-            WHEN np.current_amount + item_updates.amount >= np.target_amount THEN 'sold'
-            ELSE 'open'
-          END,
-          updated_at = NOW()
-        FROM item_updates
-        WHERE np.number = item_updates.number
-      `,
-      values,
+      `SELECT public.refresh_number_status_summary_cache_many($1::integer[])`,
+      [affectedNumbers],
     );
 
     await client.query(
