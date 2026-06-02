@@ -70,6 +70,8 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}));
+    const requestedStatusRaw = String(body.status || "").toLowerCase();
+    const requestedStatus = requestedStatusRaw === "approved" ? "approved" : requestedStatusRaw === "rejected" ? "rejected" : "pending";
     const clientName = String(body.clientName ?? body.userName ?? body.name ?? "").trim();
     const clientPhone = normalizePhone(body.phone ?? body.userPhone ?? body.contactPhone);
     const items = normalizeItems(body);

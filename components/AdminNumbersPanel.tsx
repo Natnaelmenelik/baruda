@@ -976,7 +976,9 @@ export default function AdminNumbersPanel() {
     return Number(entry.total_amount || 0).toLocaleString();
   }
 
-  function getManualEntryEditLines(entry: ManualEntryRow): ManualEntryEditLine[] {
+  function getManualEntryEditLines(
+    entry: ManualEntryRow,
+  ): ManualEntryEditLine[] {
     const activeItems = getActiveManualEntryItems(entry);
 
     if (activeItems.length) {
@@ -1075,6 +1077,13 @@ export default function AdminNumbersPanel() {
     );
   }
 
+  function addManualEntryEditLine() {
+    setManualEntryEditLines((previous) => [
+      ...previous,
+      { number: "", amount: "" },
+    ]);
+  }
+
   async function saveManualEntryDetails() {
     if (!selectedManualEntry?.id) return;
 
@@ -1095,11 +1104,11 @@ export default function AdminNumbersPanel() {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-          clientName,
-          phone,
-          status: selectedManualEntry.status || "pending",
-          items,
-        }),
+            clientName,
+            phone,
+            status: selectedManualEntry?.status || "pending",
+            items,
+          }),
         },
       );
       const data = await readJson(res);
@@ -1181,6 +1190,7 @@ export default function AdminNumbersPanel() {
       const res = await fetch("/api/admin/manual-entries", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // body: JSON.stringify({ clientName, phone, status: selectedManualEntry.status || "pending", items }),
         body: JSON.stringify({ clientName, phone, status: "pending", items }),
       });
       const data = await readJson(res);
@@ -1728,15 +1738,17 @@ export default function AdminNumbersPanel() {
                   <label className="block mb-1 text-sm font-bold text-gray-800 dark:text-slate-100">
                     {label("status", "Status")}
                   </label>
-                  <div className="px-4 py-3 text-sm font-black border rounded-xl border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
-                    {label("pending", "Pending")}
+                  <div
+                    className={`rounded-xl border px-4 py-3 text-sm font-black ${getManualEntryStatusBadgeClass(selectedManualEntry)}`}
+                  >
+                    {getManualEntryStatusLabel(selectedManualEntry)}
                   </div>
                 </div>
               </div>
             </section>
 
             <section className="p-4 bg-white border border-gray-200 rounded-2xl dark:border-slate-700 dark:bg-slate-900">
-              <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <h3 className="text-base font-black text-gray-900 dark:text-white">
                     {label("selectedNumbers", "Selected Numbers")}
@@ -1744,10 +1756,18 @@ export default function AdminNumbersPanel() {
                   <p className="mt-1 text-xs font-semibold text-gray-500 dark:text-slate-400">
                     {label(
                       "manualEntryEditHelp",
-                      "Edit an amount only if the extra amount is available, or remove a number from this entry.",
+                      "Edit an amount only if the extra amount is available, add another available number, or remove a number from this entry.",
                     )}
                   </p>
                 </div>
+                <button
+                  type="button"
+                  onClick={addManualEntryEditLine}
+                  disabled={manualEntryEditSaving}
+                  className="px-4 py-2 text-xs font-black text-purple-700 transition bg-white border border-purple-200 rounded-xl hover:bg-purple-50 disabled:opacity-50 dark:border-purple-800/60 dark:bg-slate-900 dark:text-purple-200 dark:hover:bg-purple-950/40"
+                >
+                  + {label("addNumber", "Add Number")}
+                </button>
               </div>
 
               <div className="space-y-3">

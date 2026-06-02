@@ -10,6 +10,8 @@ import { emitSettingsUpdated } from "@/lib/realtime/appRealtimeEvents";
 type GridStatus = "open" | "closed";
 
 type LotterySettingsResponse = {
+  winningAmount?: number;
+  winning_amount?: number;
   ticketPrice?: number;
   ticket_price?: number;
   gridSize?: number;
@@ -27,11 +29,15 @@ type LotterySettingsResponse = {
 function normalizeLotterySettings(
   data: LotterySettingsResponse,
   fallback?: {
+    winningAmount?: number;
     ticketPrice?: number;
     gridSize?: number;
     numbersGridStatus?: GridStatus;
   },
 ) {
+  const winningAmount = Number(
+    data.winningAmount ?? data.winning_amount ?? fallback?.winningAmount ?? 560000,
+  );
   const ticketPrice = Number(
     data.ticketPrice ?? data.ticket_price ?? fallback?.ticketPrice ?? 300,
   );
@@ -53,6 +59,8 @@ function normalizeLotterySettings(
   const updatedAt = data.updatedAt ?? data.updated_at ?? null;
 
   return {
+    winningAmount,
+    winning_amount: winningAmount,
     ticketPrice,
     ticket_price: ticketPrice,
     gridSize,
@@ -98,10 +106,12 @@ export default function AdminSettingsPanel() {
       description:
         "Set ticket price, numbers grid size, and selection status from the admin panel.",
       loading: "Loading settings...",
+      winningAmount: "Winning Amount",
       ticketPrice: "Ticket Price",
       gridSize: "Numbers Grid Size",
       save: "Save Settings",
       saving: "Saving...",
+      invalidWinningAmount: "Winning amount must be a positive number",
       invalidPrice: "Ticket price must be a positive number",
       invalidGrid: "Grid size must be between 1 and 20000",
       loadError: "Failed to load settings",
@@ -118,10 +128,12 @@ export default function AdminSettingsPanel() {
       description:
         "የቲኬት ዋጋን፣ የቁጥሮች መጠንን እና የመምረጫ ሁኔታን ከአድሚን ፓነል ያስተካክሉ።",
       loading: "ቅንብሮች በመጫን ላይ...",
+      winningAmount: "የአሸናፊ መጠን",
       ticketPrice: "የቲኬት ዋጋ",
       gridSize: "የቁጥሮች መጠን",
       save: "ቅንብሮችን አስቀምጥ",
       saving: "በማስቀመጥ ላይ...",
+      invalidWinningAmount: "የአሸናፊ መጠን ከ0 በላይ መሆን አለበት",
       invalidPrice: "የቲኬት ዋጋ ከ0 በላይ መሆን አለበት",
       invalidGrid: "የቁጥሮች መጠን ከ1 እስከ 20000 መሆን አለበት",
       loadError: "ቅንብሮችን መጫን አልተቻለም",
@@ -138,10 +150,12 @@ export default function AdminSettingsPanel() {
       description:
         "Gatii tikkeetii, hamma lakkoofsotaa fi haala filannoo paaneelii bulchiinsaa irraa sirreessi.",
       loading: "Sajataa fe'aa jira...",
+      winningAmount: "Hamma Badhaasaa",
       ticketPrice: "Gatii Tikkeetii",
       gridSize: "Hamma Lakkoofsotaa",
       save: "Sajataa Oolchi",
       saving: "Oolchaa jira...",
+      invalidWinningAmount: "Hammi badhaasaa lakkoofsa lakkii ta'uu qaba",
       invalidPrice: "Gatiin tikkeetii lakkoofsa lakkii ta'uu qaba",
       invalidGrid: "Hammi lakkoofsaa 1 hanga 20000 gidduu ta’uu qaba",
       loadError: "Sajataa fe'uun hin danda'amne",
@@ -157,6 +171,7 @@ export default function AdminSettingsPanel() {
 
   const t = text[lang];
 
+  const [winningAmount, setWinningAmount] = useState("");
   const [ticketPrice, setTicketPrice] = useState("");
   const [gridSize, setGridSize] = useState("");
   const [numbersGridStatus, setNumbersGridStatus] = useState<GridStatus>("open");
@@ -198,6 +213,7 @@ export default function AdminSettingsPanel() {
       }
 
       const settings = normalizeLotterySettings(data);
+      setWinningAmount(String(settings.winningAmount));
       setTicketPrice(String(settings.ticketPrice));
       setGridSize(String(settings.gridSize));
       setNumbersGridStatus(settings.numbersGridStatus);
@@ -212,8 +228,14 @@ export default function AdminSettingsPanel() {
   async function saveSettings(e: FormEvent) {
     e.preventDefault();
 
+    const winning = Number(winningAmount);
     const price = Number(ticketPrice);
     const size = Number(gridSize);
+
+    if (!Number.isInteger(winning) || winning <= 0) {
+      toast.error(t.invalidWinningAmount);
+      return;
+    }
 
     if (!Number.isInteger(price) || price <= 0) {
       toast.error(t.invalidPrice);
@@ -232,6 +254,8 @@ export default function AdminSettingsPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          winningAmount: winning,
+          winning_amount: winning,
           ticketPrice: price,
           ticket_price: price,
           gridSize: size,
@@ -248,11 +272,13 @@ export default function AdminSettingsPanel() {
       }
 
       const settings = normalizeLotterySettings(data, {
+        winningAmount: winning,
         ticketPrice: price,
         gridSize: size,
         numbersGridStatus,
       });
 
+      setWinningAmount(String(settings.winningAmount));
       setTicketPrice(String(settings.ticketPrice));
       setGridSize(String(settings.gridSize));
       setNumbersGridStatus(settings.numbersGridStatus);
@@ -280,7 +306,21 @@ export default function AdminSettingsPanel() {
       {loading ? (
         <div className="text-sm text-gray-500">{t.loading}</div>
       ) : (
-        <form onSubmit={saveSettings} className="grid gap-4 md:grid-cols-4">
+        <form onSubmit={saveSettings} className="grid gap-4 md:grid-cols-5">
+          <div>
+            <label className="block mb-1 text-sm font-semibold text-gray-700">
+              {t.winningAmount}
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={winningAmount}
+              onChange={(e) => setWinningAmount(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg outline-none focus:border-blue-500"
+              placeholder="560000"
+            />
+          </div>
+
           <div>
             <label className="block mb-1 text-sm font-semibold text-gray-700">
               {t.ticketPrice}

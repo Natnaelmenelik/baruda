@@ -1,5 +1,6 @@
 import { sql } from '@/lib/db/sql';
 
+export const DEFAULT_WINNING_AMOUNT = 560000;
 export const DEFAULT_TICKET_PRICE = 300;
 export const DEFAULT_GRID_SIZE = 2000;
 export const DEFAULT_TARGET_AMOUNT = 5000;
@@ -8,6 +9,8 @@ export type LotteryGridStatus = 'open' | 'closed';
 
 export type LotterySettings = {
   ok?: true;
+  winningAmount: number;
+  winning_amount: number;
   ticketPrice: number;
   ticket_price: number;
   gridSize: number;
@@ -25,6 +28,7 @@ export type LotterySettings = {
 
 type SettingsRow = { key: string; value: unknown };
 type CacheRow = {
+  winning_amount?: unknown;
   ticket_price?: unknown;
   grid_size?: unknown;
   numbers_grid_status?: unknown;
@@ -43,6 +47,7 @@ function normalizeStatus(value: unknown): LotteryGridStatus {
 }
 
 function buildSettings(input: {
+  winningAmount?: unknown;
   ticketPrice?: unknown;
   gridSize?: unknown;
   defaultTargetAmount?: unknown;
@@ -50,6 +55,7 @@ function buildSettings(input: {
   updatedAt?: unknown;
   source: LotterySettings['source'];
 }): LotterySettings {
+  const winningAmount = positiveInteger(input.winningAmount, DEFAULT_WINNING_AMOUNT);
   const ticketPrice = positiveInteger(input.ticketPrice, DEFAULT_TICKET_PRICE);
   const gridSize = positiveInteger(input.gridSize, DEFAULT_GRID_SIZE);
   const defaultTargetAmount = positiveInteger(input.defaultTargetAmount, DEFAULT_TARGET_AMOUNT);
@@ -58,6 +64,8 @@ function buildSettings(input: {
 
   return {
     ok: true,
+    winningAmount,
+    winning_amount: winningAmount,
     ticketPrice,
     ticket_price: ticketPrice,
     gridSize,
@@ -77,6 +85,7 @@ function buildSettings(input: {
 function normalizeSettingsRows(rows: SettingsRow[]): LotterySettings {
   const map = new Map(rows.map((row) => [row.key, row.value]));
   return buildSettings({
+    winningAmount: map.get('winning_amount'),
     ticketPrice: map.get('ticket_price'),
     gridSize: map.get('grid_size'),
     defaultTargetAmount: map.get('default_target_amount'),
@@ -87,6 +96,7 @@ function normalizeSettingsRows(rows: SettingsRow[]): LotterySettings {
 
 function normalizeCacheRow(row: CacheRow, defaultTargetAmount?: unknown): LotterySettings {
   return buildSettings({
+    winningAmount: row.winning_amount,
     ticketPrice: row.ticket_price,
     gridSize: row.grid_size,
     defaultTargetAmount,
@@ -131,7 +141,7 @@ async function getDefaultTargetAmountFromSettings() {
 
 async function getLotterySettingsFromCacheTable() {
   const rows = await sql`
-    SELECT ticket_price, grid_size, numbers_grid_status, updated_at
+    SELECT winning_amount, ticket_price, grid_size, numbers_grid_status, updated_at
     FROM public.lottery_settings_cache
     WHERE id = 1
     LIMIT 1
@@ -146,7 +156,7 @@ async function getLotterySettingsFromRawSettings() {
   const rows = await sql`
     SELECT key, value
     FROM public.settings
-    WHERE key IN ('ticket_price', 'grid_size', 'default_target_amount', 'numbers_grid_status')
+    WHERE key IN ('winning_amount', 'ticket_price', 'grid_size', 'default_target_amount', 'numbers_grid_status')
   `;
 
   return normalizeSettingsRows(rows as unknown as SettingsRow[]);
@@ -183,6 +193,7 @@ export async function getLotterySettings(options?: { forceRefreshCache?: boolean
 export async function getSettingNumber(key: string, fallback: number) {
   const settings = await getLotterySettings();
 
+  if (key === 'winning_amount') return settings.winningAmount;
   if (key === 'ticket_price') return settings.ticketPrice;
   if (key === 'grid_size') return settings.gridSize;
   if (key === 'default_target_amount') return settings.defaultTargetAmount;
@@ -199,6 +210,10 @@ export async function getSettingNumber(key: string, fallback: number) {
     console.error(`Failed to fetch setting ${key}:`, error);
     return fallback;
   }
+}
+
+export async function getWinningAmount() {
+  return getSettingNumber('winning_amount', DEFAULT_WINNING_AMOUNT);
 }
 
 export async function getTicketPrice() {

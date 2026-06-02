@@ -98,7 +98,7 @@ export default function SelectedNumbersPanel({
   };
 
   return (
-    <aside className="sticky top-4 relative h-fit max-h-[calc(100vh-330px)] self-start overflow-hidden rounded-2xl border border-blue-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+    <aside className="relative h-fit self-start rounded-2xl border border-blue-100 bg-white p-4 shadow-lg dark:border-slate-700 dark:bg-slate-900 lg:sticky lg:top-4 lg:max-h-[calc(100vh-120px)] lg:overflow-y-auto">
       <div className="border-b pb-3 dark:border-slate-700">
         <h3 className="text-lg font-bold text-gray-900 dark:text-white">
           {txt.selectedNumbers}
@@ -130,7 +130,7 @@ export default function SelectedNumbersPanel({
               {txt.removeAll || txt.clear}
             </button>
           </div>
-          <div className="my-4 max-h-[calc(100vh-560px)] space-y-3 overflow-y-auto pr-1">
+          <div className="my-4 space-y-3 pr-1">
             {selectedNumbers.map((num, index) => {
               const pool = targetsByNumber[num];
               const remaining = Number(pool?.remaining ?? 0);

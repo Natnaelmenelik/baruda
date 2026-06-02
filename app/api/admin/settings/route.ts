@@ -149,6 +149,10 @@ async function saveSettings(req: Request) {
 
   const body = await req.json().catch(() => ({}));
 
+  const winningAmount = Number(
+    body.winningAmount ?? body.winning_amount ?? body.prizeAmount ?? body.prize_amount ?? 560000,
+  );
+
   const ticketPrice = Number(
     body.ticketPrice ?? body.ticket_price ?? body.price ?? 100,
   );
@@ -168,6 +172,10 @@ async function saveSettings(req: Request) {
       ? 'closed'
       : 'open';
 
+  if (!Number.isInteger(winningAmount) || winningAmount <= 0) {
+    return noStoreJson({ error: 'Invalid winning amount' }, { status: 400 });
+  }
+
   if (!Number.isInteger(ticketPrice) || ticketPrice <= 0) {
     return noStoreJson({ error: 'Invalid ticket price' }, { status: 400 });
   }
@@ -184,6 +192,7 @@ async function saveSettings(req: Request) {
 
   if (!result.ok) return result.response;
 
+  await upsertSetting('winning_amount', String(winningAmount));
   await upsertSetting('ticket_price', String(ticketPrice));
   await upsertSetting('grid_size', String(gridSize));
   await upsertSetting('numbers_grid_status', numbersGridStatus);

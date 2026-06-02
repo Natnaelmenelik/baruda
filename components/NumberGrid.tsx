@@ -237,6 +237,7 @@ async function fetchLotterySettings() {
 function normalizeLotterySettingsPayload(value: any) {
   if (!value || typeof value !== "object") return null;
 
+  const winningAmount = Number(value.winningAmount ?? value.winning_amount ?? 560000);
   const ticketPrice = Number(value.ticketPrice ?? value.ticket_price ?? 300);
   const gridSize = Number(value.gridSize ?? value.grid_size ?? 2000);
   const defaultTargetAmount = Number(
@@ -251,6 +252,8 @@ function normalizeLotterySettingsPayload(value: any) {
 
   return {
     ...value,
+    winningAmount,
+    winning_amount: winningAmount,
     ticketPrice,
     ticket_price: ticketPrice,
     gridSize,

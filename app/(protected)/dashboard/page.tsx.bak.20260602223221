@@ -227,7 +227,7 @@ export default function DashboardPage() {
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showNumberAmounts, setShowNumberAmounts] = useState(false);
   const [showPurchasesModal, setShowPurchasesModal] = useState(false);
-  const [winningAmount, setWinningAmount] = useState<number | null>(null);
+  const [winningAmount, setWinningAmount] = useState(560000);
   const [dashboardMessage, setDashboardMessage] =
     useState<DashboardMessage | null>(null);
   const [activeAnnouncementImage, setActiveAnnouncementImage] = useState<
@@ -241,8 +241,7 @@ export default function DashboardPage() {
     return typeof value === "string" && value.trim() ? value : fallback;
   };
 
-  function formatWinningAmount(value: number | null) {
-    if (value === null) return "";
+  function formatWinningAmount(value: number) {
     return `${Number(value || 0).toLocaleString()} ብር`;
   }
 
@@ -250,7 +249,8 @@ export default function DashboardPage() {
     const amount = Number(
       value?.winningAmount ??
         value?.winning_amount ??
-        value?.new?.winning_amount,
+        value?.new?.winning_amount ??
+        560000,
     );
     if (Number.isFinite(amount) && amount > 0) {
       setWinningAmount(amount);
@@ -725,11 +725,9 @@ export default function DashboardPage() {
               <p className="max-w-4xl mx-auto text-lg font-black leading-snug tracking-tight text-rose-700 sm:text-xl md:text-2xl md:leading-snug lg:text-3xl lg:leading-snug">
                 የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ
               </p>
-              {winningAmount !== null && (
-                <p className="max-w-4xl mx-auto my-4 text-xl font-black leading-tight tracking-tight text-blue-700 dark:text-blue-200 sm:text-2xl md:text-3xl md:leading-tight lg:text-4xl lg:leading-tight">
-                  {formatWinningAmount(winningAmount)}
-                </p>
-              )}
+              <p className="max-w-4xl mx-auto my-4 text-xl font-black leading-tight tracking-tight text-blue-700 dark:text-blue-200 sm:text-2xl md:text-3xl md:leading-tight lg:text-4xl lg:leading-tight">
+                {formatWinningAmount(winningAmount)}
+              </p>
               <a
                 href="https://t.me/barudaloto"
                 target="_blank"
