@@ -92,10 +92,7 @@ export default function AdminPage() {
     status: submissionStatusFilter,
     search: submissionSearch,
   });
-  const {
-    data: stats = {},
-    isLoading: statsLoading,
-  } = useStats();
+  const { data: stats = {}, isLoading: statsLoading } = useStats();
   const { mutate: approve } = useApproveSubmission();
   const { mutate: reject } = useRejectSubmission();
   const { mutate: clearAll, isPending: clearing } = useClearAllSubmissions();

@@ -1233,7 +1233,8 @@ export default function AdminNumbersPanel() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-center w-full gap-3 mb-6 md:justify-end">
+      {/* <div className="flex flex-wrap items-center justify-center w-full gap-3 mb-6 md:justify-end"> */}
+      <div className="flex flex-wrap items-center justify-center w-full gap-3 mx-auto mb-6 text-center">
         <button
           type="button"
           onClick={loadSelections}
@@ -1274,7 +1275,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={loadNumbers}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-white transition bg-blue-600 shadow-sm rounded-xl hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm font-semibold text-blue-600 transition bg-white shadow-sm rounded-xl hover:bg-blue-200 disabled:opacity-50"
         >
           {loadingType === "manage"
             ? label("loading", "Loading...")
