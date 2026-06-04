@@ -366,36 +366,3 @@ html.dark aside strong,
 html.dark aside b {
   color: #f8fafc !important;
 }
-
-/* Admin number action buttons dark-mode fix
-   Reason: the existing global rule `html.dark button.bg-white` overrides Tailwind dark:bg-* colors.
-   These selectors are more specific and force only the requested 5 admin buttons. */
-html.dark button.admin-number-btn.admin-number-btn-blue {
-  background-color: #2563eb !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
-}
-
-html.dark button.admin-number-btn.admin-number-btn-blue:hover {
-  background-color: #1d4ed8 !important;
-}
-
-html.dark button.admin-number-btn.admin-number-btn-green {
-  background-color: #16a34a !important;
-  color: #ffffff !important;
-  border-color: #22c55e !important;
-}
-
-html.dark button.admin-number-btn.admin-number-btn-green:hover {
-  background-color: #15803d !important;
-}
-
-html.dark button.admin-number-btn.admin-number-btn-purple {
-  background-color: #9333ea !important;
-  color: #ffffff !important;
-  border-color: #a855f7 !important;
-}
-
-html.dark button.admin-number-btn.admin-number-btn-purple:hover {
-  background-color: #7e22ce !important;
-}

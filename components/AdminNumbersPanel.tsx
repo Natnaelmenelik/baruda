@@ -1239,7 +1239,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={loadSelections}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm dark:text-blue-200 dark:bg-slate-900 dark:border-blue-800/60 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-950/40 dark:bg-blue-950/30 disabled:opacity-50"
+          className="admin-number-btn admin-number-btn-blue px-4 py-2 text-sm font-semibold text-blue-700 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 disabled:opacity-50 dark:bg-blue-600 dark:text-white dark:border-blue-500 dark:hover:bg-blue-500"
         >
           {loadingType === "selections"
             ? label("loading", "Loading...")
@@ -1250,7 +1250,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={openApprovedUsers}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm dark:text-emerald-200 dark:bg-slate-900 dark:border-emerald-800/60 rounded-xl hover:bg-green-50 dark:hover:bg-emerald-950/40 dark:bg-emerald-950/30 disabled:opacity-50"
+          className="admin-number-btn admin-number-btn-green px-4 py-2 text-sm font-semibold text-green-700 transition bg-white border border-green-200 shadow-sm rounded-xl hover:bg-green-50 disabled:opacity-50 dark:bg-green-600 dark:text-white dark:border-green-500 dark:hover:bg-green-500"
         >
           {loadingType === "approvedUsers"
             ? label("loading", "Loading...")
@@ -1264,7 +1264,7 @@ export default function AdminNumbersPanel() {
             copyApprovedNumberAmountsForTelegram();
           }}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm dark:bg-slate-900 rounded-xl hover:bg-purple-50 disabled:opacity-50"
+          className="admin-number-btn admin-number-btn-purple px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:border-purple-500 dark:hover:bg-purple-500"
         >
           {loadingType === "copyAmounts"
             ? label("copying", "Copying...")
@@ -1275,7 +1275,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={loadNumbers}
           disabled={loadingType !== null}
-          className="px-4 py-2 text-sm font-semibold text-blue-600 transition bg-white shadow-sm rounded-xl hover:bg-blue-200 disabled:opacity-50"
+          className="admin-number-btn admin-number-btn-blue px-4 py-2 text-sm font-semibold text-blue-600 transition bg-white border border-blue-200 shadow-sm rounded-xl hover:bg-blue-50 disabled:opacity-50 dark:bg-blue-600 dark:text-white dark:border-blue-500 dark:hover:bg-blue-500"
         >
           {loadingType === "manage"
             ? label("loading", "Loading...")
@@ -1286,7 +1286,7 @@ export default function AdminNumbersPanel() {
           type="button"
           onClick={openManualCloseModal}
           disabled={loadingType !== null || manualCloseSubmitting}
-          className="px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm dark:text-purple-200 dark:bg-slate-900 dark:border-purple-800/60 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-50"
+          className="admin-number-btn admin-number-btn-purple px-4 py-2 text-sm font-semibold text-purple-700 transition bg-white border border-purple-200 shadow-sm rounded-xl hover:bg-purple-50 disabled:opacity-50 dark:bg-purple-600 dark:text-white dark:border-purple-500 dark:hover:bg-purple-500"
         >
           {label("manualCloseNumbersForClient", "Close Numbers for Client")}
         </button>
