@@ -152,7 +152,7 @@ function LoginPageContent() {
 
         <div className="mb-8 text-center">
           <img
-            src="/images/bardua-dashboard.png"
+            src="/images/barudaa-dashboard-nobg.png"
             alt="Jetour"
             className="object-contain mx-auto h-52 w-80"
           />
