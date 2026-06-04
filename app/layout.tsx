@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     siteName: "ባሩዳ ዶት ኮም",
     images: [
       {
-        url: "/bardua-telega.jpg",
+        url: "/barudaa-dashboard.jpg",
         width: 1200,
         height: 630,
         alt: "ባሩዳ ዶት ኮም",
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ባሩዳ ዶት ኮም",
     description: "የአንጋፋውና ስመጥር የሆነው የባሩዳ ዶት ኮም ቤተሰብ ጨዋታ ይወዳደሩ ተሸላሚ ይሁኑ",
-    images: ["/bardua-telega.jpg"],
+    images: ["/barudaa-dashboard.jpg"],
   },
 };
 

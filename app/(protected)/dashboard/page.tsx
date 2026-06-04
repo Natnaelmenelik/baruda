@@ -716,7 +716,7 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-3 p-3 sm:p-4 md:p-4 lg:p-5">
             <div className="flex items-center justify-center">
               <img
-                src="/images/bardua-dashboard.png"
+                src="/images/barudaa-dashboard-nobg.png"
                 alt={t.prizeCar}
                 className="mx-auto w-full max-w-5xl object-contain drop-shadow-xl max-h-[220px] sm:max-h-[260px] md:max-h-[320px] lg:max-h-[420px]"
               />
