@@ -537,6 +537,7 @@ const amountMap = useMemo(() => {
         const res = await fetch(`/api/holds/${hold.id}`, {
           method: "DELETE",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          keepalive: true,
         });
         const data = await res.json().catch(() => ({}));
         const releasedNumbers = Array.isArray(data?.numbers)
@@ -627,6 +628,7 @@ const amountMap = useMemo(() => {
     void fetch(`/api/holds/${holdId}`, {
       method: "DELETE",
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      keepalive: true,
     }).catch(() => {
       // Do not reopen or block the modal. Backend cleanup/realtime can recover.
     });

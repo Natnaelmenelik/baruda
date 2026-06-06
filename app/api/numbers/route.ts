@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db/sql";
+import { cleanupExpiredHoldsNow } from "@/lib/db/cleanupExpiredHolds";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -28,6 +29,10 @@ function normalizeRow(row: any) {
 
 export async function GET() {
   try {
+    // User-side numbers must not depend on the browser successfully calling DELETE /api/holds/:id.
+    // Expire stale holds and refresh affected cache entries before reading number_status_summary_cache.
+    await cleanupExpiredHoldsNow();
+
     let rows = await sql`
       SELECT
         number,
