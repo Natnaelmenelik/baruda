@@ -259,6 +259,41 @@ function readPaymentDraft() {
   }
 }
 
+
+function normalizeReservationHoldResponse(
+  data: any,
+  fallbackClientHoldKey: string,
+  numbers: number[],
+  numberAmounts: Record<string, number>,
+  totalAmount: number,
+) {
+  if (!data || typeof data !== "object") return null;
+
+  const id = data.id ?? data.hold_id ?? data.holdId;
+  const clientHoldKey =
+    data.client_hold_key ?? data.clientHoldKey ?? data.client_hold ?? fallbackClientHoldKey;
+  const expiresAt = data.expires_at ?? data.expiresAt ?? data.expiry ?? data.expired_at;
+
+  if (!id || !clientHoldKey || !expiresAt) return null;
+
+  const expiresMs = new Date(expiresAt).getTime();
+  if (!Number.isFinite(expiresMs) || expiresMs <= Date.now()) return null;
+
+  return {
+    ...data,
+    id,
+    client_hold_key: clientHoldKey,
+    clientHoldKey,
+    expires_at: expiresAt,
+    expiresAt,
+    numbers: Array.isArray(data.numbers) && data.numbers.length ? data.numbers : numbers,
+    number_amounts: data.number_amounts ?? data.numberAmounts ?? numberAmounts,
+    numberAmounts: data.numberAmounts ?? data.number_amounts ?? numberAmounts,
+    total_amount: data.total_amount ?? data.totalAmount ?? totalAmount,
+    totalAmount: data.totalAmount ?? data.total_amount ?? totalAmount,
+  };
+}
+
 function makeAmountMapForNumbers(
   numbers: number[],
   amountMap: Record<number, number>,
@@ -304,10 +339,26 @@ export default function SubmitNumberModal({
     readStoredActiveHold(),
   );
   const [reservingHold, setReservingHold] = useState(false);
+  const [reservationElapsedMs, setReservationElapsedMs] = useState(0);
   const holdReadyToastShownRef = useRef<string | null>(null);
   const reservingHoldRef = useRef(false);
   const closingModalRef = useRef(false);
   const holdExpiryHandledRef = useRef(false);
+
+
+  useEffect(() => {
+    if (!reservingHold) {
+      setReservationElapsedMs(0);
+      return;
+    }
+
+    const startedAt = Date.now();
+    const interval = window.setInterval(() => {
+      setReservationElapsedMs(Date.now() - startedAt);
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [reservingHold]);
 
     const lastReservationSignatureRef = useRef<string>("");
 const amountMap = useMemo(() => {
@@ -590,44 +641,48 @@ const amountMap = useMemo(() => {
   }
 
   useEffect(() => {
-    let cancelled = false;
-
     async function reserveSelectedAmountBeforeUpload() {
       if (!effectiveOpen) return;
       if (closingModalRef.current) return;
       if (holdExpiryHandledRef.current) return;
       if (reservingHoldRef.current) return;
-      if (reservationHold?.id && reservationHold?.expires_at && new Date(reservationHold.expires_at).getTime() > Date.now()) return;
+      if (
+        reservationHold?.id &&
+        reservationHold?.expires_at &&
+        new Date(reservationHold.expires_at).getTime() > Date.now()
+      ) {
+        return;
+      }
       if (
         !activeNumbers.length ||
         totalAmount <= 0 ||
-        !Object.keys(holdAmountMap).length
-      )
-        return;
-      if (!activeClientHoldKey) return;
-
-      if (reservingHoldRef.current) return;
-
-      const currentReservationExpiresAt = reservationHold?.expires_at
-        ? new Date(reservationHold.expires_at).getTime()
-        : 0;
-
-      if (
-        reservationHold?.id &&
-        Number.isFinite(currentReservationExpiresAt) &&
-        currentReservationExpiresAt > Date.now()
+        !Object.keys(holdAmountMap).length ||
+        !activeClientHoldKey
       ) {
         return;
       }
 
-      reservingHoldRef.current = true;
+      const reservationSignature = JSON.stringify({
+        effectiveOpen,
+        activeClientHoldKey,
+        activeNumbersKey,
+        holdAmountMapKey,
+        totalAmount,
+      });
 
+      if (lastReservationSignatureRef.current === reservationSignature) {
+        return;
+      }
+
+      lastReservationSignatureRef.current = reservationSignature;
       reservingHoldRef.current = true;
+      setReservingHold(true);
+      setError("");
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+
       try {
-        setReservingHold(true);
-        setError("");
-
-
         const res = await fetch("/api/holds", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -637,6 +692,7 @@ const amountMap = useMemo(() => {
             numberAmounts: holdAmountMap,
             totalAmount,
           }),
+          signal: controller.signal,
         });
 
         const data = await res.json().catch(() => ({}));
@@ -648,48 +704,68 @@ const amountMap = useMemo(() => {
           throw new Error(translated);
         }
 
-        if (cancelled) return;
+        const normalizedHold = normalizeReservationHoldResponse(
+          data,
+          activeClientHoldKey,
+          activeNumbers,
+          holdAmountMap,
+          totalAmount,
+        );
 
-        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(data));
-        localStorage.setItem("baruda_payment_hold_id", data.id);
+        if (!normalizedHold) {
+          throw new Error("Reservation succeeded, but the server returned invalid hold data.");
+        }
+
+        if (normalizedHold.client_hold_key !== activeClientHoldKey) {
+          throw new Error("Reservation succeeded, but the hold key did not match this request.");
+        }
+
+        // From here, success must win. Do not ignore this response because of
+        // React effect cleanup/re-render. A valid 200 hold response is the source of truth.
+        localStorage.setItem(HOLD_STORAGE_KEY, JSON.stringify(normalizedHold));
+        localStorage.setItem("baruda_payment_hold_id", String(normalizedHold.id));
 
         const nextDraftAmountMap = Object.fromEntries(
           Object.entries(holdAmountMap).map(([number, amount]) => [Number(number), Number(amount)]),
         ) as Record<number, number>;
 
         const nextDraft: PaymentDraft = {
-          clientHoldKey: data.client_hold_key || activeClientHoldKey,
+          clientHoldKey: normalizedHold.client_hold_key,
           numbers: activeNumbers,
           amountMap: nextDraftAmountMap,
           totalAmount,
-          expiresAt: data.expires_at,
+          expiresAt: normalizedHold.expires_at,
         };
 
         localStorage.setItem(PAYMENT_DRAFT_STORAGE_KEY, JSON.stringify(nextDraft));
         setSavedDraft(nextDraft);
-        setReservationHold(data);
-        showHoldReadyToast(data);
+        setReservationHold(normalizedHold);
+        setReservingHold(false);
+        reservingHoldRef.current = false;
+        showHoldReadyToast(normalizedHold);
 
         dispatchNumbersRefresh({
           action: "hold_created",
           numbers: activeNumbers,
           status: "pending",
-          holdId: data?.id,
-          clientHoldKey: activeClientHoldKey,
+          holdId: normalizedHold.id,
+          clientHoldKey: normalizedHold.client_hold_key,
         });
 
         broadcastNumbersUpdate({
           action: "hold_created",
           numbers: activeNumbers,
           status: "pending",
-          holdId: data?.id,
-          clientHoldKey: activeClientHoldKey,
+          holdId: normalizedHold.id,
+          clientHoldKey: normalizedHold.client_hold_key,
           source: "submit-modal-hold",
         });
       } catch (error: any) {
-        if (cancelled) return;
+        const isAbort = error?.name === "AbortError";
+        const msg = isAbort
+          ? "Reservation is taking longer than expected. Please try again."
+          : error?.message || tm(lang, "submitFailed");
 
-        const msg = error?.message || tm(lang, "submitFailed");
         setError(msg);
         toast.error(msg);
         localStorage.removeItem(PAYMENT_DRAFT_STORAGE_KEY);
@@ -698,36 +774,20 @@ const amountMap = useMemo(() => {
         setSavedDraft(null);
         setReservationHold(null);
         setClientHoldKey(makeClientHoldKey());
+        lastReservationSignatureRef.current = "";
         onClose();
       } finally {
+        window.clearTimeout(timeoutId);
         reservingHoldRef.current = false;
-        if (!cancelled) setReservingHold(false);
+        setReservingHold(false);
       }
     }
 
-    const reservationSignature = JSON.stringify({
-      effectiveOpen,
-      activeClientHoldKey,
-      activeNumbersKey,
-      holdAmountMapKey,
-      totalAmount,
-    });
-
-    if (
-      lastReservationSignatureRef.current === reservationSignature &&
-      (reservationHold?.id || reservingHoldRef.current)
-    ) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    lastReservationSignatureRef.current = reservationSignature;
     reserveSelectedAmountBeforeUpload();
 
-    return () => {
-      cancelled = true;
-    };
+    // Do not use a local cancelled flag here. For this payment reservation step,
+    // a successful /api/holds response must always be committed to state/storage.
+    return undefined;
   }, [
     effectiveOpen,
     activeClientHoldKey,
@@ -964,6 +1024,13 @@ const amountMap = useMemo(() => {
         ? "Maaloo xiqqoo eegaa. Bakki nagahee ol-kaasuu erga hammi qabame booda ni banama."
         : "Please wait. The receipt upload form opens only after the amount is reserved.";
 
+  const reserveLongDescription =
+    lang === "am"
+      ? "አሁንም ቁጥሮቹን በመያዝ ላይ ነው። ብዙ ተጠቃሚዎች ተመሳሳይ ቁጥር ከመረጡ ጥቂት ሰከንዶች ሊወስድ ይችላል።"
+      : lang === "om"
+        ? "Lakkoofsota kee ammallee qabachaa jirra. Yoo fayyadamtoonni hedduun lakkoofsa walfakkaataa filatan sekondii muraasa fudhachuu danda'a."
+        : "Still reserving your numbers. This can take a few seconds if many users are selecting the same numbers.";
+
   const paymentAccounts = [
     {
       key: "cbe",
@@ -1000,7 +1067,7 @@ const amountMap = useMemo(() => {
             {reserveTitle}
           </h2>
           <p className="mt-2 text-sm font-medium text-gray-600 dark:text-slate-300">
-            {reserveDescription}
+            {reservationElapsedMs >= 5000 ? reserveLongDescription : reserveDescription}
           </p>
           {error && (
             <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>

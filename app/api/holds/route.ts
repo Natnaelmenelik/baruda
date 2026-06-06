@@ -53,6 +53,27 @@ function normalizeNumberAmounts(body: any): Record<string, number> {
   return result;
 }
 
+
+function refreshNumberStatusSummaryCacheAsync(numbers: number[]) {
+  // Do not block the receipt modal on cache refresh. The hold is already committed.
+  // IMPORTANT: this project DB adapter exposes pool.connect(), not pool.query().
+  // Use a separate client so the committed reservation transaction is not affected.
+  void (async () => {
+    const refreshClient = await pool.connect();
+
+    try {
+      await refreshClient.query(
+        'SELECT public.refresh_number_status_summary_cache_many($1::integer[])',
+        [numbers],
+      );
+    } catch (error) {
+      console.error("Async number status cache refresh failed:", error);
+    } finally {
+      refreshClient.release();
+    }
+  })();
+}
+
 function buildAmountMap(numbers: number[], body: any) {
   const amountMap = normalizeNumberAmounts(body);
   let totalAmount = Number(body.totalAmount ?? body.total_amount ?? 0);
@@ -136,20 +157,18 @@ export async function POST(req: Request) {
 
     const existingHold = existingRows.rows?.[0] || null;
     if (existingHold) {
-      await client.query(
-        'SELECT public.refresh_number_status_summary_cache_many($1::integer[])',
-        [numbers],
-      );
-
       await client.query("COMMIT");
-    return NextResponse.json(
+      refreshNumberStatusSummaryCacheAsync(numbers);
+
+      return NextResponse.json(
       {
         ...existingHold,
         server_now: new Date().toISOString(),
       },
       {
         headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
-      });
+      },
+    );
     }
 
     const remainingRows = await client.query(
@@ -207,26 +226,21 @@ export async function POST(req: Request) {
     const hold = holdRows.rows[0];
 
     await client.query("DELETE FROM payment_hold_items WHERE hold_id = $1", [hold.id]);
-
-    for (const number of numbers) {
-      await client.query(
-        `
-        INSERT INTO payment_hold_items (hold_id, number, amount, created_at)
-        VALUES ($1, $2, $3, NOW())
-        ON CONFLICT (hold_id, number)
-        DO UPDATE SET amount = EXCLUDED.amount
-        `,
-        [hold.id, number, Number(amountMap[String(number)])],
-      );
-    }
-
-    
+    const itemNumbers = numbers;
+    const itemAmounts = numbers.map((number) => Number(amountMap[String(number)]));
 
     await client.query(
-      'SELECT public.refresh_number_status_summary_cache_many($1::integer[])',
-      [numbers],
+      `
+      INSERT INTO payment_hold_items (hold_id, number, amount, created_at)
+      SELECT $1, item.number, item.amount, NOW()
+      FROM unnest($2::integer[], $3::numeric[]) AS item(number, amount)
+      ON CONFLICT (hold_id, number)
+      DO UPDATE SET amount = EXCLUDED.amount
+      `,
+      [hold.id, itemNumbers, itemAmounts],
     );
-await client.query("COMMIT");
+    await client.query("COMMIT");
+    refreshNumberStatusSummaryCacheAsync(numbers);
 
     return NextResponse.json(
       {
