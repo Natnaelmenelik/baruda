@@ -536,12 +536,7 @@ export default function DashboardPage() {
       }
     };
 
-    window.addEventListener("focus", refreshOnFocus);
-    document.addEventListener("visibilitychange", refreshOnFocus);
-
     return () => {
-      window.removeEventListener("focus", refreshOnFocus);
-      document.removeEventListener("visibilitychange", refreshOnFocus);
       supabase.removeChannel(globalChannel);
       if (userChannel) supabase.removeChannel(userChannel);
     };
