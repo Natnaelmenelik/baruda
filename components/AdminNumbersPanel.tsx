@@ -700,20 +700,20 @@ export default function AdminNumbersPanel() {
     const quality = 0.78;
 
     if (!file.type.startsWith("image/")) {
-      throw new Error("Only image files are allowed");
+      throw new Error(label("onlyImagesAllowed", "Only image files are allowed"));
     }
 
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Failed to read image"));
+      reader.onerror = () => reject(new Error(label("failedToReadImage", "Failed to read image")));
       reader.readAsDataURL(file);
     });
 
     const image = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Failed to load image"));
+      img.onerror = () => reject(new Error(label("failedToLoadImage", "Failed to load image")));
       img.src = dataUrl;
     });
 
@@ -729,7 +729,7 @@ export default function AdminNumbersPanel() {
     canvas.height = height;
 
     const context = canvas.getContext("2d");
-    if (!context) throw new Error("Failed to prepare image compression");
+    if (!context) throw new Error(label("failedToPrepareImageCompression", "Failed to prepare image compression"));
 
     context.drawImage(image, 0, 0, width, height);
 
@@ -737,7 +737,7 @@ export default function AdminNumbersPanel() {
       canvas.toBlob(
         (result) => {
           if (result) resolve(result);
-          else reject(new Error("Failed to compress image"));
+          else reject(new Error(label("failedToCompressImage", "Failed to compress image")));
         },
         "image/webp",
         quality,

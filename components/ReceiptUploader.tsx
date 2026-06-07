@@ -183,7 +183,7 @@ export default function ReceiptUploader({
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      throw new Error(data?.error || 'Failed to upload receipt');
+      throw new Error(data?.error || tm(lang, 'failedToUploadReceipt')); 
     }
 
     return data as { url: string; signedUrl: string; key: string; receiptKey: string };

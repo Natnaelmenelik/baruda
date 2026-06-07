@@ -58,6 +58,19 @@ function t(txt: any, key: string, fallback: string) {
   return txt?.[key] || fallback;
 }
 
+function tf(
+  txt: any,
+  key: string,
+  fallback: string,
+  values: Record<string, string | number>,
+) {
+  const template = t(txt, key, fallback);
+  return Object.entries(values).reduce(
+    (message, [name, value]) => message.replaceAll(`{${name}}`, String(value)),
+    template,
+  );
+}
+
 function normalizeAmountMap(
   input?: Record<number, number> | Record<string, number>,
 ) {
@@ -715,11 +728,11 @@ const amountMap = useMemo(() => {
         );
 
         if (!normalizedHold) {
-          throw new Error("Reservation succeeded, but the server returned invalid hold data.");
+          throw new Error(t(txt, "reservationInvalidHoldData", "Reservation succeeded, but the server returned invalid hold data."));
         }
 
         if (normalizedHold.client_hold_key !== activeClientHoldKey) {
-          throw new Error("Reservation succeeded, but the hold key did not match this request.");
+          throw new Error(t(txt, "reservationHoldKeyMismatch", "Reservation succeeded, but the hold key did not match this request."));
         }
 
         // From here, success must win. Do not ignore this response because of
@@ -765,8 +778,8 @@ const amountMap = useMemo(() => {
       } catch (error: any) {
         const isAbort = error?.name === "AbortError";
         const msg = isAbort
-          ? "Reservation is taking longer than expected. Please try again."
-          : error?.message || tm(lang, "submitFailed");
+          ? t(txt, "reservationTakingLong", "Reservation is taking longer than expected. Please try again.")
+          : translateApiError(error, lang) || error?.message || tm(lang, "submitFailed");
 
         setError(msg);
         toast.error(msg);
@@ -830,14 +843,14 @@ const amountMap = useMemo(() => {
         const remaining = getRemainingForThisSubmitUser(number);
 
         if (!Number.isFinite(amount) || amount <= 0) {
-          const msg = `${t(txt, "invalidAmountForNumber", "Invalid amount for number")} ${number}`;
+          const msg = tf(txt, "invalidAmountForNumber", "Invalid amount for number {number}.", { number });
           setError(msg);
           toast.error(msg);
           return;
         }
 
         if (Number.isFinite(remaining) && amount > remaining) {
-          const msg = `${t(txt, "amountExceedsRemainingForNumber", "Amount exceeds remaining for number")} ${number}`;
+          const msg = tf(txt, "amountExceedsRemainingForNumber", "Amount exceeds remaining for number {number}.", { number });
           setError(msg);
           toast.error(msg);
           return;

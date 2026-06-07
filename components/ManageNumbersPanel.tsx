@@ -73,10 +73,10 @@
 //         cache: "no-store",
 //       });
 //       const data = await res.json();
-//       if (!res.ok) throw new Error(data.error || "Failed to load numbers");
+//       if (!res.ok) throw new Error(data.error || txt.failedToLoadNumbers || "Failed to load numbers");
 //       setRows(Array.isArray(data) ? data : data.numbers || []);
 //     } catch (e: any) {
-//       toast.error(e.message || txt.noNumberData || "Failed to load numbers");
+//       toast.error(translateApiError(e, lang) || txt.failedToLoadNumbers || txt.noNumberData || "Failed to load numbers");
 //     } finally {
 //       setLoading(false);
 //     }
@@ -113,11 +113,11 @@
 //         method: "POST",
 //       });
 //       const data = await res.json().catch(() => ({}));
-//       if (!res.ok) throw new Error(data.error || "Failed to close number");
+//       if (!res.ok) throw new Error(data.error || txt.failedToCloseNumber || "Failed to close number");
 //       toast.success(txt.numberClosed || "Number closed");
 //       loadNumbers();
 //     } catch (e: any) {
-//       toast.error(e.message || "Failed to close number");
+//       toast.error(translateApiError(e, lang) || txt.failedToCloseNumber || "Failed to close number");
 //     }
 //   }
 
@@ -127,11 +127,11 @@
 //         method: "POST",
 //       });
 //       const data = await res.json().catch(() => ({}));
-//       if (!res.ok) throw new Error(data.error || "Failed to reopen number");
+//       if (!res.ok) throw new Error(data.error || txt.failedToReopenNumber || "Failed to reopen number");
 //       toast.success(txt.numberUnclosed || "Number reopened");
 //       loadNumbers();
 //     } catch (e: any) {
-//       toast.error(e.message || "Failed to reopen number");
+//       toast.error(translateApiError(e, lang) || txt.failedToReopenNumber || "Failed to reopen number");
 //     }
 //   }
 
@@ -150,11 +150,11 @@
 //         body: JSON.stringify({ target_amount: amount }),
 //       });
 //       const data = await res.json().catch(() => ({}));
-//       if (!res.ok) throw new Error(data.error || "Failed to update target");
+//       if (!res.ok) throw new Error(data.error || txt.failedToUpdateTarget || "Failed to update target");
 //       toast.success(txt.numberTargetUpdated || "Target updated");
 //       loadNumbers();
 //     } catch (e: any) {
-//       toast.error(e.message || "Failed to update target");
+//       toast.error(translateApiError(e, lang) || txt.failedToUpdateTarget || "Failed to update target");
 //     }
 //   }
 
@@ -583,10 +583,10 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         cache: "no-store",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to load numbers");
+      if (!res.ok) throw new Error(data.error || txt.failedToLoadNumbers || "Failed to load numbers");
       setRows(Array.isArray(data) ? data : data.numbers || []);
     } catch (e: any) {
-      toast.error(e.message || txt.noNumberData || "Failed to load numbers");
+      toast.error(translateApiError(e, lang) || txt.failedToLoadNumbers || txt.noNumberData || "Failed to load numbers");
     } finally {
       setLoading(false);
     }
@@ -610,7 +610,7 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
       setSelectionRows(Array.isArray(data) ? data : []);
     } catch (e: any) {
       toast.error(
-        e.message || txt.failedToLoadSelections || "Failed to load selections",
+        translateApiError(e, lang) || txt.failedToLoadSelections || "Failed to load selections",
       );
     } finally {
       setSelectionLoading(false);
@@ -623,11 +623,11 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         method: "POST",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to close number");
+      if (!res.ok) throw new Error(data.error || txt.failedToCloseNumber || "Failed to close number");
       toast.success(txt.numberClosed || "Number closed");
       loadNumbers();
     } catch (e: any) {
-      toast.error(e.message || "Failed to close number");
+      toast.error(translateApiError(e, lang) || txt.failedToCloseNumber || "Failed to close number");
     }
   }
 
@@ -637,11 +637,11 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         method: "POST",
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to reopen number");
+      if (!res.ok) throw new Error(data.error || txt.failedToReopenNumber || "Failed to reopen number");
       toast.success(txt.numberUnclosed || "Number reopened");
       loadNumbers();
     } catch (e: any) {
-      toast.error(e.message || "Failed to reopen number");
+      toast.error(translateApiError(e, lang) || txt.failedToReopenNumber || "Failed to reopen number");
     }
   }
 
@@ -660,11 +660,11 @@ export default function ManageNumbersPanel({ lang }: { lang: Lang }) {
         body: JSON.stringify({ target_amount: amount }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Failed to update target");
+      if (!res.ok) throw new Error(data.error || txt.failedToUpdateTarget || "Failed to update target");
       toast.success(txt.numberTargetUpdated || "Target updated");
       loadNumbers();
     } catch (e: any) {
-      toast.error(e.message || "Failed to update target");
+      toast.error(translateApiError(e, lang) || txt.failedToUpdateTarget || "Failed to update target");
     }
   }
 

@@ -162,5 +162,34 @@ export function translateApiError(error: any, lang: Lang) {
   if (/submission returned to pending/i.test(raw)) return label(lang, "returnedToPending", raw);
   if (/request failed/i.test(raw)) return label(lang, "requestFailed", raw);
 
+
+
+  // Additional backend and client-side messages used by admin, receipt upload, and holds.
+  if (/receipt image is required/i.test(raw)) return label(lang, "receiptImageRequired", raw);
+  if (/only image receipts are allowed/i.test(raw)) return label(lang, "onlyImageReceiptsAllowed", raw);
+  if (/receipt image must be 4mb or smaller/i.test(raw)) return label(lang, "receiptImageTooLarge", raw);
+  if (/failed to upload receipt/i.test(raw)) return label(lang, "failedToUploadReceipt", raw);
+  if (/submission not found/i.test(raw)) return label(lang, "submissionNotFound", raw);
+  if (/missing submission id/i.test(raw)) return label(lang, "missingSubmissionId", raw);
+  if (/no valid contribution items found/i.test(raw)) return label(lang, "noValidContributionItemsFound", raw);
+  if (/hold id is required/i.test(raw)) return label(lang, "holdIdRequired", raw);
+  if (/hold not found/i.test(raw)) return label(lang, "holdNotFound", raw);
+  if (/failed to cancel hold/i.test(raw)) return label(lang, "failedToCancelHold", raw);
+  if (/failed to upload image/i.test(raw)) return label(lang, "failedToUploadImage", raw);
+  if (/message is required/i.test(raw)) return label(lang, "messageRequired", raw);
+  if (/invalid target amount/i.test(raw)) return label(lang, "invalidTargetAmount", raw);
+  if (/failed to load numbers/i.test(raw)) return label(lang, "failedToLoadNumbers", raw);
+  if (/failed to load selections/i.test(raw)) return label(lang, "failedToLoadSelections", raw);
+  if (/failed to close number/i.test(raw)) return label(lang, "failedToCloseNumber", raw);
+  if (/failed to reopen number/i.test(raw)) return label(lang, "failedToReopenNumber", raw);
+  if (/failed to update target/i.test(raw)) return label(lang, "failedToUpdateTarget", raw);
+  if (/only image files are allowed/i.test(raw)) return label(lang, "onlyImagesAllowed", raw);
+  if (/failed to read image/i.test(raw)) return label(lang, "failedToReadImage", raw);
+  if (/failed to load image/i.test(raw)) return label(lang, "failedToLoadImage", raw);
+  if (/failed to prepare image compression/i.test(raw)) return label(lang, "failedToPrepareImageCompression", raw);
+  if (/failed to compress image/i.test(raw)) return label(lang, "failedToCompressImage", raw);
+  if (/some number summary cache rows are missing/i.test(raw)) return label(lang, "someNumberSummaryMissing", raw);
+  if (/submission could not be approved/i.test(raw)) return label(lang, "submissionCouldNotBeApproved", raw);
+
   return raw;
 }

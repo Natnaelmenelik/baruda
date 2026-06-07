@@ -1346,8 +1346,6 @@ const rawTranslations = {
     winnerShownFor24Hours:
       "Lakkoofsonni mo'attootaa kun sa'aatii 24f ni mul'atu.",
   },
-  invalidAmountForNumber: "Invalid amount for number",
-  amountExceedsRemainingForNumber: "Amount exceeds remaining for number",
 } as const;
 
 export type Lang = 'en' | 'am' | 'om';
@@ -1429,7 +1427,7 @@ try {
     clickRowDetails: "ደረሰኝ፣ የተጠቃሚ መረጃ እና የመዋጮ ዝርዝር ይመልከቱ።",
     remove: "አጽዳ",
   });
-  Object.assign((translations as any).or, {
+  Object.assign((translations as any).om, {
     submissionDetails: "Bal’ina Galmee",
     clickRowDetails:
       "Nagahee, odeeffannoo fayyadamaa fi ibsa gumaachaa ilaali.",
@@ -1901,5 +1899,143 @@ try {
     numberRejectedFromManualEntry: "Lakkoofsi galmee harkaa kana irraa kufaa godhameera",
     removeNumberWillReject: "Lakkoofsa haquun seenaa isaa balleessuu osoo hin taane galmee kana irraa kufaa godha.",
   });
+  Object.assign((translations as any).or || ((translations as any).or = {}), (translations as any).om);
+} catch {}
+
+
+// Final translation error-message normalizer patch.
+// This block intentionally runs after all older patch blocks so these keys always exist
+// in the real language dictionaries used by useLang(): en, am, and om.
+try {
+  Object.assign((translations as any).en, {
+    invalidAmountForNumber: "Invalid amount for number {number}.",
+    amountExceedsRemainingForNumber: "Amount exceeds remaining for number {number}.",
+    reservationInvalidHoldData: "Reservation succeeded, but the server returned invalid hold data.",
+    reservationHoldKeyMismatch: "Reservation succeeded, but the hold key did not match this request.",
+    reservationTakingLong: "Reservation is taking longer than expected. Please try again.",
+    failedToLoadNumbers: "Failed to load numbers.",
+    failedToCloseNumber: "Failed to close number.",
+    failedToReopenNumber: "Failed to reopen number.",
+    failedToUpdateTarget: "Failed to update target.",
+    failedToLoadSelections: "Failed to load selections.",
+    failedToReadImage: "Failed to read image.",
+    failedToLoadImage: "Failed to load image.",
+    failedToPrepareImageCompression: "Failed to prepare image compression.",
+    failedToCompressImage: "Failed to compress image.",
+    onlyImagesAllowed: "Only image files are allowed.",
+    maxDashboardImages: "You can upload up to 3 images.",
+    failedToUploadDashboardImage: "Failed to upload announcement image.",
+    dashboardMessageImages: "Announcement images",
+    dashboardMessageImageHelp: "Optional: attach up to 3 images to this announcement.",
+    dashboardMessageImagePreview: "Announcement image preview",
+    removeImage: "Remove image",
+    tapAgainToCopy: "Tap again to copy",
+    of: "of",
+    closing: "Closing...",
+    reopening: "Reopening...",
+    receiptImageRequired: "Receipt image is required.",
+    onlyImageReceiptsAllowed: "Only image receipts are allowed.",
+    receiptImageTooLarge: "Receipt image must be 4MB or smaller.",
+    failedToUploadReceipt: "Failed to upload receipt.",
+    submissionNotFound: "Submission not found.",
+    missingSubmissionId: "Missing submission id.",
+    noValidContributionItemsFound: "No valid contribution items found.",
+    holdIdRequired: "Hold id is required.",
+    holdNotFound: "Hold not found.",
+    failedToCancelHold: "Failed to cancel hold.",
+    failedToUploadImage: "Failed to upload image.",
+    messageRequired: "Message is required.",
+    invalidTargetAmount: "Invalid target amount.",
+    someNumberSummaryMissing: "Some number summary cache rows are missing.",
+    submissionCouldNotBeApproved: "Submission could not be approved.",
+  });
+
+  Object.assign((translations as any).am, {
+    invalidAmountForNumber: "ለቁጥር {number} የተሳሳተ መጠን ነው።",
+    amountExceedsRemainingForNumber: "ለቁጥር {number} መጠኑ ከቀረው በላይ ነው።",
+    reservationInvalidHoldData: "ቦታ መያዙ ተሳክቷል፣ ግን ከሰርቨሩ የተመለሰው የመያዣ መረጃ ትክክል አይደለም።",
+    reservationHoldKeyMismatch: "ቦታ መያዙ ተሳክቷል፣ ግን የመያዣው ቁልፍ ከዚህ ጥያቄ ጋር አልተዛመደም።",
+    reservationTakingLong: "ቦታ መያዙ ከተጠበቀው በላይ እየዘገየ ነው። እባክዎ እንደገና ይሞክሩ።",
+    failedToLoadNumbers: "ቁጥሮችን መጫን አልተሳካም።",
+    failedToCloseNumber: "ቁጥሩን መዝጋት አልተሳካም።",
+    failedToReopenNumber: "ቁጥሩን እንደገና መክፈት አልተሳካም።",
+    failedToUpdateTarget: "የዒላማ መጠኑን ማዘመን አልተሳካም።",
+    failedToLoadSelections: "ምርጫዎችን መጫን አልተሳካም።",
+    failedToReadImage: "ምስሉን ማንበብ አልተሳካም።",
+    failedToLoadImage: "ምስሉን መጫን አልተሳካም።",
+    failedToPrepareImageCompression: "የምስል መጨመቅ ዝግጅት አልተሳካም።",
+    failedToCompressImage: "ምስሉን መጨመቅ አልተሳካም።",
+    onlyImagesAllowed: "የምስል ፋይሎች ብቻ ይፈቀዳሉ።",
+    maxDashboardImages: "እስከ 3 ምስሎች ብቻ መጫን ይችላሉ።",
+    failedToUploadDashboardImage: "የማስታወቂያ ምስል መጫን አልተሳካም።",
+    dashboardMessageImages: "የማስታወቂያ ምስሎች",
+    dashboardMessageImageHelp: "አማራጭ፦ እስከ 3 ምስሎች ከመልእክቱ ጋር ያያይዙ።",
+    dashboardMessageImagePreview: "የማስታወቂያ ምስል ቅድመ እይታ",
+    removeImage: "ምስል አስወግድ",
+    tapAgainToCopy: "ለመቅዳት እንደገና ይጫኑ",
+    of: "ከ",
+    closing: "በመዝጋት ላይ...",
+    reopening: "እንደገና በመክፈት ላይ...",
+    receiptImageRequired: "የደረሰኝ ምስል ያስፈልጋል።",
+    onlyImageReceiptsAllowed: "የምስል ደረሰኞች ብቻ ይፈቀዳሉ።",
+    receiptImageTooLarge: "የደረሰኝ ምስል ከ4MB መብለጥ የለበትም።",
+    failedToUploadReceipt: "ደረሰኝ መጫን አልተሳካም።",
+    submissionNotFound: "ማስገቢያው አልተገኘም።",
+    missingSubmissionId: "የማስገቢያ መለያ ጎድሏል።",
+    noValidContributionItemsFound: "ትክክለኛ የመዋጮ ንጥሎች አልተገኙም።",
+    holdIdRequired: "የመያዣ መለያ ያስፈልጋል።",
+    holdNotFound: "መያዣው አልተገኘም።",
+    failedToCancelHold: "መያዣውን መሰረዝ አልተሳካም።",
+    failedToUploadImage: "ምስል መጫን አልተሳካም።",
+    messageRequired: "መልእክት ያስፈልጋል።",
+    invalidTargetAmount: "የዒላማ መጠን ትክክል አይደለም።",
+    someNumberSummaryMissing: "አንዳንድ የቁጥር ማጠቃለያ መዝገቦች ጎድለዋል።",
+    submissionCouldNotBeApproved: "ማስገቢያውን ማጽደቅ አልተቻለም።",
+  });
+
+  Object.assign((translations as any).om, {
+    invalidAmountForNumber: "Lakkoofsa {number}f hangi sirrii miti.",
+    amountExceedsRemainingForNumber: "Lakkoofsa {number} irratti hangi galchame hafe caala.",
+    reservationInvalidHoldData: "Qabannaan milkaaʼeera, garuu odeeffannoon qabannaa sarvarii irraa deebiʼe sirrii miti.",
+    reservationHoldKeyMismatch: "Qabannaan milkaaʼeera, garuu furtuun qabannaa gaaffii kanaan wal hin simne.",
+    reservationTakingLong: "Qabannaan yeroo eegame caalaa tureera. Mee irra deebiʼii yaali.",
+    failedToLoadNumbers: "Lakkoofsota feʼuun hin milkoofne.",
+    failedToCloseNumber: "Lakkoofsa cufuun hin milkoofne.",
+    failedToReopenNumber: "Lakkoofsa deebisanii banuun hin milkoofne.",
+    failedToUpdateTarget: "Hanga target haaromsuun hin milkoofne.",
+    failedToLoadSelections: "Filannoowwan feʼuun hin milkoofne.",
+    failedToReadImage: "Suuraa dubbisuun hin milkoofne.",
+    failedToLoadImage: "Suuraa feʼuun hin milkoofne.",
+    failedToPrepareImageCompression: "Qophii xiqqeessuu suuraa hin milkoofne.",
+    failedToCompressImage: "Suuraa xiqqeessuun hin milkoofne.",
+    onlyImagesAllowed: "Faayiloota suuraa qofa hayyamama.",
+    maxDashboardImages: "Suuraa hanga 3 qofa olkaaʼuu dandeessa.",
+    failedToUploadDashboardImage: "Suuraa beeksisaa olkaaʼuun hin milkoofne.",
+    dashboardMessageImages: "Suuraawwan beeksisaa",
+    dashboardMessageImageHelp: "Filannoo: ergaa kana waliin hanga suuraa 3 maxxansi.",
+    dashboardMessageImagePreview: "Dursa ilaalcha suuraa beeksisaa",
+    removeImage: "Suuraa haqi",
+    tapAgainToCopy: "Garagalchuuf irra deebiʼii tuqi",
+    of: "keessaa",
+    closing: "Cufaa jira...",
+    reopening: "Deebisee banaa jira...",
+    receiptImageRequired: "Suuraan nagahee barbaachisa.",
+    onlyImageReceiptsAllowed: "Nagaheen suuraa qofa hayyamama.",
+    receiptImageTooLarge: "Suuraan nagahee 4MB caaluu hin qabu.",
+    failedToUploadReceipt: "Nagahee olkaaʼuun hin milkoofne.",
+    submissionNotFound: "Galchiin hin argamne.",
+    missingSubmissionId: "ID galchii hin jiru.",
+    noValidContributionItemsFound: "Meeshaaleen gumaacha sirrii hin argamne.",
+    holdIdRequired: "ID qabannaa barbaachisa.",
+    holdNotFound: "Qabannaan hin argamne.",
+    failedToCancelHold: "Qabannaa haquun hin milkoofne.",
+    failedToUploadImage: "Suuraa olkaaʼuun hin milkoofne.",
+    messageRequired: "Ergaan barbaachisa.",
+    invalidTargetAmount: "Hangi target sirrii miti.",
+    someNumberSummaryMissing: "Tarreewwan gabaabina lakkoofsaa muraasni hin jiran.",
+    submissionCouldNotBeApproved: "Galchii mirkaneessuun hin dandaʼamne.",
+  });
+
+  // Compatibility only: keep accidental old Afaan Oromo code working without making `or` the real key.
   Object.assign((translations as any).or || ((translations as any).or = {}), (translations as any).om);
 } catch {}
